@@ -1,0 +1,65 @@
+import React, { useState, useRef, useEffect } from "react";
+import { Outlet } from "react-router-dom";
+import NavProjects from "../components/NavProjects";
+import './MainLayout.css';  // importa il CSS
+
+export default function TenantLayout() {
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef(null);
+
+  const startResizing = (e) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  const stopResizing = () => {
+    setIsResizing(false);
+  };
+
+  const resize = (e) => {
+    if (isResizing && sidebarRef.current) {
+      const newWidth = e.clientX;
+      if (newWidth > 150 && newWidth < 500) {
+        setSidebarWidth(newWidth);
+      }
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize);
+    window.addEventListener('mouseup', stopResizing);
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isResizing]);
+
+  return (
+    <div className="app-container">
+      {/* Sidebar */}
+      <div
+        ref={sidebarRef}
+        className={`sidebar ${isResizing ? 'resizing' : ''}`}
+        style={{ width: `${sidebarWidth}px` }}
+      >
+        <div className="sidebar-content">
+          <h2 className="text-xl font-semibold text-slate-800">Menu Project</h2>
+          <NavProjects />
+        </div>
+
+        <div
+          className={`resize-handle ${isResizing ? 'resizing' : ''}`}
+          onMouseDown={startResizing}
+        />
+      </div>
+
+      {/* Main content */}
+      <div className="main-content">
+        <div className="scrollable-area">
+          <Outlet />
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,33 @@
+.trigger {
+  background: none;
+  border: none;
+  color: #1e3a8a;
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: bold;
+  padding: 0;
+}
+
+.portal {
+  position: absolute;
+  color: #1e3a8a;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.75rem;
+  z-index: 1000;
+  min-width: 200px;
+  max-width: 320px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.portalTop {
+  transform: translateY(-100%);
+}
+
+.list {
+  padding-left: 1rem;
+  margin-top: 0.5rem;
+}

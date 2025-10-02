@@ -1,0 +1,16 @@
+/* Alerts.module.css */
+.success {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #e0f2fe;
+  color: #1d4ed8;
+  text-align: center;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.error {
+  color: #dc2626;
+  margin-top: 0.5rem;
+}
+

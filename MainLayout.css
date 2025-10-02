@@ -1,0 +1,67 @@
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+
+.sidebar {
+  min-width: 150px;
+  max-width: 500px;
+  height: 100vh;
+  background-color: #e0f2fe;
+  border-right: 1px solid #bae6fd;
+  overflow: auto;
+}
+
+.sidebar.resizing {
+  transition: none;
+}
+
+.sidebar-content {
+  padding: 20px;
+  color: #014191;
+}
+
+.resize-wrapper {
+  position: relative;
+  width: 20px;        /* Area cliccabile più larga */
+  height: 100%;
+}
+
+.resize-handle {
+  all: unset;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 5px;         /* La linea visibile */
+  height: 100%;
+  background-color: #ccc;
+  cursor: col-resize;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.resize-handle:hover,
+.resize-handle.resizing {
+  background-color: #999;
+}
+
+
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--primary-50);
+}
+
+.scrollable-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  background-color: inherit;
+}

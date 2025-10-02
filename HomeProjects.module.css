@@ -1,0 +1,30 @@
+/* Testo caricamento o messaggi */
+.listLoading {
+  font-style: italic;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+/* Link nel nome progetto */
+.projectName a,
+.projectKey a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.projectName a:hover,
+.projectKey a:hover {
+  text-decoration: underline;
+}
+
+/* Celle specifiche */
+.projectKey {
+  font-family: 'Courier New', Courier, monospace;
+  color: #2563eb;
+}
+
+.projectDescription {
+  color: #374151;
+  font-weight: 400;
+  white-space: normal;
+}

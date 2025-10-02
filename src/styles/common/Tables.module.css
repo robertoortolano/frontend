@@ -1,0 +1,43 @@
+/* Tabella */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Intestazione tabella */
+.table thead {
+  /*background-color: #bfdbfe;*/
+  /*color: #1e40af;*/
+  color: #1e3a8a;
+  user-select: none;
+}
+
+/* Celle */
+.table th,
+.table td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  vertical-align: middle;
+  border: 1px solid #dbeafe;
+  font-size: 1rem;
+}
+
+/* Righe alternate */
+.table tbody tr:nth-child(even) {
+  /*background-color: #e0e7ff;*/
+}
+
+.table tbody tr:nth-child(odd) {
+  /*background-color: #f0f5ff;*/
+}
+
+.table tbody tr:hover {
+  /*background-color: #c7d2fe;*/
+  background-color: #f0f0f0;
+  cursor: pointer;
+}

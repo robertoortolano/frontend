@@ -1,0 +1,15 @@
+.block {
+  margin-bottom: 2rem;
+}
+
+.monospace {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.mt4 {
+  margin-top: 1rem;
+}
+
+.mt6 {
+  margin-top: 1.5rem;
+}

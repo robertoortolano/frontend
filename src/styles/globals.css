@@ -1,0 +1,55 @@
+/* Reset e normalizzazione */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body, h1, h2, h3, h4, p, ul, ol, li, table {
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+}
+
+/* Font base e background globale */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9fafb;
+  /*color: #1e3a8a;*/
+  color: #00ddd4;
+  line-height: 1.6;
+}
+
+/* Utility class - centratura testo */
+.text-center {
+  text-align: center;
+}
+
+/* Utility class - margine inferiore */
+.mb-10 {
+  margin-bottom: 10px;
+}
+
+/* Utility class - flex container */
+.flex {
+  display: flex;
+}
+
+/* Utility class - bottone base (se vuoi usarlo globalmente) */
+.button {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  color: white;
+  background-color: #2563eb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  text-align: center;
+}
+
+.button:hover {
+  background-color: #1d4ed8;
+}

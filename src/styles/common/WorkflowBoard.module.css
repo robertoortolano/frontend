@@ -1,0 +1,158 @@
+.wrapper {
+  padding: 1rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.titleInput {
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.button {
+  padding: 0.5rem 1rem;
+  background-color: #0d6efd;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.button:hover:not(:disabled) {
+  background-color: #0b5ed7;
+}
+
+.button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  background-color: #dc3545;
+}
+
+.cancelButton:hover {
+  background-color: #bb2d3b;
+}
+
+.buttonBar {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.customNode {
+  background: transparent !important; /* niente sfondo */
+  padding: 0 !important;
+  user-select: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.nodeContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nodeLabel {
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: white;
+  user-select: none;
+  box-sizing: border-box;
+  min-width: 100px;
+}
+
+.handle {
+  width: 14px !important;
+  height: 14px !important;
+  background: #2196f3;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 4px rgba(33, 150, 243, 0.7);
+  cursor: crosshair;
+}
+
+.handle.small-handle {
+  width: 5px !important;
+  height: 5px !important;
+  min-width: 5px !important;
+  min-height: 5px !important;
+  border-width: 1.5px !important;
+}
+
+:global(.react-flow__handle.handle.small-handle) {
+  width: 4px !important;
+  height: 4px !important;
+  min-width: 4px !important;
+  min-height: 4px !important;
+  border-width: 0.5px !important;
+}
+
+
+/* Popover */
+
+.popover {
+  position: relative;
+  display: inline-block;
+}
+
+.popoverMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
+  min-width: 40px;
+  padding: 4px 0;
+}
+
+.popoverItem {
+  padding: 8px 12px;
+  font-size: 6px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: #212529;
+}
+
+.popoverItem:hover,
+.popoverItemHover {
+  background-color: #f0f0f0;
+}
+
+.popoverItemActive {
+  background-color: #00ddd4;
+  color: white;
+  font-weight: bold;
+  font-size: 6px;
+}
+
+
+
+/* Node label e bordi dinamici */
+
+
+

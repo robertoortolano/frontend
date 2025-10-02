@@ -1,0 +1,61 @@
+.nav-bar {
+  padding: 1rem;
+  font-family: system-ui, sans-serif;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-email {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #1e3a8a;
+}
+
+.nav-list li {
+  /* niente margini, usiamo gap */
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #1e3a8a;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  display: block;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: #f0f0f0;
+}
+
+.nav-link.active {
+  background-color: #00ddd4;
+  color: white;
+  font-weight: 500;
+}
+
+.nav-logout-button {
+  background: none;
+  border: none;
+  color: #c53030;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  text-align: left;
+  transition: background-color 0.2s ease;
+}
+

@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Font & rendering */
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Palette di colori blu azzurro */
+  --primary-50: #f0f9ff;
+  --primary-100: #e0f2fe;
+  --primary-200: #bae6fd;
+  --primary-300: #7dd3fc;
+  --primary-400: #38bdf8;
+  --primary-500: #0ea5e9;
+  --primary-600: #0284c7;
+  --primary-700: #0369a1;
+  --primary-800: #075985;
+  --primary-900: #0c4a6e;
+}
+
+/* Reset e layout base */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+  color: #1e293b;
+  background-color: var(--primary-50);
+}
+
+/* Stili per la NavBar */
+.tenant-navbar {
+  background-color: var(--primary-600);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 16rem;
+}
+
+.tenant-navbar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.tenant-user-email {
+  font-size: 0.875rem;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.tenant-nav-item {
+  cursor: pointer;
+  font-size: 1.125rem;
+  font-weight: 600;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+}
+
+.tenant-nav-item:hover {
+  color: white;
+}
+
+.tenant-nav-item-projects {
+  color: var(--primary-100);
+}
+
+.tenant-nav-item-projects.active {
+  color: white;
+  border-left: 4px solid white;
+  font-weight: 700;
+}
+
+.tenant-nav-item-logout {
+  color: var(--primary-100);
+}
+
+.tenant-nav-item-logout.active {
+  color: white;
+  border-left: 4px solid white;
+  font-weight: 700;
+}
+
+.tenant-nav-item-logout:hover {
+  color: white;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #f8fafc;
+    background-color: var(--primary-900);
+  }
+
+  .tenant-navbar {
+    background-color: var(--primary-800);
+  }
+
+  .tenant-nav-item-projects {
+    color: var(--primary-200);
+  }
+
+  .tenant-nav-item-logout {
+    color: var(--primary-200);
+  }
+
+}

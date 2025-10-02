@@ -1,0 +1,70 @@
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+
+import layout from "../../styles/common/Layout.module.css";
+import buttons from "../../styles/common/Buttons.module.css";
+import table from "../../styles/common/Tables.module.css";
+import alert from "../../styles/common/Alerts.module.css";
+import utilities from "../../styles/common/Utilities.module.css";
+
+
+export default function ProjectSettings() {
+  const { projectId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const token = location.state?.token || localStorage.getItem("token");
+
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const projectRes = await axios.get(`http://localhost:8080/api/projects/${projectId}`, { headers });
+        setProject(projectRes.data);
+      } catch (err) {
+        console.error("Errore nel caricamento del progetto:", err);
+        setError(err.response?.data?.message || "Error loading project. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token && projectId) {
+      fetchData();
+    }
+  }, [projectId, token]);
+
+  const handleEditItemTypeSet = () => {
+    navigate(`/projects/${projectId}/item-type-sets/create`);
+  };
+
+  return (
+    <div className={layout.container}>
+      {loading ? (
+        <p className={layout.loading}>Loading project...</p>
+      ) : error ? (
+        <p className={alert.error}>{error}</p>
+      ) : !project ? (
+        <p className={alert.error}>Project not found or loading error.</p>
+      ) : (
+        <>
+          {project.itemTypeSet && (
+            <>
+              <h1 className={layout.title}>Item Type Set</h1>
+              <div className={layout.block}>
+                <button className={`${buttons.button} ${utilities.mt6}`} onClick={handleEditItemTypeSet}>
+                  Edit Item Type Set
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
