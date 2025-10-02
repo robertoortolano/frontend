@@ -70,10 +70,10 @@ export default function ItemTypeSetCreate() {
     setItemTypeConfigurations([
       ...itemTypeConfigurations,
       {
-        itemTypeId: parseInt(selectedItemTypeId, 10),
+        itemTypeId: Number.parseInt(selectedItemTypeId, 10),
         category: selectedCategory,
-        fieldSetId: parseInt(selectedFieldSetId, 10),
-        workflowId: parseInt(selectedWorkflowId, 10),
+        fieldSetId: Number.parseInt(selectedFieldSetId, 10),
+        workflowId: Number.parseInt(selectedWorkflowId, 10),
       },
     ]);
     setSelectedItemTypeId("");

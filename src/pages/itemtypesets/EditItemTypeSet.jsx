@@ -118,10 +118,10 @@ export default function EditItemTypeSet() {
     setItemTypeConfigurations([
       ...itemTypeConfigurations,
       {
-        itemTypeId: parseInt(selectedItemTypeId, 10),
+        itemTypeId: Number.parseInt(selectedItemTypeId, 10),
         category: selectedCategory,
-        fieldSetId: parseInt(selectedFieldSetId, 10),
-        workflowId: parseInt(selectedWorkflowId, 10),
+        fieldSetId: Number.parseInt(selectedFieldSetId, 10),
+        workflowId: Number.parseInt(selectedWorkflowId, 10),
       },
     ]);
     setSelectedItemTypeId("");
@@ -305,7 +305,7 @@ export default function EditItemTypeSet() {
                 <select
                   value={entry.fieldSetId || ""}
                   onChange={(e) =>
-                    updateEntry(index, { fieldSetId: parseInt(e.target.value, 10) })
+                    updateEntry(index, { fieldSetId: Number.parseInt(e.target.value, 10) })
                   }
                   className={form.select}
                   disabled={saving}
@@ -322,7 +322,7 @@ export default function EditItemTypeSet() {
                 <select
                   value={entry.workflowId || ""}
                   onChange={(e) =>
-                    updateEntry(index, { workflowId: parseInt(e.target.value, 10) })
+                    updateEntry(index, { workflowId: Number.parseInt(e.target.value, 10) })
                   }
                   className={form.select}
                   disabled={saving}

@@ -50,54 +50,19 @@ function buildNodes(onCategoryChange, onRemoveNode, setInitialNode, wfNodes = []
   });
 }
 
-/*
-function buildEdges(wfEdges = [], wfStatuses = []) {
-  const transitionNames = {};
-  (wfStatuses || []).forEach((s) => {
-    (s?.outgoingTransitions || []).forEach((t) => {
-      if (t?.id != null) {
-        transitionNames[t.id] = t?.name || "";
-      }
-    });
-  });
-
-  return (wfEdges || []).map((e, idx) => ({
-    //id: e.id != null ? String(e.id) : `tmp-${e.sourceId}-${e.targetId}-${idx}`,
-    id: e.id != null ? String(e.id) : `edge-${e.sourceId}-${e.targetId}-${idx}`,
-    source: String(e.sourceId),
-    target: String(e.targetId),
-    sourceHandle: e.sourcePosition || null,
-    targetHandle: e.targetPosition || null,
-    type: "selectableEdge",
-    updatable: true,
-    data: {
-      transitionTempId: e.transitionTempId ?? null,
-      transitionId: e.transitionId ?? null,  // solo transitionId serve al backend
-      label: e.transitionId ? transitionNames[e.transitionId] || e.name || "" : (e.name || ""),
-    },
-
-
-
-
-
-    style: { stroke: "black", strokeWidth: 0.5 },
-    markerEnd: { type: MarkerType.ArrowClosed, width: 30, height: 30, color: "black" },
-  }));
-}
-  */
 
 function buildEdges(wfEdges = [], transitions = []) {
   // Mappa transizioni per id
   const transitionById = {};
-  (transitions || []).forEach((t) => {
+  for (const t of (transitions || [])) {
     if (t?.id != null) transitionById[t.id] = t;
-  });
+  }
 
   return (wfEdges || []).map((e, idx) => {
-    const transition = e.transitionId != null ? transitionById[e.transitionId] : null;
+    const transition = e.transitionId == null ? null : transitionById[e.transitionId];
 
     return {
-      id: e.id != null ? String(e.id) : `edge-${e.sourceId}-${e.targetId}-${idx}`,
+      id: e.id == null ?  `edge-${e.sourceId}-${e.targetId}-${idx}` : String(e.id),
       source: String(e.sourceId),
       target: String(e.targetId),
       sourceHandle: e.sourcePosition || null,
@@ -184,9 +149,9 @@ export default function WorkflowEdit() {
 
   // 🔹 Funzioni callback
   const setInitialNode = useCallback((nodeId) => {
-    setInitialNodeId(parseInt(nodeId));
+    setInitialNodeId(Number.parseInt(nodeId));
     setNodes((nds) =>
-      nds.map((node) => ({ ...node, data: { ...node.data, isInitial: parseInt(node.id) === parseInt(nodeId) } }))
+      nds.map((node) => ({ ...node, data: { ...node.data, isInitial: Number.parseInt(node.id) === Number.parseInt(nodeId) } }))
     );
   }, [setNodes]);
 
@@ -302,7 +267,7 @@ export default function WorkflowEdit() {
     }));
 
     const transitionMap = new Map();
-    edges.forEach((e) => {
+    for (const e of edges) {
       const key = e.data?.transitionId ?? e.data?.transitionTempId ?? `${e.source}-${e.target}-${e.data?.label || ""}`;
       if (!transitionMap.has(key)) {
         transitionMap.set(key, {
@@ -313,7 +278,7 @@ export default function WorkflowEdit() {
           targetStatusId: nodes.find((n) => n.id === e.target)?.data.statusId || e.target,
         });
       }
-    });
+    }
     const transitions = Array.from(transitionMap.values());
 
     // 🔹 WorkflowStatuses DTO aggiornati

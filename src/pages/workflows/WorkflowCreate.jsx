@@ -147,11 +147,11 @@ export default function WorkflowCreate() {
 
   // 🔹 Aggiorna flag isInitial sui nodi
   const setInitialNode = useCallback((nodeId) => {
-    setInitialNodeId(parseInt(nodeId));
+    setInitialNodeId(Number.parseInt(nodeId));
     setNodes((nds) =>
       nds.map((node) => ({
         ...node,
-        data: { ...node.data, isInitial: parseInt(node.id) === parseInt(nodeId) },
+        data: { ...node.data, isInitial: Number.parseInt(node.id) === Number.parseInt(nodeId) },
       }))
     );
   }, [setNodes]);
@@ -162,7 +162,7 @@ export default function WorkflowCreate() {
         ...node,
         data: {
           ...node.data,
-          isInitial: parseInt(node.id) === initialNodeId,
+          isInitial: Number.parseInt(node.id) === initialNodeId,
         },
       }))
     );
