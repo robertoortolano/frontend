@@ -147,6 +147,18 @@ export default function EditItemTypeSet() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      
+      // Aggiorna automaticamente i ruoli per l'ItemTypeSet modificato
+      try {
+        // Prima rimuovi i ruoli esistenti
+        await api.delete(`/itemtypeset-roles/itemtypeset/${id}/all`);
+        // Poi ricrea i ruoli con la nuova configurazione
+        await api.post(`/itemtypeset-roles/create-for-itemtypeset/${id}`);
+      } catch (roleError) {
+        console.warn("Errore nell'aggiornamento automatico dei ruoli:", roleError);
+        // Non bloccare la modifica se i ruoli non vengono aggiornati
+      }
+      
       navigate("/tenant/item-type-sets");
     } catch (err) {
       console.error("Errore durante l'aggiornamento", err);

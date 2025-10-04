@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Shield, Settings } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
+import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
+import FieldStatusPairViewer from "../../components/FieldStatusPairViewer";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -16,6 +18,9 @@ export default function ItemTypeSets() {
   const navigate = useNavigate();
   const { token, roles, isAuthenticated } = useAuth();
   const [expandedSets, setExpandedSets] = useState({});
+  const [showRoles, setShowRoles] = useState(false);
+  const [showFieldStatusPairs, setShowFieldStatusPairs] = useState(false);
+  const [selectedSetForRoles, setSelectedSetForRoles] = useState(null);
 
   const toggleExpand = (setId) => {
     setExpandedSets(prev => ({
@@ -93,16 +98,53 @@ export default function ItemTypeSets() {
                   {expandedSets[set.id] ? <ChevronDown /> : <ChevronRight />}
                 </button>
 
-                {!set.defaultItemTypeSet && (
+                <div className="flex gap-2">
                   <button
-                    className={`${buttons.button} ${buttons.buttonSmall}`}
-                    onClick={() => navigate(`/tenant/item-type-sets/edit/${set.id}`)}
-                    title="Modifica Item Type Set"
+                    className={`${buttons.button} ${buttons.buttonSmall} ${showRoles && selectedSetForRoles?.id === set.id ? buttons.buttonPrimary : buttons.buttonSecondary}`}
+                    onClick={() => {
+                      if (showRoles && selectedSetForRoles?.id === set.id) {
+                        setShowRoles(false);
+                        setSelectedSetForRoles(null);
+                      } else {
+                        setShowRoles(true);
+                        setSelectedSetForRoles(set);
+                        setShowFieldStatusPairs(false);
+                      }
+                    }}
+                    title={showRoles && selectedSetForRoles?.id === set.id ? "Nascondi Ruoli" : "Gestisci Ruoli"}
                     type="button"
                   >
-                    Edit
+                    <Shield size={16} className="mr-1" />
+                    {showRoles && selectedSetForRoles?.id === set.id ? 'Nascondi' : 'Mostra'} Ruoli
                   </button>
-                )}
+                  <button
+                    className={`${buttons.button} ${buttons.buttonSmall} ${showFieldStatusPairs ? buttons.buttonPrimary : buttons.buttonSecondary}`}
+                    onClick={() => {
+                      if (showFieldStatusPairs) {
+                        setShowFieldStatusPairs(false);
+                      } else {
+                        setShowFieldStatusPairs(true);
+                        setShowRoles(false);
+                        setSelectedSetForRoles(null);
+                      }
+                    }}
+                    title={showFieldStatusPairs ? "Nascondi Coppie" : "Visualizza Coppie Field-Status"}
+                    type="button"
+                  >
+                    <Settings size={16} className="mr-1" />
+                    {showFieldStatusPairs ? 'Nascondi' : 'Mostra'} Coppie
+                  </button>
+                  {!set.defaultItemTypeSet && (
+                    <button
+                      className={`${buttons.button} ${buttons.buttonSmall}`}
+                      onClick={() => navigate(`/tenant/item-type-sets/edit/${set.id}`)}
+                      title="Modifica Item Type Set"
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
               </div>
 
               {expandedSets[set.id] && (
@@ -156,6 +198,28 @@ export default function ItemTypeSets() {
           + Crea Nuovo Item Type Set
         </button>
       </div>
+
+      {/* Panel per gestione ruoli */}
+      {showRoles && selectedSetForRoles && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <ItemTypeSetRoleManager 
+              itemTypeSetId={selectedSetForRoles.id} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Panel per visualizzazione coppie Field-Status */}
+      {showFieldStatusPairs && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <FieldStatusPairViewer 
+              itemTypeSetId={itemTypeSets[0]?.id} // TODO: Get selected set
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

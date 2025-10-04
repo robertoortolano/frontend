@@ -93,13 +93,23 @@ export default function ItemTypeSetCreate() {
     setError(null);
 
     try {
-      await api.post(
+      const response = await api.post(
         "/item-type-sets",
         { name, itemTypeConfigurations },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      
+      // Crea automaticamente i ruoli per il nuovo ItemTypeSet
+      const itemTypeSetId = response.data.id;
+      try {
+        await api.post(`/itemtypeset-roles/create-for-itemtypeset/${itemTypeSetId}`);
+      } catch (roleError) {
+        console.warn("Errore nella creazione automatica dei ruoli:", roleError);
+        // Non bloccare la creazione se i ruoli non vengono creati
+      }
+      
       navigate("../item-type-sets");
     } catch (err) {
       console.error("Errore durante la creazione", err);

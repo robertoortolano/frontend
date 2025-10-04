@@ -37,7 +37,7 @@ export default function FieldSets() {
       try {
         const url = isProjectContext
           ? `/field-sets/project/${id}`
-          : "/field-sets/global";
+          : "/field-sets";
 
         const res = await api.get(url, {
           headers: { Authorization: `Bearer ${token}` },

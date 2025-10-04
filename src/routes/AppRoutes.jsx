@@ -52,6 +52,11 @@ import Workflows from "../pages/workflows/Workflows";
 import WorkflowCreate from "../pages/workflows/WorkflowCreate";
 import WorkflowEdit from "../pages/workflows/WorkflowEdit";
 
+// Roles
+import Roles from "../pages/roles/Roles";
+import CreateRole from "../pages/roles/CreateRole";
+import EditRole from "../pages/roles/EditRole";
+
 import Test from "../pages/workflows/Test";
 
 
@@ -94,6 +99,10 @@ export default function AppRoutes() {
             <Route path="workflows" element={<Workflows />} />
             <Route path="workflows/create" element={<WorkflowCreate />} />
             <Route path="workflows/:id" element={<WorkflowEdit />} />
+
+            <Route path="roles" element={<Roles />} />
+            <Route path="roles/create" element={<CreateRole />} />
+            <Route path="roles/edit/:id" element={<EditRole />} />
 
             <Route path="test" element={<Test />} />
         </Route>

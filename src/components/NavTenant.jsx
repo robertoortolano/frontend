@@ -5,7 +5,7 @@ import "./Nav.css";
 
 export default function NavTenant() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, roles } = useAuth();
   const username = localStorage.getItem("username") || "";
 
   const handleLogout = () => {
@@ -63,6 +63,11 @@ export default function NavTenant() {
             Item type Sets
           </NavLink>
         </li>
+          <li>
+            <NavLink to="/tenant/roles" className="nav-link">
+              Gestione Ruoli
+            </NavLink>
+          </li>
         <li>
           <button onClick={handleLogout} className="nav-logout-button">
             Logout
