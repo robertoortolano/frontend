@@ -73,7 +73,6 @@ export default function Roles() {
 
   const getScopeBadge = (scope) => {
     const scopeColors = {
-      'GLOBAL': 'bg-blue-100 text-blue-800',
       'TENANT': 'bg-green-100 text-green-800',
       'PROJECT': 'bg-purple-100 text-purple-800'
     };
@@ -100,7 +99,7 @@ export default function Roles() {
         <div>
           <h1 className={layout.title}>Gestione Ruoli</h1>
           <p className={layout.paragraphMuted}>
-            Gestisci i ruoli template che possono essere assegnati agli ItemTypeSetRole
+            Gestisci i ruoli personalizzati del tenant. Questi ruoli possono essere associati alle permissions degli ItemTypeSet. Le permissions di sistema (Workers, StatusOwner, FieldEditors, Creators, Executors, Editors, Viewers) sono predefinite e non modificabili.
           </p>
         </div>
         <button
@@ -120,7 +119,7 @@ export default function Roles() {
 
       {rolesList.length === 0 ? (
         <div className={alert.info}>
-          <p>Nessun ruolo configurato.</p>
+          <p>Nessun ruolo personalizzato configurato.</p>
           <p className="mt-2">Clicca su "Crea Nuovo Ruolo" per iniziare.</p>
         </div>
       ) : (
@@ -130,8 +129,8 @@ export default function Roles() {
               <thead>
                 <tr>
                   <th>Nome</th>
+                  <th>Descrizione</th>
                   <th>Scope</th>
-                  <th>Ruolo Predefinito</th>
                   <th>Azioni</th>
                 </tr>
               </thead>
@@ -148,20 +147,16 @@ export default function Roles() {
                       </div>
                     </td>
                     <td>
+                      <div className="max-w-xs">
+                        <p className="text-sm text-gray-700 truncate" title={role.description}>
+                          {role.description || <span className="text-gray-400 italic">Nessuna descrizione</span>}
+                        </p>
+                      </div>
+                    </td>
+                    <td>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScopeBadge(role.scope)}`}>
                         {role.scope}
                       </span>
-                    </td>
-                    <td>
-                      {role.defaultRole ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Sì
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          No
-                        </span>
-                      )}
                     </td>
                     <td>
                       <div className="flex gap-2">
@@ -172,15 +167,13 @@ export default function Roles() {
                         >
                           <Edit size={16} />
                         </button>
-                        {!role.defaultRole && (
-                          <button
-                            className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
-                            onClick={() => handleDelete(role.id)}
-                            title="Elimina Ruolo"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                        <button
+                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
+                          onClick={() => handleDelete(role.id)}
+                          title="Elimina Ruolo"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -57,6 +57,9 @@ import Roles from "../pages/roles/Roles";
 import CreateRole from "../pages/roles/CreateRole";
 import EditRole from "../pages/roles/EditRole";
 
+// Groups
+import Groups from "../pages/groups/Groups";
+
 import Test from "../pages/workflows/Test";
 
 
@@ -103,6 +106,8 @@ export default function AppRoutes() {
             <Route path="roles" element={<Roles />} />
             <Route path="roles/create" element={<CreateRole />} />
             <Route path="roles/edit/:id" element={<EditRole />} />
+            
+            <Route path="groups" element={<Groups />} />
 
             <Route path="test" element={<Test />} />
         </Route>

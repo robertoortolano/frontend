@@ -253,3 +253,5 @@ Il frontend è stato completamente aggiornato per supportare la nuova struttura 
 - **Performanti**: Ottimizzati per velocità e efficienza
 
 Il sistema è ora pronto per la produzione e supporta completamente la gestione granulare dei ruoli per ItemTypeSet.
+
+

@@ -9,7 +9,7 @@ export default function Navbar() {
 
   // Check if user can manage roles (ADMIN role with any scope)
   const canManageRoles = roles?.some(role => 
-    role === 'ADMIN'
+    role.name === 'ADMIN'
   );
 
   // Debug: log roles to console
@@ -31,6 +31,7 @@ export default function Navbar() {
             <Link to="/tenant" className="hover:underline">Home</Link>
             <Link to="/projects" className="hover:underline">Progetti</Link>
             <Link to="/tenant/roles" className="hover:underline">Gestione Ruoli</Link>
+            <Link to="/tenant/groups" className="hover:underline">Gestione Gruppi</Link>
             {canManageRoles && (
               <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">ADMIN</span>
             )}

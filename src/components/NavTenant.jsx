@@ -68,6 +68,11 @@ export default function NavTenant() {
               Gestione Ruoli
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/tenant/groups" className="nav-link">
+              Gruppi
+            </NavLink>
+          </li>
         <li>
           <button onClick={handleLogout} className="nav-logout-button">
             Logout

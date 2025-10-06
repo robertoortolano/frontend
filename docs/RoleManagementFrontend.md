@@ -230,3 +230,5 @@ Dashboard con:
 3. **Export/Import**: Esportazione configurazioni ruoli
 4. **Audit Trail**: Tracciamento modifiche ruoli
 5. **Templates**: Template predefiniti per configurazioni comuni
+
+

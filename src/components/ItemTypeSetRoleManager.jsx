@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Users, Shield, Edit, Eye, Plus, Trash2 } from 'lucide-react';
 import api from '../api/api';
-import CreateRoleForm from './CreateRoleForm';
-import RoleGrantManager from './RoleGrantManager';
+import PermissionGrantManager from './PermissionGrantManager';
 
 import layout from '../styles/common/Layout.module.css';
 import buttons from '../styles/common/Buttons.module.css';
@@ -12,7 +11,7 @@ import table from '../styles/common/Tables.module.css';
 
 const ROLE_TYPES = {
   WORKER: { label: 'Worker', icon: Users, color: 'blue', description: 'Per ogni ItemType' },
-  OWNER: { label: 'Owner', icon: Shield, color: 'green', description: 'Per ogni WorkflowStatus' },
+  STATUS_OWNER: { label: 'StatusOwner', icon: Shield, color: 'green', description: 'Per ogni WorkflowStatus' },
   FIELD_EDITOR: { label: 'Field Editor', icon: Edit, color: 'purple', description: 'Per ogni FieldConfiguration (sempre)' },
   CREATOR: { label: 'Creator', icon: Plus, color: 'orange', description: 'Per ogni Workflow' },
   EXECUTOR: { label: 'Executor', icon: Shield, color: 'red', description: 'Per ogni Transition' },
@@ -20,32 +19,47 @@ const ROLE_TYPES = {
   VIEWER: { label: 'Viewer', icon: Eye, color: 'gray', description: 'Per coppia (Field + Status)' }
 };
 
-export default function ItemTypeSetRoleManager({ itemTypeSetId }) {
+export default function ItemTypeSetRoleManager({ itemTypeSetId, onClose, onPermissionGrantClick, refreshTrigger }) {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedRoles, setExpandedRoles] = useState({});
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedRoleForGrants, setSelectedRoleForGrants] = useState(null);
+  const [selectedPermissionForGrants, setSelectedPermissionForGrants] = useState(null);
 
   useEffect(() => {
     if (itemTypeSetId) {
       fetchRoles();
     }
-  }, [itemTypeSetId]);
+  }, [itemTypeSetId, refreshTrigger]);
 
   const fetchRoles = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/itemtypeset-roles/itemtypeset/${itemTypeSetId}`);
+      const response = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`);
+      console.log('ItemTypeSetRoleManager - Raw response data:', response.data);
       setRoles(response.data);
     } catch (err) {
-      setError('Errore nel caricamento dei ruoli');
-      console.error('Error fetching roles:', err);
+      // Se le permissions non esistono, proviamo a crearle
+      if (err.response?.status === 500) {
+        try {
+          await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSetId}`);
+          // Riprova a caricare le permissions
+          const retryResponse = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`);
+          console.log('ItemTypeSetRoleManager - Retry response data:', retryResponse.data);
+          setRoles(retryResponse.data);
+        } catch (createErr) {
+          setError('Errore nella creazione delle permissions');
+          console.error('Error creating permissions:', createErr);
+        }
+      } else {
+        setError('Errore nel caricamento delle permissions');
+        console.error('Error fetching permissions:', err);
+      }
     } finally {
       setLoading(false);
     }
   };
+
 
 
   const toggleRoleExpansion = (roleId) => {
@@ -64,26 +78,17 @@ export default function ItemTypeSetRoleManager({ itemTypeSetId }) {
     return ROLE_TYPES[roleType]?.color || 'gray';
   };
 
-  const getRoleDescription = (role) => {
-    if (role.roleType === 'EDITOR' || role.roleType === 'VIEWER') {
-      return `Per coppia (${role.secondaryEntityType || 'Field'} + Status)`;
-    }
-    return ROLE_TYPES[role.roleType]?.description || '';
+  const getRoleDescription = (roleType) => {
+    return ROLE_TYPES[roleType]?.description || '';
   };
 
   const groupRolesByType = () => {
-    const grouped = {};
-    roles.forEach(role => {
-      if (!grouped[role.roleType]) {
-        grouped[role.roleType] = [];
-      }
-      grouped[role.roleType].push(role);
-    });
-    return grouped;
+    // La nuova API restituisce già i dati raggruppati per tipo
+    return roles || {};
   };
 
   if (loading) {
-    return <div className={layout.loading}>Caricamento ruoli...</div>;
+    return <div className={layout.loading}>Caricamento permissions...</div>;
   }
 
   if (error) {
@@ -93,24 +98,17 @@ export default function ItemTypeSetRoleManager({ itemTypeSetId }) {
   const groupedRoles = groupRolesByType();
 
   return (
-    <div className={layout.container}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className={layout.title}>Gestione Ruoli ItemTypeSet</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
-          >
-            <Plus size={16} className="mr-2" />
-            Crea Ruolo Manuale
-          </button>
-        </div>
+    <div className="w-full">
+      <div className="mb-4">
+        <p className={layout.paragraphMuted}>
+          Le permissions sono create automaticamente per ogni ItemTypeSet. Ogni permission ha un ambito specifico e può essere associata a ruoli personalizzati o grants.
+        </p>
       </div>
 
       {Object.keys(groupedRoles).length === 0 ? (
         <div className={alert.info}>
-          <p>Nessun ruolo configurato per questo ItemTypeSet.</p>
-          <p className="mt-2">I ruoli vengono creati automaticamente quando si crea o modifica un ItemTypeSet.</p>
+          <p>Nessuna permission configurata per questo ItemTypeSet.</p>
+          <p className="mt-2">Le permissions vengono create automaticamente quando si crea o modifica un ItemTypeSet.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -136,9 +134,24 @@ export default function ItemTypeSetRoleManager({ itemTypeSetId }) {
                   <thead>
                     <tr>
                       <th>Nome</th>
-                      {roleType === 'EDITOR' || roleType === 'VIEWER' ? (
-                        <th>Coppia (Field + Status)</th>
-                      ) : null}
+                      {roleType === 'WORKER' && (
+                        <th>ItemType</th>
+                      )}
+                      {roleType === 'STATUS_OWNER' && (
+                        <th>Stato / Workflow / ItemType</th>
+                      )}
+                      {roleType === 'FIELD_EDITOR' && (
+                        <th>Field / Tipologia / ItemType</th>
+                      )}
+                      {roleType === 'CREATOR' && (
+                        <th>Workflow / ItemType</th>
+                      )}
+                      {roleType === 'EXECUTOR' && (
+                        <th>Transizione / Stati / Workflow / ItemType</th>
+                      )}
+                      {(roleType === 'EDITOR' || roleType === 'VIEWER') && (
+                        <th>Field / Stato / ItemType</th>
+                      )}
                       <th>Grants</th>
                       <th>Azioni</th>
                     </tr>
@@ -157,39 +170,100 @@ export default function ItemTypeSetRoleManager({ itemTypeSetId }) {
                             <span className="font-medium">{role.name}</span>
                           </div>
                         </td>
+                        {roleType === 'WORKER' && (
+                          <td>
+                            <div className="text-sm text-gray-600">
+                              <div><strong>ItemType:</strong> {role.itemType?.name || 'N/A'}</div>
+                            </div>
+                          </td>
+                        )}
+                        {roleType === 'STATUS_OWNER' && (
+                          <td>
+                            <div className="text-sm text-gray-600">
+                              <div><strong>Stato:</strong> {role.workflowStatus?.name || 'N/A'}</div>
+                              <div><strong>Workflow:</strong> {role.workflow?.name || 'N/A'}</div>
+                              <div><strong>ItemType:</strong> {role.itemType?.name || 'N/A'}</div>
+                            </div>
+                          </td>
+                        )}
+                        {roleType === 'FIELD_EDITOR' && (
+                          <td>
+                            <div className="text-sm text-gray-600">
+                              <div><strong>Field:</strong> {role.fieldConfiguration?.name || 'N/A'}</div>
+                              <div><strong>Tipologia:</strong> {role.fieldConfiguration?.fieldType || 'N/A'}</div>
+                              <div><strong>ItemType:</strong> {role.itemType?.name || 'N/A'}</div>
+                            </div>
+                          </td>
+                        )}
+                        {roleType === 'CREATOR' && (
+                          <td>
+                            <div className="text-sm text-gray-600">
+                              <div><strong>Workflow:</strong> {role.workflow?.name || 'N/A'}</div>
+                              <div><strong>ItemType:</strong> {role.itemType?.name || 'N/A'}</div>
+                            </div>
+                          </td>
+                        )}
+                        {roleType === 'EXECUTOR' && (
+                          <td>
+                            <div className="text-sm text-gray-600">
+                              <div><strong>Transizione:</strong> {role.transition?.name && role.transition?.name !== 'N/A' ? role.transition.name : `${role.fromStatus?.name} → ${role.toStatus?.name}`}</div>
+                              <div><strong>Da:</strong> {role.fromStatus?.name || 'N/A'}</div>
+                              <div><strong>A:</strong> {role.toStatus?.name || 'N/A'}</div>
+                              <div><strong>Workflow:</strong> {role.workflow?.name || 'N/A'}</div>
+                              <div><strong>ItemType:</strong> {role.itemType?.name || 'N/A'}</div>
+                            </div>
+                          </td>
+                        )}
                         {(roleType === 'EDITOR' || roleType === 'VIEWER') && (
                           <td>
-                            <span className="text-sm text-gray-600">
-                              {role.secondaryEntityType}: {role.secondaryEntityId}
-                            </span>
+                            <div className="text-sm text-gray-600">
+                              <div><strong>Field:</strong> {role.fieldConfiguration?.name || 'N/A'}</div>
+                              <div><strong>Stato:</strong> {role.workflowStatus?.name || 'N/A'}</div>
+                              <div><strong>ItemType:</strong> {role.itemType?.name || 'N/A'}</div>
+                            </div>
                           </td>
                         )}
                         <td>
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-600">
-                              {role.grants?.length || 0} grants
+                              {role.assignedRolesCount || 0} ruoli
+                              {((role.assignedUsers && role.assignedUsers.length > 0) || 
+                                (role.assignedGroups && role.assignedGroups.length > 0) ||
+                                (role.deniedUsers && role.deniedUsers.length > 0) ||
+                                (role.deniedGroups && role.deniedGroups.length > 0)) && (
+                                <span className="ml-1">• Assegnazioni</span>
+                              )}
                             </span>
-                            {role.assignmentType && (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                role.assignmentType === 'GRANT' ? 'bg-blue-100 text-blue-800' :
-                                role.assignmentType === 'ROLE' ? 'bg-green-100 text-green-800' :
-                                role.assignmentType === 'GRANTS' ? 'bg-purple-100 text-purple-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {role.assignmentType}
+                            {((role.assignedRolesCount || 0) > 0 || 
+                              ((role.assignedUsers && role.assignedUsers.length > 0) || 
+                               (role.assignedGroups && role.assignedGroups.length > 0) ||
+                               (role.deniedUsers && role.deniedUsers.length > 0) ||
+                               (role.deniedGroups && role.deniedGroups.length > 0))) && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Assegnato
                               </span>
                             )}
                           </div>
                         </td>
                         <td>
                           <div className="flex gap-1">
-                            <button
-                              onClick={() => setSelectedRoleForGrants(role)}
-                              className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
-                              title="Gestisci Grants"
-                            >
-                              <Shield size={14} />
-                            </button>
+              <button
+                onClick={() => {
+                  console.log('Permission button clicked:', role);
+                  console.log('Role assignedUsers:', role.assignedUsers);
+                  console.log('Role assignedGroups:', role.assignedGroups);
+                  console.log('Role assignedRoles:', role.assignedRoles);
+                  if (onPermissionGrantClick) {
+                    onPermissionGrantClick(role);
+                  } else {
+                    setSelectedPermissionForGrants(role);
+                  }
+                }}
+                className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
+                title="Gestisci Grants e Ruoli"
+              >
+                <Shield size={14} />
+              </button>
                             <button
                               className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
                               title="Elimina Ruolo"
@@ -207,26 +281,7 @@ export default function ItemTypeSetRoleManager({ itemTypeSetId }) {
           ))}
         </div>
       )}
-
-      {/* Form per creazione manuale ruoli */}
-      {showCreateForm && (
-        <CreateRoleForm
-          itemTypeSetId={itemTypeSetId}
-          onClose={() => setShowCreateForm(false)}
-          onSuccess={() => {
-            fetchRoles();
-            setShowCreateForm(false);
-          }}
-        />
-      )}
-
-      {/* Modal per gestione grants */}
-      {selectedRoleForGrants && (
-        <RoleGrantManager
-          roleId={selectedRoleForGrants.id}
-          onClose={() => setSelectedRoleForGrants(null)}
-        />
-      )}
     </div>
   );
 }
+

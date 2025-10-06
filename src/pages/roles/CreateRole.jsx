@@ -13,8 +13,7 @@ export default function CreateRole() {
   const { token, isAuthenticated, roles } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
-    scope: 'TENANT',
-    defaultRole: false
+    description: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -72,6 +71,9 @@ export default function CreateRole() {
   return (
     <div className={layout.container}>
       <h1 className={layout.title}>Crea Nuovo Ruolo</h1>
+      <p className={layout.paragraphMuted}>
+        Crea un nuovo ruolo personalizzato per il tenant. Il ruolo avrà automaticamente scope TENANT e non sarà un ruolo di default.
+      </p>
 
       {error && (
         <div className={`${alert.error} mb-4`}>
@@ -84,62 +86,38 @@ export default function CreateRole() {
           <label htmlFor="name" className={form.label}>
             Nome Ruolo *
           </label>
-          <select
+          <input
+            type="text"
             id="name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
             className={form.input}
             disabled={loading}
-          >
-            <option value="">Seleziona un ruolo</option>
-            <option value="ADMIN">ADMIN</option>
-            <option value="MANAGER">MANAGER</option>
-            <option value="USER">USER</option>
-            <option value="VIEWER">VIEWER</option>
-            <option value="EDITOR">EDITOR</option>
-            <option value="CONTRIBUTOR">CONTRIBUTOR</option>
-            <option value="REVIEWER">REVIEWER</option>
-            <option value="APPROVER">APPROVER</option>
-          </select>
-        </div>
-
-        <div className={form.formGroup}>
-          <label htmlFor="scope" className={form.label}>
-            Scope *
-          </label>
-          <select
-            id="scope"
-            value={formData.scope}
-            onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
-            required
-            className={form.input}
-            disabled={loading}
-          >
-            <option value="GLOBAL">GLOBAL</option>
-            <option value="TENANT">TENANT</option>
-            <option value="PROJECT">PROJECT</option>
-          </select>
+            placeholder="Inserisci il nome del ruolo"
+            maxLength={100}
+          />
           <p className={form.helpText}>
-            GLOBAL: Ruolo valido in tutto il sistema<br/>
-            TENANT: Ruolo valido solo nel tenant corrente<br/>
-            PROJECT: Ruolo valido solo nel progetto corrente
+            Il nome del ruolo deve essere unico all'interno del tenant
           </p>
         </div>
 
         <div className={form.formGroup}>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={formData.defaultRole}
-              onChange={(e) => setFormData({ ...formData, defaultRole: e.target.checked })}
-              disabled={loading}
-              className="rounded"
-            />
-            <span className={form.label}>Ruolo Predefinito</span>
+          <label htmlFor="description" className={form.label}>
+            Descrizione
           </label>
+          <textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className={form.input}
+            disabled={loading}
+            placeholder="Inserisci una descrizione del ruolo (opzionale)"
+            rows={3}
+            maxLength={500}
+          />
           <p className={form.helpText}>
-            I ruoli predefiniti vengono assegnati automaticamente ai nuovi utenti
+            Descrizione opzionale del ruolo e delle sue funzionalità
           </p>
         </div>
 
@@ -164,3 +142,4 @@ export default function CreateRole() {
     </div>
   );
 }
+

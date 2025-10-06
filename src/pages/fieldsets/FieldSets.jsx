@@ -27,7 +27,7 @@ export default function FieldSets() {
   const hasRole = (name, scope = null) => {
     return roles.some(r => r.name === name && (scope === null || r.scope === scope));
   };
-  const isTenantAdmin = hasRole("ADMIN", "GLOBAL");
+  const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");
 
   useEffect(() => {

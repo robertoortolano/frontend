@@ -232,3 +232,5 @@ Le modifiche apportate al frontend semplificano significativamente la gestione d
 5. **Zero Impatto Utente**: Nessun cambiamento visibile per l'utente finale
 
 Il sistema è ora completamente allineato con il pattern backend `@CurrentTenant` e pronto per la produzione.
+
+

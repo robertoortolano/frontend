@@ -19,7 +19,7 @@ export default function EditFieldSet() {
 
   const hasRole = (name, scope = null) =>
     roles.some((r) => r.name === name && (scope === null || r.scope === scope));
-  const isTenantAdmin = hasRole("ADMIN", "GLOBAL");
+  const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");
 
   const [allConfigurations, setAllConfigurations] = useState([]);
