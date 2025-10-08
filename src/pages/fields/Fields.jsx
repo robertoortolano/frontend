@@ -119,10 +119,10 @@ export default function Fields() {
       <table className={table.table}>
         <thead>
           <tr>
-            <th style={{ width: "30%" }}>Nome</th>
-            <th style={{ width: "20%" }}># Config</th>
-            <th style={{ width: "30%" }}>FieldSet</th>
-            <th style={{ width: "20%" }}></th>
+            <th className="w-30">Nome</th>
+            <th className="w-20"># Config</th>
+            <th className="w-30">FieldSet</th>
+            <th className="w-20"></th>
           </tr>
         </thead>
         <tbody>
@@ -142,7 +142,7 @@ export default function Fields() {
                   <FieldSetsPopup field={field} />
                 </td>
 
-                <td style={{ display: "flex", gap: "0.5rem" }}>
+                <td className="flex gap-2">
                   <button
                     className={buttons.button}
                     onClick={() => handleEdit(field.id)}

@@ -104,9 +104,9 @@ export default function Statuses() {
       <table className={table.table}>
         <thead>
           <tr>
-            <th style={{ width: "60%" }}>Nome</th>
-            <th style={{ width: "10%" }}>Workflow</th>
-            <th style={{ width: "30%" }}></th>
+            <th className="w-60">Nome</th>
+            <th className="w-10">Workflow</th>
+            <th className="w-30"></th>
           </tr>
         </thead>
         <tbody>
@@ -119,7 +119,7 @@ export default function Statuses() {
                 <td>
                   <WorkflowsPopup workflows={status.workflows} />
                 </td>
-                <td style={{ display: "flex", gap: "0.5rem" }}>
+                <td className="flex gap-2">
                   <button
                     className={buttons.button}
                     onClick={() => handleEdit(status.id)}

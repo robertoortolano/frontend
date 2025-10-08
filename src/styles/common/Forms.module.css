@@ -64,4 +64,106 @@
   gap: 1rem;
 }
 
+/* === Form Section Styling === */
+.form-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: white;
+}
+
+.form-section-header {
+  margin-bottom: 1rem;
+}
+
+.form-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+}
+
+/* === Form Field Group Styling === */
+.form-field-group {
+  margin-bottom: 1rem;
+}
+
+.form-field-group:last-child {
+  margin-bottom: 0;
+}
+
+/* === Select Styling === */
+.select-styled {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  color: #1e3a8a;
+  background-color: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.select-styled:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.select-styled:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+}
+
+/* === Form Actions === */
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 1.5rem;
+}
+
+/* === Checkbox List Styling === */
+.checkbox-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: white;
+}
+
+.checkbox-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.checkbox-list-item:hover {
+  background-color: #f9fafb;
+}
+
+.checkbox-list-item input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* === Input Group Styling === */
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-group .input,
+.input-group .select-styled {
+  flex: 1;
+}
+
 

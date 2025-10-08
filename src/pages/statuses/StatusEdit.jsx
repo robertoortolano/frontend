@@ -108,7 +108,7 @@ export default function StatusEdit() {
             className={`${buttons.button} ${buttons.secondaryButton}`}
             onClick={() => navigate(-1)}
             disabled={saving}
-            style={{ marginLeft: "0.5rem" }}
+            className="ml-2"
           >
             Annulla
           </button>

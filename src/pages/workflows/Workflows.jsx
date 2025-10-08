@@ -114,7 +114,7 @@ export default function Workflows() {
           {workflows.map((wf) => (
             <tr key={wf.id}>
               <td>{wf.name}</td>
-              <td style={{ display: "flex", gap: "0.5rem" }}>
+              <td className="flex gap-2">
                 <button
                   className={buttons.button}
                   onClick={() => handleView(wf.id)}

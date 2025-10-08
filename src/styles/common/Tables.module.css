@@ -11,8 +11,6 @@
 
 /* Intestazione tabella */
 .table thead {
-  /*background-color: #bfdbfe;*/
-  /*color: #1e40af;*/
   color: #1e3a8a;
   user-select: none;
 }
@@ -29,15 +27,59 @@
 
 /* Righe alternate */
 .table tbody tr:nth-child(even) {
-  /*background-color: #e0e7ff;*/
 }
 
 .table tbody tr:nth-child(odd) {
-  /*background-color: #f0f5ff;*/
 }
 
 .table tbody tr:hover {
-  /*background-color: #c7d2fe;*/
   background-color: #f0f0f0;
   cursor: pointer;
+}
+
+/* === Table Column Widths === */
+.table th.w-20,
+.table td.w-20 {
+  width: 20%;
+}
+
+.table th.w-15,
+.table td.w-15 {
+  width: 15%;
+}
+
+.table th.w-30,
+.table td.w-30 {
+  width: 30%;
+}
+
+.table th.w-10,
+.table td.w-10 {
+  width: 10%;
+}
+
+.table th.w-60,
+.table td.w-60 {
+  width: 60%;
+}
+
+/* === Table Action Buttons === */
+.table-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.table-actions .button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* === Table Header Styling === */
+.table-header {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }

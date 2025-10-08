@@ -112,19 +112,19 @@ export default function FieldConfigurations() {
                   <table className={table.table}>
                     <thead>
                       <tr>
-                        <th style={{ width: "20%" }}>Nome</th>
-                        <th style={{ width: "15%" }}>Tipo</th>
-                        <th style={{ width: "30%" }}>Descrizione</th>
-                        <th style={{ width: "15%" }}>Opzioni</th>
-                        <th style={{ width: "20%" }}>FieldSet</th>
-                        <th style={{ width: "15%" }}></th>
+                        <th className="w-20">Nome</th>
+                        <th className="w-15">Tipo</th>
+                        <th className="w-30">Descrizione</th>
+                        <th className="w-15">Opzioni</th>
+                        <th className="w-20">FieldSet</th>
+                        <th className="w-15"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {configsForField.map((config) => (
                         <React.Fragment key={config.id}>
                           <tr onClick={() => handleToggleExpand(config.id)}
-                            style={{ cursor: "pointer" }}
+                            className="cursor-pointer"
                           >
                             <td>
                               <AliasPopup config={config} />
@@ -140,7 +140,7 @@ export default function FieldConfigurations() {
                             </td>
 
                             <td>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                              <div className="flex flex-col gap-1">
                                 <button
                                   className={buttons.button}
                                   onClick={(e) => {
@@ -186,7 +186,7 @@ export default function FieldConfigurations() {
           </li>
 
         ))}
-        <div style={{ marginTop: "1.5rem" }}>
+        <div className="mt-6">
           <button
             className={buttons.button}
             onClick={() => navigate("/tenant/field-configurations/create")}

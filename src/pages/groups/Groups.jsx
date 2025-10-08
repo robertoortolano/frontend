@@ -221,20 +221,13 @@ export default function Groups() {
 
             <div className={form.formGroup}>
               <label className={form.label}>Utenti</label>
-              <div style={{ 
-                border: '1px solid #e5e7eb', 
-                borderRadius: '0.5rem', 
-                padding: '1rem',
-                maxHeight: '300px',
-                overflowY: 'auto',
-                backgroundColor: 'white'
-              }}>
+              <div className="checkbox-container">
                 {availableUsers.length === 0 ? (
                   <p className="text-gray-500 text-sm">Nessun utente disponibile</p>
                 ) : (
                   <div className="space-y-2">
                     {availableUsers.map(user => (
-                      <label key={user.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                      <label key={user.id} className="checkbox-item">
                         <input
                           type="checkbox"
                           checked={formData.userIds.includes(user.id)}
@@ -251,7 +244,7 @@ export default function Groups() {
               </div>
             </div>
 
-            <div className={form.buttonGroup}>
+            <div className={form.formActions}>
               <button
                 type="submit"
                 className={`${buttons.button} ${buttons.buttonPrimary}`}

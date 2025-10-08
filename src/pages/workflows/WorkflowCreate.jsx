@@ -248,7 +248,8 @@ export default function WorkflowCreate() {
           fitView
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          style={{ width: "100%", height: "600px" }}
+          className="w-full"
+          style={{ height: "600px" }}
         >
           <MiniMap />
           <Controls />
