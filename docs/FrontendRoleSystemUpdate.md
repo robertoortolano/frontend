@@ -255,3 +255,4 @@ Il frontend è stato completamente aggiornato per supportare la nuova struttura 
 Il sistema è ora pronto per la produzione e supporta completamente la gestione granulare dei ruoli per ItemTypeSet.
 
 
+

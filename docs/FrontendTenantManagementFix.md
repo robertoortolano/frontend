@@ -234,3 +234,4 @@ Le modifiche apportate al frontend semplificano significativamente la gestione d
 Il sistema è ora completamente allineato con il pattern backend `@CurrentTenant` e pronto per la produzione.
 
 
+
