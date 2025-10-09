@@ -15,7 +15,7 @@ import table from "../../styles/common/Tables.module.css";
 export default function FieldSets() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token, roles, isAuthenticated } = useAuth();
+  const { token, roles = [], isAuthenticated } = useAuth();
 
   const [expandedSets, setExpandedSets] = useState({});
   const [fieldSets, setFieldSets] = useState([]);
@@ -25,7 +25,7 @@ export default function FieldSets() {
   const isProjectContext = !!id;
 
   const hasRole = (name, scope = null) => {
-    return roles.some(r => r.name === name && (scope === null || r.scope === scope));
+    return roles && Array.isArray(roles) && roles.some(r => r.name === name && (scope === null || r.scope === scope));
   };
   const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");

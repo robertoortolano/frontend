@@ -14,7 +14,7 @@ import table from "../../styles/common/Tables.module.css";
 
 export default function Statuses() {
   const navigate = useNavigate();
-  const { token, roles } = useAuth();
+  const { token, roles = [] } = useAuth();
 
   const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ export default function Statuses() {
   const [saving, setSaving] = useState(false);
 
   const hasRole = (name, scope = null) => {
-    return roles.some(r => r.name === name && (scope === null || r.scope === scope));
+    return roles && Array.isArray(roles) && roles.some(r => r.name === name && (scope === null || r.scope === scope));
   };
   const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");

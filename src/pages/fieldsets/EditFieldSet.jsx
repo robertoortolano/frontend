@@ -11,14 +11,14 @@ import alert from "../../styles/common/Alerts.module.css";
 export default function EditFieldSet() {
   const { id } = useParams(); // id del field set
   const navigate = useNavigate();
-  const { token, isAuthenticated, roles } = useAuth();
+  const { token, isAuthenticated, roles = [] } = useAuth();
 
   const [fieldSet, setFieldSet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const hasRole = (name, scope = null) =>
-    roles.some((r) => r.name === name && (scope === null || r.scope === scope));
+    roles && Array.isArray(roles) && roles.some((r) => r.name === name && (scope === null || r.scope === scope));
   const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");
 

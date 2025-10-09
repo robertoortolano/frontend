@@ -20,7 +20,7 @@ function CustomNodeWrapper(props) {
 
 export default function Workflows() {
   const navigate = useNavigate();
-  const { token, roles } = useAuth();
+  const { token, roles = [] } = useAuth();
 
   const [workflows, setWorkflows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ export default function Workflows() {
 
 
   const hasRole = (name, scope = null) => {
-    return roles.some(r => r.name === name && (scope === null || r.scope === scope));
+    return roles && Array.isArray(roles) && roles.some(r => r.name === name && (scope === null || r.scope === scope));
   };
   const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");

@@ -12,7 +12,7 @@ import alert from "../../styles/common/Alerts.module.css";
 export default function StatusEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token, isAuthenticated, roles } = useAuth();
+  const { token, isAuthenticated, roles = [] } = useAuth();
 
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -20,7 +20,7 @@ export default function StatusEdit() {
   const [error, setError] = useState(null);
 
   const hasRole = (name, scope = null) => {
-    return roles.some((r) => r.name === name && (scope === null || r.scope === scope));
+    return roles && Array.isArray(roles) && roles.some((r) => r.name === name && (scope === null || r.scope === scope));
   };
   const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");
@@ -108,7 +108,6 @@ export default function StatusEdit() {
             className={`${buttons.button} ${buttons.secondaryButton}`}
             onClick={() => navigate(-1)}
             disabled={saving}
-            className="ml-2"
           >
             Annulla
           </button>

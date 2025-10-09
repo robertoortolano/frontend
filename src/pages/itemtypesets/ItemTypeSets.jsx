@@ -82,7 +82,7 @@ export default function ItemTypeSets() {
   const [error, setError] = useState(null);
 
   const hasRole = (name, scope = null) => {
-    return roles.some(r => r.name === name && (scope === null || r.scope === scope));
+    return roles && Array.isArray(roles) && roles.some(r => r.name === name && (scope === null || r.scope === scope));
   };
 
 

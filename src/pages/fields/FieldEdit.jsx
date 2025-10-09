@@ -12,7 +12,7 @@ import alert from "../../styles/common/Alerts.module.css";
 export default function FieldEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token, isAuthenticated, roles } = useAuth();
+  const { token, isAuthenticated, roles = [] } = useAuth();
 
   const [name, setName] = useState("");
   const [defaultField, setDefaultField] = useState(false);
@@ -21,7 +21,7 @@ export default function FieldEdit() {
   const [error, setError] = useState(null);
 
   const hasRole = (name, scope = null) => {
-    return roles.some(r => r.name === name && (scope === null || r.scope === scope));
+    return roles && Array.isArray(roles) && roles.some(r => r.name === name && (scope === null || r.scope === scope));
   };
   const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");

@@ -1,73 +1,92 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
-import PropTypes from 'prop-types';
+// src/context/AuthContext.js
+import { createContext, useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../api/api';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
+
+// Funzione per decodificare il JWT
+const decodeJWT = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Error decoding JWT:', error);
+    return null;
+  }
+};
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem("token") || null);
-  const [tenantId, setTenantId] = useState(localStorage.getItem("tenantId") || null);
+  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [tenantId, setTenantId] = useState(localStorage.getItem('tenantId') || '');
   const [roles, setRoles] = useState([]);
+  const navigate = useNavigate();
 
-  const parseJwt = (token) => {
-    try {
-      return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    } catch {
-      return {};
-    }
-  };
-
+  // Set the auth token in axios defaults and local storage
   useEffect(() => {
     if (token) {
-      const decoded = parseJwt(token);
-      setRoles(decoded.roles || []);
+      localStorage.setItem('token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Decodifica il token per estrarre i ruoli e tenantId
+      const decoded = decodeJWT(token);
+      if (decoded) {
+        setRoles(decoded.roles || []);
+        if (decoded.tenantId) {
+          setTenantId(decoded.tenantId.toString());
+        }
+      }
     } else {
+      delete api.defaults.headers.common['Authorization'];
+      localStorage.removeItem('token');
       setRoles([]);
     }
   }, [token]);
 
-  const login = (newToken, newTenantId = null) => {
-    localStorage.setItem("token", newToken);
-    setToken(newToken);
-
-    if (newTenantId !== null) {
-      localStorage.setItem("tenantId", newTenantId);
-      setTenantId(newTenantId);
+  // Handle tenant ID changes
+  useEffect(() => {
+    if (tenantId) {
+      localStorage.setItem('tenantId', tenantId);
     } else {
-      localStorage.removeItem("tenantId");
-      setTenantId(null);
+      localStorage.removeItem('tenantId');
     }
+  }, [tenantId]);
+
+  const login = (token) => {
+    setToken(token);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("tenantId");
-    setToken(null);
-    setTenantId(null);
+    setToken('');
+    setTenantId('');
     setRoles([]);
+    navigate('/login');
   };
-
-  const isAuthenticated = !!token;
-
-  const value = useMemo(() => ({
-      token,
-      tenantId,
-      roles,
-      setToken: login,
-      logout,
-      isAuthenticated,
-      setTenantId: setTenantId,
-    }), [token, tenantId, roles]);
 
   return (
     <AuthContext.Provider
-      value={value}>
+      value={{
+        token,
+        tenantId,
+        roles,
+        isAuthenticated: !!token,
+        setToken: login,
+        setTenantId,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-AuthProvider.propTypes = {
-  children: PropTypes.node.isRequired,
+export const useAuth = () => {
+  return useContext(AuthContext);
 };
-
-export const useAuth = () => useContext(AuthContext);

@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 const api = axios.create({
   baseURL: "http://localhost:8080/api",
@@ -30,5 +30,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Tenant API
+export const tenantApi = {
+  getTenants: () => api.get("/tenants"),
+  createTenant: (data) => api.post("/auth/create-tenant", data)
+};
 
 export default api;

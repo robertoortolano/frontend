@@ -12,7 +12,7 @@ import table from "../../styles/common/Tables.module.css";
 
 export default function ItemTypes() {
   const navigate = useNavigate();
-  const { token, roles, isAuthenticated } = useAuth();
+  const { token, roles = [], isAuthenticated } = useAuth();
 
   const [itemTypes, setItemTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,7 @@ export default function ItemTypes() {
   const [saving, setSaving] = useState(false);
 
   const hasRole = (name, scope = null) => {
-      return roles.some(r => r.name === name && (scope === null || r.scope === scope));
+      return roles && Array.isArray(roles) && roles.some(r => r.name === name && (scope === null || r.scope === scope));
   };
 
   const isTenantAdmin = hasRole("ADMIN", "TENANT");

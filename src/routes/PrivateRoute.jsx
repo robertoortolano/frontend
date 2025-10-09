@@ -1,13 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // 👈 Assicurati che il path sia corretto
+import { useAuth } from "../context/AuthContext";
 
 const PrivateRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { token } = useAuth();
 
-  // Se autenticato, mostra il contenuto, altrimenti reindirizza al login
-  return isAuthenticated ? children : <Navigate to="/" />;
+  // Se autenticato (ha un token), mostra il contenuto, altrimenti reindirizza al login
+  return token ? children : <Navigate to="/" />;
 };
 
 export default PrivateRoute;
