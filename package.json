@@ -22,11 +22,16 @@
   "homepage": "https://github.com/robertoortolano/gui#readme",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.8",
+    "@types/node": "^24.7.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.1",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.5.1",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.4",
     "purgecss": "^7.0.2",
     "tailwindcss": "^4.1.8",
+    "typescript": "^5.9.3",
     "vite": "^6.3.5"
   },
   "dependencies": {
