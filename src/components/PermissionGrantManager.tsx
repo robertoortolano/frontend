@@ -128,10 +128,7 @@ export default function PermissionGrantManager({
       }
 
       // Determina il tipo di permission dal nome
-      let permissionType = permission.name?.toUpperCase();
-      // Conversione dei nomi speciali
-      if (permissionType === 'STATUSOWNER') permissionType = 'STATUS_OWNER';
-      if (permissionType === 'FIELD EDITOR') permissionType = 'FIELD_EDITOR';
+      const permissionType = permission.name?.toUpperCase();
 
       // Gestione ruoli
       const originalRoles: Role[] = permission.assignedRoles || [];

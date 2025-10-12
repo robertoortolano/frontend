@@ -9,7 +9,7 @@ import alert from "../styles/common/Alerts.module.css";
 const ROLE_TYPES = [
   { value: "WORKER", label: "Worker", description: "Per ogni ItemType" },
   { value: "OWNER", label: "Owner", description: "Per ogni WorkflowStatus" },
-  { value: "FIELD_EDITOR", label: "Field Editor", description: "Per ogni FieldConfiguration (sempre)" },
+  { value: "FIELD_EDITOR", label: "Field Owner", description: "Per ogni FieldConfiguration (sempre)" },
   { value: "CREATOR", label: "Creator", description: "Per ogni Workflow" },
   { value: "EXECUTOR", label: "Executor", description: "Per ogni Transition" },
   { value: "EDITOR", label: "Editor", description: "Per coppia (Field + Status)" },
