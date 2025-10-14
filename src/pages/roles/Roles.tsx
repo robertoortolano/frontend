@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { RoleDto } from "../../types/role.types";
-import { ScopeType } from "../../types/common.types";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -75,13 +74,7 @@ export default function Roles() {
     }
   };
 
-  const getScopeBadge = (scope: ScopeType) => {
-    const scopeColors = {
-      TENANT: "bg-green-100 text-green-800",
-      PROJECT: "bg-purple-100 text-purple-800",
-    };
-    return scopeColors[scope] || "bg-gray-100 text-gray-800";
-  };
+  // Scope badge rimosso - i Role custom sono sempre a livello TENANT
 
   if (loading) {
     return <div className={layout.loading}>Caricamento ruoli...</div>;
@@ -136,7 +129,6 @@ export default function Roles() {
                 <tr>
                   <th>Nome</th>
                   <th>Descrizione</th>
-                  <th>Scope</th>
                   <th>Azioni</th>
                 </tr>
               </thead>
@@ -158,11 +150,6 @@ export default function Roles() {
                           {role.description || <span className="text-gray-400 italic">Nessuna descrizione</span>}
                         </p>
                       </div>
-                    </td>
-                    <td>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScopeBadge(role.scope)}`}>
-                        {role.scope}
-                      </span>
                     </td>
                     <td>
                       <div className="flex gap-2">

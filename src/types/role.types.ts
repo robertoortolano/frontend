@@ -1,15 +1,16 @@
 /**
  * Role-related TypeScript interfaces
+ * 
+ * Nota: Role rappresenta ruoli CUSTOM per il Permission system (es: "Developer", "QA").
+ * I ruoli di sistema ADMIN/USER sono gestiti separatamente tramite UserRole.
  */
-
-import { ScopeType } from './common.types';
 
 export interface RoleDto {
   id: number;
   name: string;
   description?: string;
-  scope: ScopeType;
   defaultRole: boolean;
+  // NO scope - i Role custom sono sempre a livello TENANT implicitamente
 }
 
 export interface RoleCreateDto {

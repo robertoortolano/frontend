@@ -57,6 +57,9 @@ import EditRole from "../pages/roles/EditRole";
 // Groups
 import Groups from "../pages/groups/Groups";
 
+// Tenant User Management
+import TenantUserManagement from "../pages/tenantusers/TenantUserManagement";
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -102,6 +105,8 @@ export default function AppRoutes() {
         <Route path="roles/edit/:id" element={<EditRole />} />
 
         <Route path="groups" element={<Groups />} />
+        
+        <Route path="users" element={<TenantUserManagement />} />
       </Route>
 
       <Route
@@ -123,4 +128,3 @@ export default function AppRoutes() {
     </Routes>
   );
 }
-

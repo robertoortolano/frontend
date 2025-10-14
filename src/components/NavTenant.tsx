@@ -7,6 +7,12 @@ export default function NavTenant() {
   const auth = useAuth() as any;
   const logout = auth?.logout;
   const username = localStorage.getItem("username") || "";
+  const roles = auth?.roles || [];
+
+  // Check if user is ADMIN (TENANT scope)
+  const isAdmin = roles.some((role: any) => 
+    role.name === "ADMIN" && role.scope === "TENANT"
+  );
 
   const handleLogout = () => {
     logout();
@@ -73,6 +79,13 @@ export default function NavTenant() {
             Gruppi
           </NavLink>
         </li>
+        {isAdmin && (
+          <li>
+            <NavLink to="/tenant/users" className="nav-link">
+              Gestione Utenti
+            </NavLink>
+          </li>
+        )}
         <li>
           <button onClick={handleLogout} className="nav-logout-button">
             Logout

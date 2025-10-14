@@ -25,7 +25,7 @@ export default function EditRole() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canManageRoles = roles?.some((role: any) => role === "ADMIN");
+  const canManageRoles = roles?.some((role: any) => role.name === "ADMIN");
 
   useEffect(() => {
     if (!isAuthenticated) {

@@ -12,7 +12,7 @@ interface GrantData {
 interface RoleData {
   id: number;
   name: string;
-  scope?: string;
+  description?: string;
 }
 
 interface AssignmentSelectorProps {
@@ -67,7 +67,7 @@ export default function AssignmentSelector({
                 <div className="flex justify-between items-center">
                   <div>
                     <h4 className="font-medium">{role.name}</h4>
-                    <p className="text-sm text-gray-600">Scope: {role.scope}</p>
+                    {role.description && <p className="text-sm text-gray-600">{role.description}</p>}
                   </div>
                   <button
                     onClick={() => onAssignRole(role.id)}
