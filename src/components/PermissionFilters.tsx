@@ -88,7 +88,7 @@ export default function PermissionFilters({
     });
 
     // Ordine predefinito per le permissions
-    const permOrder = ["Workers", "Creators", "StatusOwners", "Executors", "FieldOwners", "Editors", "Viewers"];
+    const permOrder = ["Workers", "Creators", "Status Owners", "Executors", "Field Owners", "Editors", "Viewers"];
     const sortedPerms = Array.from(permissionTypes).sort((a, b) => {
       const indexA = permOrder.indexOf(a);
       const indexB = permOrder.indexOf(b);

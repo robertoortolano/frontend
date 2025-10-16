@@ -15,8 +15,8 @@ import table from "../styles/common/Tables.module.css";
 
 const ROLE_TYPES: any = {
   WORKERS: { label: "Workers", icon: Users, color: "blue", description: "Per ogni ItemType" },
-  STATUSOWNERS: { label: "Status Owners", icon: Shield, color: "green", description: "Per ogni WorkflowStatus" },
-  FIELDOWNERS: { label: "Field Owners", icon: Edit, color: "purple", description: "Per ogni FieldConfiguration (sempre)" },
+  STATUS_OWNERS: { label: "Status Owners", icon: Shield, color: "green", description: "Per ogni WorkflowStatus" },
+  FIELD_OWNERS: { label: "Field Owners", icon: Edit, color: "purple", description: "Per ogni FieldConfiguration (sempre)" },
   CREATORS: { label: "Creators", icon: Plus, color: "orange", description: "Per ogni Workflow" },
   EXECUTORS: { label: "Executors", icon: Shield, color: "red", description: "Per ogni Transition" },
   EDITORS: { label: "Editors", icon: Edit, color: "indigo", description: "Per coppia (Field + Status)" },
@@ -202,7 +202,7 @@ export default function ItemTypeSetRoleManager({
   const filteredCount = getTotalCount(filteredRoles);
   
   // Ordine di visualizzazione delle permissions
-  const roleOrder = ['WORKERS', 'CREATORS', 'STATUSOWNERS', 'EXECUTORS', 'FIELDOWNERS', 'EDITORS', 'VIEWERS'];
+  const roleOrder = ['WORKERS', 'CREATORS', 'STATUS_OWNERS', 'EXECUTORS', 'FIELD_OWNERS', 'EDITORS', 'VIEWERS'];
 
   return (
     <div className="w-full">

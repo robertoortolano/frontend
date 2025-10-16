@@ -1,8 +1,8 @@
 import { useState, useEffect, FormEvent } from "react";
 import { Users, Plus, Edit, Trash2, X, Save } from "lucide-react";
 import groupService from "../../services/groupService";
-import api from "../../api/api";
-import { GroupDto, GroupCreateDto, UserDto } from "../../types/group.types";
+import { GroupDto, GroupCreateDto } from "../../types/group.types";
+import UserAutocomplete, { UserOption } from "../../components/UserAutocomplete";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -12,7 +12,7 @@ import table from "../../styles/common/Tables.module.css";
 
 export default function Groups() {
   const [groups, setGroups] = useState<GroupDto[]>([]);
-  const [availableUsers, setAvailableUsers] = useState<UserDto[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -27,7 +27,6 @@ export default function Groups() {
 
   useEffect(() => {
     fetchGroups();
-    fetchAvailableUsers();
   }, []);
 
   const fetchGroups = async () => {
@@ -40,15 +39,6 @@ export default function Groups() {
       console.error("Error fetching groups:", err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchAvailableUsers = async () => {
-    try {
-      const response = await api.get("/itemtypeset-permissions/users");
-      setAvailableUsers(response.data);
-    } catch (err) {
-      console.error("Error fetching users:", err);
     }
   };
 
@@ -87,10 +77,16 @@ export default function Groups() {
 
   const handleEdit = (group: GroupDto) => {
     setEditingGroup(group);
+    const users = group.users || [];
+    setSelectedUsers(users.map(u => ({
+      id: u.id,
+      username: u.username,
+      fullName: u.fullName
+    })));
     setFormData({
       name: group.name,
       description: group.description || "",
-      userIds: group.users ? group.users.map((u) => u.id) : [],
+      userIds: users.map((u) => u.id),
     });
     setShowForm(true);
     setError(null);
@@ -131,14 +127,24 @@ export default function Groups() {
       description: "",
       userIds: [],
     });
+    setSelectedUsers([]);
     setEditingGroup(null);
     setShowForm(false);
   };
 
-  const handleUserToggle = (userId: number) => {
-    setFormData((prev) => ({
+  const handleAddUser = (user: UserOption) => {
+    setSelectedUsers(prev => [...prev, user]);
+    setFormData(prev => ({
       ...prev,
-      userIds: prev.userIds.includes(userId) ? prev.userIds.filter((id) => id !== userId) : [...prev.userIds, userId],
+      userIds: [...prev.userIds, user.id]
+    }));
+  };
+
+  const handleRemoveUser = (userId: number) => {
+    setSelectedUsers(prev => prev.filter(u => u.id !== userId));
+    setFormData(prev => ({
+      ...prev,
+      userIds: prev.userIds.filter(id => id !== userId)
     }));
   };
 
@@ -202,28 +208,13 @@ export default function Groups() {
               />
             </div>
 
-            <div className={form.formGroup}>
-              <label className={form.label}>Utenti</label>
-              <div className="checkbox-container">
-                {availableUsers.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Nessun utente disponibile</p>
-                ) : (
-                  <div className="space-y-2">
-                    {availableUsers.map((user) => (
-                      <label key={user.id} className="checkbox-item">
-                        <input
-                          type="checkbox"
-                          checked={formData.userIds.includes(user.id)}
-                          onChange={() => handleUserToggle(user.id)}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">{user.fullName || user.username}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <UserAutocomplete
+              selectedUsers={selectedUsers}
+              onAddUser={handleAddUser}
+              onRemoveUser={handleRemoveUser}
+              label="Utenti del Gruppo"
+              placeholder="Cerca utente per nome o email..."
+            />
 
             <div className={form.formActions}>
               <button type="submit" className={`${buttons.button} ${buttons.buttonPrimary}`}>

@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setTokenState("");
     setTenantIdState("");
     setRoles([]);
-    navigate("/login");
+    navigate("/");
   };
 
   return (

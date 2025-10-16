@@ -97,7 +97,7 @@ export default function Roles() {
           <h1 className={layout.title}>Gestione Ruoli</h1>
           <p className={layout.paragraphMuted}>
             Gestisci i ruoli personalizzati del tenant. Questi ruoli possono essere associati alle permissions degli
-            ItemTypeSet. Le permissions di sistema (Workers, StatusOwners, FieldOwners, Creators, Executors, Editors,
+            ItemTypeSet. Le permissions di sistema (Workers, Status Owners, Field Owners, Creators, Executors, Editors,
             Viewers) sono predefinite e non modificabili.
           </p>
         </div>
