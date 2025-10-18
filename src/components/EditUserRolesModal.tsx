@@ -10,9 +10,9 @@ interface EditUserRolesModalProps {
   onClose: () => void;
 }
 
-const AVAILABLE_ROLES = [
-  { name: "ADMIN", label: "Admin", description: "Accesso completo alla tenant" },
-  { name: "USER", label: "User", description: "Accesso base alla tenant" }
+const TENANT_ROLES = [
+  { name: "ADMIN", label: "Tenant Admin", description: "Gestione completa della tenant: configurazioni globali, utenti, ruoli" },
+  { name: "USER", label: "Tenant User", description: "Accesso base alla tenant" }
 ];
 
 export default function EditUserRolesModal({
@@ -22,32 +22,33 @@ export default function EditUserRolesModal({
   onSave,
   onClose
 }: EditUserRolesModalProps) {
-  const [selectedRole, setSelectedRole] = useState<string>(currentRoles[0] || "USER");
+  const [selectedTenantRole, setSelectedTenantRole] = useState<string>(
+    currentRoles.find(r => r === "ADMIN" || r === "USER") || "USER"
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setSelectedRole(currentRoles[0] || "USER");
+    const tenantRole = currentRoles.find(r => r === "ADMIN" || r === "USER") || "USER";
+    setSelectedTenantRole(tenantRole);
   }, [currentRoles]);
 
-  const handleRoleChange = (roleName: string) => {
-    setSelectedRole(roleName);
-    setError(null);
-  };
-
   const handleSave = async () => {
-    if (!selectedRole) {
-      setError("Seleziona un ruolo");
+    if (!selectedTenantRole) {
+      setError("Seleziona un ruolo tenant");
       return;
     }
 
     try {
       setSaving(true);
       setError(null);
-      await onSave(userId, [selectedRole]);
+      
+      // Salva solo il ruolo tenant
+      await onSave(userId, [selectedTenantRole]);
+      
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Errore nel salvataggio del ruolo");
+      setError(err.message || err.response?.data?.message || "Errore nel salvataggio del ruolo");
     } finally {
       setSaving(false);
     }
@@ -74,7 +75,8 @@ export default function EditUserRolesModal({
         {/* Body */}
         <div className="p-4">
           <p className="text-sm text-gray-600 mb-4">
-            Seleziona il ruolo da assegnare a questo utente. I ruoli ADMIN e USER sono mutualmente esclusivi.
+            Seleziona il ruolo tenant per questo utente. Per assegnare ruoli a livello progetto, 
+            vai nelle impostazioni del progetto specifico.
           </p>
 
           {error && (
@@ -83,38 +85,50 @@ export default function EditUserRolesModal({
             </div>
           )}
 
-          <div className="space-y-3">
-            {AVAILABLE_ROLES.map(role => (
-              <label
-                key={role.name}
-                htmlFor={`role-${role.name}`}
-                aria-label={`Select role ${role.label}`}
-                className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${
-                  selectedRole === role.name
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <input
-                  id={`role-${role.name}`}
-                  type="radio"
-                  name="userRole"
-                  checked={selectedRole === role.name}
-                  onChange={() => handleRoleChange(role.name)}
-                  disabled={saving}
-                  className="mt-1 mr-3"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">{role.label}</div>
-                  <div className="text-sm text-gray-600">{role.description}</div>
-                </div>
-              </label>
-            ))}
+          {/* Tenant Level Roles */}
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Ruolo Tenant
+            </h3>
+            <div className="space-y-2">
+              {TENANT_ROLES.map(role => (
+                <label
+                  key={role.name}
+                  htmlFor={`tenant-role-${role.name}`}
+                  className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${
+                    selectedTenantRole === role.name
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <input
+                    id={`tenant-role-${role.name}`}
+                    type="radio"
+                    name="tenantRole"
+                    checked={selectedTenantRole === role.name}
+                    onChange={() => setSelectedTenantRole(role.name)}
+                    disabled={saving}
+                    className="mt-1 mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{role.label}</div>
+                    <div className="text-sm text-gray-600">{role.description}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Nota:</strong> I ruoli progetto (Admin/User di singoli progetti) si gestiscono 
+              direttamente dalle impostazioni di ciascun progetto.
+            </p>
           </div>
 
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>Nota:</strong> Se questo è l'ultimo ADMIN della tenant, non potrai cambiare il ruolo da ADMIN a USER.
+              <strong>Attenzione:</strong> Se questo è l'ultimo ADMIN della tenant, non potrai cambiare il ruolo da ADMIN a USER.
             </p>
           </div>
         </div>
@@ -130,7 +144,7 @@ export default function EditUserRolesModal({
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !selectedRole}
+            disabled={saving || !selectedTenantRole}
             className={`${buttons.button} ${buttons.buttonPrimary}`}
           >
             {saving ? "Salvataggio..." : "Salva Modifiche"}

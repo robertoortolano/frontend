@@ -51,7 +51,8 @@ interface ItemTypeSetDetailsProps {
 }
 
 function ItemTypeSetDetails({ itemTypeSet, onEdit }: ItemTypeSetDetailsProps) {
-  const hasEntries = itemTypeSet.entries?.length > 0;
+  const hasEntries = itemTypeSet.itemTypeConfigurations?.length > 0;
+  const isGlobal = itemTypeSet.scope === 'TENANT';
 
   return (
     <>
@@ -61,7 +62,7 @@ function ItemTypeSetDetails({ itemTypeSet, onEdit }: ItemTypeSetDetailsProps) {
           <strong>Name:</strong> {itemTypeSet.name}
         </p>
         <p>
-          <strong>Global:</strong> {itemTypeSet.global ? "Yes" : "No"}
+          <strong>Global:</strong> {isGlobal ? "Yes" : "No"}
         </p>
 
         {hasEntries ? (
@@ -69,14 +70,18 @@ function ItemTypeSetDetails({ itemTypeSet, onEdit }: ItemTypeSetDetailsProps) {
             <thead>
               <tr>
                 <th>Item Type</th>
-                <th>Category</th>
+                <th>Categoria</th>
+                <th>Workflow</th>
+                <th>Field Set</th>
               </tr>
             </thead>
             <tbody>
-              {itemTypeSet.entries.map((entry: any) => (
-                <tr key={entry.itemTypeId}>
-                  <td>{entry.itemTypeName}</td>
-                  <td>{entry.category}</td>
+              {itemTypeSet.itemTypeConfigurations.map((config: any) => (
+                <tr key={config.id}>
+                  <td>{config.itemType?.name || 'N/A'}</td>
+                  <td>{config.category}</td>
+                  <td>{config.workflow?.name || "-"}</td>
+                  <td>{config.fieldSet?.name || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -88,14 +93,22 @@ function ItemTypeSetDetails({ itemTypeSet, onEdit }: ItemTypeSetDetailsProps) {
         <button
           className={`${buttons.button} ${utilities.mt6}`}
           onClick={onEdit}
-          disabled={itemTypeSet.global}
-          title={itemTypeSet.global ? "Global sets cannot be edited" : "Edit item type set"}
+          disabled={isGlobal}
+          title={isGlobal ? "Global sets cannot be edited" : "Edit item type set"}
         >
           Edit
         </button>
       </div>
     </>
   );
+}
+
+interface ProjectMember {
+  userId: number;
+  username: string;
+  fullName: string | null;
+  roleName: string;
+  isTenantAdmin: boolean;
 }
 
 export default function ProjectSettings() {
@@ -106,6 +119,7 @@ export default function ProjectSettings() {
   const token = (location.state as any)?.token || localStorage.getItem("token");
 
   const [project, setProject] = useState<ProjectDto | null>(null);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,8 +127,12 @@ export default function ProjectSettings() {
     const fetchData = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const projectRes = await api.get(`http://localhost:8080/api/projects/${projectId}`, { headers });
+        const [projectRes, membersRes] = await Promise.all([
+          api.get(`/projects/${projectId}`, { headers }),
+          api.get(`/projects/${projectId}/members`, { headers })
+        ]);
         setProject(projectRes.data);
+        setMembers(membersRes.data);
       } catch (err: any) {
         console.error("Errore nel caricamento del progetto:", err);
         setError(err.response?.data?.message || "Error loading project. Please try again.");
@@ -142,12 +160,79 @@ export default function ProjectSettings() {
   if (error) return <ErrorMessage message={error} />;
   if (!project) return <ErrorMessage message="Project not found or loading error." />;
 
+  const handleManageMembers = () => {
+    navigate("members", { state: { token } });
+  };
+
   return (
     <div className={layout.container}>
       <h1 className={layout.title}>Project Details</h1>
       <ProjectDetails project={project} onEdit={handleEditDetails} />
 
       {project.itemTypeSet && <ItemTypeSetDetails itemTypeSet={project.itemTypeSet} onEdit={handleEditItemTypeSet} />}
+
+      {/* Project Members Section */}
+      <div className={layout.block}>
+        <h1 className={layout.title}>Membri del Progetto</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci gli utenti che possono accedere a questo progetto e i loro ruoli.
+          <br />
+          <em className="text-sm">Nota: Gli utenti con ruolo Tenant Admin hanno accesso automatico a tutti i progetti.</em>
+        </p>
+        
+        {members.length > 0 ? (
+          <>
+            <table className={`${table.table} ${utilities.mt4}`}>
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Nome Completo</th>
+                  <th>Ruolo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.slice(0, 5).map((member) => (
+                  <tr key={member.userId} className={member.isTenantAdmin ? "bg-gray-50" : ""}>
+                    <td>
+                      {member.username}
+                      {member.isTenantAdmin && (
+                        <span className="ml-2 text-xs text-gray-500">(Tenant Admin)</span>
+                      )}
+                    </td>
+                    <td>{member.fullName || <span className="text-gray-400 italic">-</span>}</td>
+                    <td>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        member.roleName === 'ADMIN' 
+                          ? 'bg-purple-100 text-purple-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {member.roleName === 'ADMIN' ? 'Admin' : 'User'}
+                        {member.isTenantAdmin && ' (fisso)'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {members.length > 5 && (
+              <p className="text-sm text-gray-500 mt-2">
+                ... e altri {members.length - 5} membri
+              </p>
+            )}
+          </>
+        ) : (
+          <p className={`${alert.muted} ${utilities.mt4}`}>
+            Nessun membro assegnato a questo progetto.
+          </p>
+        )}
+        
+        <button
+          className={`${buttons.button} ${utilities.mt4}`}
+          onClick={handleManageMembers}
+        >
+          Gestisci Membri
+        </button>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ interface TenantUser {
   username: string;
   fullName: string | null;
   roles: string[];
+  projectAdminOf?: Array<{ id: number; name: string; key: string; }>;
 }
 
 interface UserAccessStatus {
@@ -155,12 +156,23 @@ export default function TenantUserManagement() {
     }
   };
 
-  const getRoleBadges = (roles: string[]) => {
-    return roles.map((role) => {
-      const bgColor = role === "ADMIN" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800";
+  const getRoleBadges = (user: TenantUser) => {
+    const roleColors: Record<string, string> = {
+      "ADMIN": "bg-red-100 text-red-800",
+      "USER": "bg-blue-100 text-blue-800",
+    };
+    
+    const roleLabels: Record<string, string> = {
+      "ADMIN": "Tenant Admin",
+      "USER": "Tenant User",
+    };
+    
+    return user.roles.map((role) => {
+      const bgColor = roleColors[role] || "bg-gray-100 text-gray-800";
+      const label = roleLabels[role] || role;
       return (
         <span key={role} className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor}`}>
-          {role}
+          {label}
         </span>
       );
     });
@@ -184,8 +196,12 @@ export default function TenantUserManagement() {
       <div className={`${layout.block} mb-6`}>
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Search size={20} />
-          Cerca Utente per Email
+          Aggiungi Utente alla Tenant
         </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Cerca un utente registrato e assegnagli l'accesso alla tenant. Per assegnare ruoli a livello progetto, 
+          vai nelle impostazioni del progetto specifico.
+        </p>
 
         <div className="flex gap-3 mb-4">
           <input
@@ -222,7 +238,20 @@ export default function TenantUserManagement() {
                   {searchResult.hasAccess ? (
                     <>
                       <span className="text-green-600 font-medium">✓ Ha già accesso</span>
-                      <div className="flex flex-col gap-1">{getRoleBadges(searchResult.roles)}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {searchResult.roles.map(role => {
+                          const roleColors: Record<string, string> = {
+                            "ADMIN": "bg-red-100 text-red-800",
+                            "USER": "bg-blue-100 text-blue-800",
+                          };
+                          const bgColor = roleColors[role] || "bg-gray-100 text-gray-800";
+                          return (
+                            <span key={role} className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor}`}>
+                              {role === "ADMIN" ? "Tenant Admin" : role === "USER" ? "Tenant User" : role}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </>
                   ) : (
                     <span className="text-gray-600">Non ha accesso</span>
@@ -230,27 +259,27 @@ export default function TenantUserManagement() {
                 </div>
               </div>
               {!searchResult.hasAccess && (
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col">
-                    <label htmlFor="role-selector" className="text-sm font-medium text-gray-700 mb-1">Ruolo da assegnare:</label>
-                    <select
-                      id="role-selector"
-                      value={selectedRole}
-                      onChange={(e) => setSelectedRole(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col">
+                      <label htmlFor="role-selector" className="text-sm font-medium text-gray-700 mb-1">Ruolo iniziale:</label>
+                      <select
+                        id="role-selector"
+                        value={selectedRole}
+                        onChange={(e) => setSelectedRole(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="USER">Tenant User</option>
+                        <option value="ADMIN">Tenant Admin</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleGrantAccess}
+                      className={`${buttons.button} ${buttons.buttonPrimary} self-end`}
                     >
-                      <option value="USER">USER</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
+                      <UserPlus size={18} className="mr-2" />
+                      Assegna Accesso
+                    </button>
                   </div>
-                  <button
-                    onClick={handleGrantAccess}
-                    className={`${buttons.button} ${buttons.buttonPrimary} self-end`}
-                  >
-                    <UserPlus size={18} className="mr-2" />
-                    Assegna Ruolo
-                  </button>
-                </div>
               )}
             </div>
           </div>
@@ -299,7 +328,7 @@ export default function TenantUserManagement() {
                     <td>{user.username}</td>
                     <td>{user.fullName || <span className="text-gray-400 italic">-</span>}</td>
                     <td>
-                      <div className="flex flex-col gap-1">{getRoleBadges(user.roles)}</div>
+                      <div className="flex flex-wrap gap-1">{getRoleBadges(user)}</div>
                     </td>
                     <td>
                       <div className="flex gap-2">

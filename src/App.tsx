@@ -1,10 +1,13 @@
 import AppRoutes from "./routes/AppRoutes";
 import { AuthProvider } from "./context/AuthContext";
+import { FavoritesProvider } from "./context/FavoritesContext";
 
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <FavoritesProvider>
+        <AppRoutes />
+      </FavoritesProvider>
     </AuthProvider>
   );
 }

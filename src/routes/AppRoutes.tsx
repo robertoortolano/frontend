@@ -11,11 +11,11 @@ import HomeTenant from "../pages/HomeTenant";
 import HomeProjects from "../pages/HomeProjects";
 
 // Projects
-import CreateProject from "../pages/projects/CreateProject";
 import HomeProject from "../pages/projects/HomeProject";
 import ProjectSettings from "../pages/projects/ProjectSettings";
 import EditDetails from "../pages/projects/EditDetails";
 import ItemTypeSetEdit from "../pages/projects/ItemTypeSetEdit";
+import ProjectMembers from "../pages/projects/ProjectMembers";
 
 // Item Types
 import ItemTypeList from "../pages/itemtypes/ItemTypes";
@@ -118,12 +118,12 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<HomeProjects />} />
-        <Route path="create" element={<CreateProject />} />
         <Route path=":projectId" element={<HomeProject />} />
 
         <Route path=":projectId/settings" element={<ProjectSettings />} />
         <Route path=":projectId/settings/details" element={<EditDetails />} />
         <Route path=":projectId/settings/item-type-set/:itemTypeSetId" element={<ItemTypeSetEdit />} />
+        <Route path=":projectId/settings/members" element={<ProjectMembers />} />
       </Route>
     </Routes>
   );
