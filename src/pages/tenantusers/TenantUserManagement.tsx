@@ -232,8 +232,9 @@ export default function TenantUserManagement() {
               {!searchResult.hasAccess && (
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-gray-700 mb-1">Ruolo da assegnare:</label>
+                    <label htmlFor="role-selector" className="text-sm font-medium text-gray-700 mb-1">Ruolo da assegnare:</label>
                     <select
+                      id="role-selector"
                       value={selectedRole}
                       onChange={(e) => setSelectedRole(e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"

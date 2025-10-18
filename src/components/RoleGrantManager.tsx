@@ -140,7 +140,7 @@ export default function RoleGrantManager({ roleId, onClose }: RoleGrantManagerPr
     }
   };
 
-  const editGrant = (grant: GrantData) => {
+  const editGrant = (_grant: GrantData) => {
     setShowAddGrant(false);
   };
 

@@ -22,6 +22,14 @@ interface PermissionFiltersProps {
   filteredCount: number;
 }
 
+// Helper for keyboard accessibility
+const handleKeyDown = (callback: () => void) => (e: React.KeyboardEvent) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    callback();
+  }
+};
+
 export default function PermissionFilters({
   permissions,
   onFilterChange,
@@ -177,7 +185,7 @@ export default function PermissionFilters({
               .map(([id, name]) => ({ id, name }))
               .sort((a, b) => a.name.localeCompare(b.name)),
           ]
-        : [{ id: "None", name: "None" }],
+        : [{ id: "All", name: "All" }, { id: "None", name: "None" }],
       fields: hasField
         ? [
             { id: "All", name: "All" },
@@ -185,7 +193,7 @@ export default function PermissionFilters({
               .map(([id, name]) => ({ id, name }))
               .sort((a, b) => a.name.localeCompare(b.name)),
           ]
-        : [{ id: "None", name: "None" }],
+        : [{ id: "All", name: "All" }, { id: "None", name: "None" }],
       workflows: hasWorkflow
         ? [
             { id: "All", name: "All" },
@@ -193,11 +201,41 @@ export default function PermissionFilters({
               .map(([id, name]) => ({ id, name }))
               .sort((a, b) => a.name.localeCompare(b.name)),
           ]
-        : [{ id: "None", name: "None" }],
+        : [{ id: "All", name: "All" }, { id: "None", name: "None" }],
     };
   };
 
   const dynamicOptions = getDynamicOptions();
+
+  // Auto-fix: Se il valore corrente non è nelle opzioni disponibili, resettalo
+  useEffect(() => {
+    let needsUpdate = false;
+    const newFilters = { ...filters };
+
+    // Controlla status
+    if (!dynamicOptions.statuses.some((s: { id: string }) => s.id === filters.status)) {
+      newFilters.status = "All";
+      needsUpdate = true;
+    }
+
+    // Controlla field
+    if (!dynamicOptions.fields.some((f: { id: string }) => f.id === filters.field)) {
+      newFilters.field = "All";
+      needsUpdate = true;
+    }
+
+    // Controlla workflow
+    if (!dynamicOptions.workflows.some((w: { id: string }) => w.id === filters.workflow)) {
+      newFilters.workflow = "All";
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      setFilters(newFilters);
+      onFilterChange(newFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dynamicOptions.statuses.length, dynamicOptions.fields.length, dynamicOptions.workflows.length, filters.permission, filters.itemTypes.length]);
 
   // Aggiorna filtri e notifica il parent
   const updateFilter = (key: keyof FilterValues, value: any) => {
@@ -279,6 +317,10 @@ export default function PermissionFilters({
       <div
         className={`${layout.blockHeader} cursor-pointer`}
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={handleKeyDown(() => setIsExpanded(!isExpanded))}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
         style={{ cursor: "pointer", padding: "8px 16px", minHeight: "auto" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
@@ -308,8 +350,9 @@ export default function PermissionFilters({
         <div className={utilities.p4} style={{ display: "flex", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" }}>
           {/* Permission Filter */}
           <div style={{ flex: "0 0 auto", width: "150px" }}>
-            <label className={form.label} style={{ fontSize: "0.875rem" }}>Permission</label>
+            <label htmlFor="filter-permission" className={form.label} style={{ fontSize: "0.875rem" }}>Permission</label>
             <select
+              id="filter-permission"
               value={filters.permission}
               onChange={(e) => updateFilter("permission", e.target.value)}
               className={form.select}
@@ -324,9 +367,15 @@ export default function PermissionFilters({
 
           {/* ItemType Filter (Custom Multi-select) */}
           <div style={{ flex: "0 0 auto", width: "150px", position: "relative", marginRight: "36px" }} ref={itemTypeDropdownRef}>
-            <label className={form.label} style={{ fontSize: "0.875rem", marginBottom: "0.5rem", display: "block" }}>ItemType</label>
+            <span className={form.label} style={{ fontSize: "0.875rem", marginBottom: "0.5rem", display: "block" }}>ItemType</span>
             <div
               onClick={() => setIsItemTypeDropdownOpen(!isItemTypeDropdownOpen)}
+              onKeyDown={handleKeyDown(() => setIsItemTypeDropdownOpen(!isItemTypeDropdownOpen))}
+              role="button"
+              tabIndex={0}
+              aria-label="ItemType filter selector"
+              aria-haspopup="listbox"
+              aria-expanded={isItemTypeDropdownOpen}
               style={{ 
                 cursor: "pointer",
                 display: "flex", 
@@ -371,6 +420,10 @@ export default function PermissionFilters({
                   <div
                     key={item.id}
                     onClick={() => handleItemTypeToggle(item.id)}
+                    onKeyDown={handleKeyDown(() => handleItemTypeToggle(item.id))}
+                    role="option"
+                    tabIndex={0}
+                    aria-selected={filters.itemTypes.includes(item.id)}
                     style={{
                       padding: "8px 12px",
                       cursor: "pointer",
@@ -397,12 +450,12 @@ export default function PermissionFilters({
 
           {/* Status Filter */}
           <div style={{ flex: "0 0 auto", width: "150px" }}>
-            <label className={form.label} style={{ fontSize: "0.875rem" }}>Status</label>
+            <label htmlFor="filter-status" className={form.label} style={{ fontSize: "0.875rem" }}>Status</label>
             <select
+              id="filter-status"
               value={filters.status}
               onChange={(e) => updateFilter("status", e.target.value)}
               className={form.select}
-              disabled={dynamicOptions.statuses.length === 1 && dynamicOptions.statuses[0].id === "None"}
             >
               {dynamicOptions.statuses.map((status) => (
                 <option key={status.id} value={status.id}>
@@ -414,12 +467,12 @@ export default function PermissionFilters({
 
           {/* Field Filter */}
           <div style={{ flex: "0 0 auto", width: "150px" }}>
-            <label className={form.label} style={{ fontSize: "0.875rem" }}>Field</label>
+            <label htmlFor="filter-field" className={form.label} style={{ fontSize: "0.875rem" }}>Field</label>
             <select
+              id="filter-field"
               value={filters.field}
               onChange={(e) => updateFilter("field", e.target.value)}
               className={form.select}
-              disabled={dynamicOptions.fields.length === 1 && dynamicOptions.fields[0].id === "None"}
             >
               {dynamicOptions.fields.map((field) => (
                 <option key={field.id} value={field.id}>
@@ -431,12 +484,12 @@ export default function PermissionFilters({
 
           {/* Workflow Filter */}
           <div style={{ flex: "0 0 auto", width: "150px" }}>
-            <label className={form.label} style={{ fontSize: "0.875rem" }}>Workflow</label>
+            <label htmlFor="filter-workflow" className={form.label} style={{ fontSize: "0.875rem" }}>Workflow</label>
             <select
+              id="filter-workflow"
               value={filters.workflow}
               onChange={(e) => updateFilter("workflow", e.target.value)}
               className={form.select}
-              disabled={dynamicOptions.workflows.length === 1 && dynamicOptions.workflows[0].id === "None"}
             >
               {dynamicOptions.workflows.map((workflow) => (
                 <option key={workflow.id} value={workflow.id}>
@@ -448,8 +501,9 @@ export default function PermissionFilters({
 
           {/* Grant Filter */}
           <div style={{ flex: "1 1 150px", minWidth: "150px" }}>
-            <label className={form.label} style={{ fontSize: "0.875rem" }}>Grant</label>
+            <label htmlFor="filter-grant" className={form.label} style={{ fontSize: "0.875rem" }}>Grant</label>
             <select
+              id="filter-grant"
               value={filters.grant}
               onChange={(e) => updateFilter("grant", e.target.value)}
               className={form.select}

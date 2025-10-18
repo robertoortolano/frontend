@@ -214,8 +214,8 @@ export default function WorkflowCreate() {
     const workflowEdges = edges.map((e: any) => ({
       id: null,
       transitionId: null,
-      sourceId: parseInt(e.source),
-      targetId: parseInt(e.target),
+      sourceId: Number.parseInt(e.source),
+      targetId: Number.parseInt(e.target),
       sourcePosition: e.sourceHandle || null,
       targetPosition: e.targetHandle || null,
     }));
@@ -223,8 +223,8 @@ export default function WorkflowCreate() {
     const transitions = edges.map((e: any) => ({
       tempId: null,
       name: e.data?.label || "",
-      fromStatusId: parseInt(e.source),
-      toStatusId: parseInt(e.target),
+      fromStatusId: Number.parseInt(e.source),
+      toStatusId: Number.parseInt(e.target),
     }));
 
     const dto: WorkflowCreateDto = {

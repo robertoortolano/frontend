@@ -253,6 +253,7 @@ export default function ItemTypeSets() {
         createPortal(
           <div
             id="permission-grant-modal"
+            role="presentation"
             style={{
               position: "fixed",
               top: 0,
@@ -277,6 +278,9 @@ export default function ItemTypeSets() {
             <div
               onClick={(e) => e.stopPropagation()}
               onMouseDown={handleMouseDown}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="modal-title"
               style={{
                 backgroundColor: "white",
                 borderRadius: "0.5rem",
@@ -342,6 +346,8 @@ export default function ItemTypeSets() {
               {/* Contenuto del modal con scroll */}
               <div
                 id="modal-scrollable-content"
+                role="region"
+                aria-label="Permission grants and roles management content"
                 style={{
                   flex: 1,
                   padding: "1.5rem",

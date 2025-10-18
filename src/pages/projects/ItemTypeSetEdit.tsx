@@ -76,7 +76,7 @@ export default function ItemTypeSetEdit() {
   const handleAddEntry = () => {
     if (!selectedItemTypeId || !selectedCategory) return;
 
-    setEntries([...entries, { itemTypeId: parseInt(selectedItemTypeId, 10), category: selectedCategory }]);
+    setEntries([...entries, { itemTypeId: Number.parseInt(selectedItemTypeId, 10), category: selectedCategory }]);
     setSelectedItemTypeId("");
     setSelectedCategory("");
   };

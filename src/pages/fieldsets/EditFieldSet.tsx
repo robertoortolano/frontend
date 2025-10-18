@@ -102,7 +102,7 @@ export default function EditFieldSet() {
   const handleAddSelectedConfig = () => {
     if (!selectedConfigId || !fieldSet) return;
 
-    const selectedConfig = allConfigurations.find((c) => c.id === parseInt(selectedConfigId));
+    const selectedConfig = allConfigurations.find((c) => c.id === Number.parseInt(selectedConfigId));
     if (!selectedConfig) return;
 
     const newEntry: FieldSetEntryViewDto = {

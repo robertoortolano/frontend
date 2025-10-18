@@ -301,11 +301,11 @@ export default function WorkflowEdit() {
     }));
 
     const workflowEdges = edges.map((e: any) => ({
-      id: e.id?.startsWith("edge-") ? null : parseInt(e.id),
+      id: e.id?.startsWith("edge-") ? null : Number.parseInt(e.id),
       transitionId: e.data?.transitionId ?? null,
       transitionTempId: e.data?.transitionTempId ?? null,
-      sourceId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || parseInt(e.source),
-      targetId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || parseInt(e.target),
+      sourceId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || Number.parseInt(e.source),
+      targetId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || Number.parseInt(e.target),
       sourcePosition: e.sourceHandle || null,
       targetPosition: e.targetHandle || null,
     }));
@@ -319,8 +319,8 @@ export default function WorkflowEdit() {
           id: e.data?.transitionId ?? null,
           tempId: e.data?.transitionTempId ?? null,
           name: e.data?.label || "",
-          fromStatusId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || parseInt(e.source),
-          toStatusId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || parseInt(e.target),
+          fromStatusId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || Number.parseInt(e.source),
+          toStatusId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || Number.parseInt(e.target),
         });
       }
     }
@@ -330,7 +330,7 @@ export default function WorkflowEdit() {
 
     const initial = (nodes as any[]).find((n: any) => n.data.isInitial);
     const dto: WorkflowUpdateDto = {
-      id: parseInt(id!),
+      id: Number.parseInt(id!),
       name: workflowName,
       initialStatusId: initial ? initial.data.statusId : null,
       workflowNodes,

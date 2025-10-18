@@ -10,7 +10,7 @@ interface AssignmentModeToggleProps {
 export default function AssignmentModeToggle({
   mode,
   onModeChange
-}: AssignmentModeToggleProps) {
+}: Readonly<AssignmentModeToggleProps>) {
   return (
     <div className={layout.block}>
       <h3 className={layout.blockTitleBlue}>Modalità Assegnazione</h3>

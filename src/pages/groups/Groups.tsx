@@ -188,8 +188,9 @@ export default function Groups() {
 
           <form onSubmit={handleSubmit}>
             <div className={form.formGroup}>
-              <label className={form.label}>Nome *</label>
+              <label htmlFor="group-name" className={form.label}>Nome *</label>
               <input
+                id="group-name"
                 type="text"
                 className={form.input}
                 value={formData.name}
@@ -199,8 +200,9 @@ export default function Groups() {
             </div>
 
             <div className={form.formGroup}>
-              <label className={form.label}>Descrizione</label>
+              <label htmlFor="group-description" className={form.label}>Descrizione</label>
               <textarea
+                id="group-description"
                 className={form.textarea}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}

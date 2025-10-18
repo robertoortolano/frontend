@@ -84,13 +84,24 @@ const TenantModal = ({ show, onClose, formData, handleChange, handleSubmit, isLo
   if (!show) return null;
 
   return (
-    <div style={modalStyle.overlay} onClick={onClose}>
-      <div style={modalStyle.modal} onClick={(e) => e.stopPropagation()}>
+    <div 
+      style={modalStyle.overlay} 
+      onClick={onClose}
+      role="presentation"
+    >
+      <div 
+        style={modalStyle.modal} 
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
         <h3 style={modalStyle.title as CSSProperties}>Crea un nuovo Tenant</h3>
         <form onSubmit={handleSubmit}>
           <div style={modalStyle.formGroup}>
-            <label>Nome Azienda</label>
+            <label htmlFor="tenant-name">Nome Azienda</label>
             <input
+              id="tenant-name"
               type="text"
               name="name"
               value={formData.name || ""}
@@ -101,8 +112,9 @@ const TenantModal = ({ show, onClose, formData, handleChange, handleSubmit, isLo
             />
           </div>
           <div style={modalStyle.formGroup}>
-            <label>Subdomain</label>
+            <label htmlFor="tenant-subdomain">Subdomain</label>
             <input
+              id="tenant-subdomain"
               type="text"
               name="subdomain"
               value={formData.subdomain || ""}
@@ -113,8 +125,9 @@ const TenantModal = ({ show, onClose, formData, handleChange, handleSubmit, isLo
             />
           </div>
           <div style={modalStyle.formGroup}>
-            <label>Chiave di Licenza</label>
+            <label htmlFor="tenant-licenseKey">Chiave di Licenza</label>
             <input
+              id="tenant-licenseKey"
               type="text"
               name="licenseKey"
               value={formData.licenseKey || ""}

@@ -16,14 +16,14 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: Error) => Promise.reject(error)
 );
 
 // Gestisci errori globali, es. 401: logout automatico e redirect
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  (error: Error) => {
+    if ((error as any).response?.status === 401) {
       localStorage.removeItem("token");
       window.location.href = "/"; // o "/login" a seconda del tuo routing
     }

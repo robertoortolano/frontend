@@ -78,8 +78,8 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
       const roleData = {
         ...formData,
         itemTypeSetId: itemTypeSetId,
-        relatedEntityId: formData.relatedEntityId ? parseInt(formData.relatedEntityId) : null,
-        secondaryEntityId: formData.secondaryEntityId ? parseInt(formData.secondaryEntityId) : null,
+        relatedEntityId: formData.relatedEntityId ? Number.parseInt(formData.relatedEntityId) : null,
+        secondaryEntityId: formData.secondaryEntityId ? Number.parseInt(formData.secondaryEntityId) : null,
       };
 
       await api.post("/itemtypeset-roles", roleData);
@@ -109,8 +109,9 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo Ruolo *</label>
+            <label htmlFor="roleType" className="block text-sm font-medium text-gray-700 mb-2">Tipo Ruolo *</label>
             <select
+              id="roleType"
               name="roleType"
               value={formData.roleType}
               onChange={handleInputChange}
@@ -126,8 +127,9 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nome Ruolo *</label>
+            <label htmlFor="roleName" className="block text-sm font-medium text-gray-700 mb-2">Nome Ruolo *</label>
             <input
+              id="roleName"
               type="text"
               name="name"
               value={formData.name}
@@ -138,8 +140,9 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
+            <label htmlFor="roleDescription" className="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
             <textarea
+              id="roleDescription"
               name="description"
               value={formData.description}
               onChange={handleInputChange}
@@ -149,8 +152,9 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo Entità Correlata *</label>
+            <label htmlFor="relatedEntityType" className="block text-sm font-medium text-gray-700 mb-2">Tipo Entità Correlata *</label>
             <select
+              id="relatedEntityType"
               name="relatedEntityType"
               value={formData.relatedEntityType}
               onChange={handleInputChange}
@@ -166,8 +170,9 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">ID Entità Correlata *</label>
+            <label htmlFor="relatedEntityId" className="block text-sm font-medium text-gray-700 mb-2">ID Entità Correlata *</label>
             <input
+              id="relatedEntityId"
               type="number"
               name="relatedEntityId"
               value={formData.relatedEntityId}
@@ -180,8 +185,9 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
           {isPairRole && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo Entità Secondaria *</label>
+                <label htmlFor="secondaryEntityType" className="block text-sm font-medium text-gray-700 mb-2">Tipo Entità Secondaria *</label>
                 <select
+                  id="secondaryEntityType"
                   name="secondaryEntityType"
                   value={formData.secondaryEntityType}
                   onChange={handleInputChange}
@@ -195,8 +201,9 @@ export default function CreateRoleForm({ itemTypeSetId, onClose, onSuccess }: Cr
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ID Entità Secondaria *</label>
+                <label htmlFor="secondaryEntityId" className="block text-sm font-medium text-gray-700 mb-2">ID Entità Secondaria *</label>
                 <input
+                  id="secondaryEntityId"
                   type="number"
                   name="secondaryEntityId"
                   value={formData.secondaryEntityId}

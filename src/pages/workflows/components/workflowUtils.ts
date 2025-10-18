@@ -38,8 +38,8 @@ export function buildWorkflowStatusesFromFlow(
         id: e.data?.transitionId ?? null,
         tempId: e.data?.transitionTempId ?? null,
         name: e.data?.label || "",
-        fromStatusId: parseInt(e.source),
-        toStatusId: parseInt(e.target),
+        fromStatusId: Number.parseInt(e.source),
+        toStatusId: Number.parseInt(e.target),
       }));
 
     return {

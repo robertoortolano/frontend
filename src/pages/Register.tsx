@@ -284,8 +284,9 @@ export default function Register() {
       {activeTab === "login" ? (
         <form onSubmit={handleLogin}>
           <div className={form.formGroup}>
-            <label className={form.label}>Username:</label>
+            <label htmlFor="login-username" className={form.label}>Username:</label>
             <input
+              id="login-username"
               type="text"
               name="username"
               value={formData.username}
@@ -295,8 +296,9 @@ export default function Register() {
             />
           </div>
           <div className={form.formGroup}>
-            <label className={form.label}>Password:</label>
+            <label htmlFor="login-password" className={form.label}>Password:</label>
             <input
+              id="login-password"
               type="password"
               name="password"
               value={formData.password}
@@ -312,8 +314,9 @@ export default function Register() {
       ) : (
         <form onSubmit={handleRegister}>
           <div className={form.formGroup}>
-            <label className={form.label}>Username:</label>
+            <label htmlFor="register-username" className={form.label}>Username:</label>
             <input
+              id="register-username"
               type="text"
               name="username"
               value={formData.username}
@@ -323,8 +326,9 @@ export default function Register() {
             />
           </div>
           <div className={form.formGroup}>
-            <label className={form.label}>Password:</label>
+            <label htmlFor="register-password" className={form.label}>Password:</label>
             <input
+              id="register-password"
               type="password"
               name="password"
               value={formData.password}
@@ -375,6 +379,15 @@ export default function Register() {
                   <div
                     key={tenant.id}
                     onClick={() => handleSelectTenant(tenant)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSelectTenant(tenant);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Select tenant ${tenant.name || tenant.subdomain}`}
                     style={{
                       padding: "1.25rem",
                       border: "1px solid #e5e7eb",

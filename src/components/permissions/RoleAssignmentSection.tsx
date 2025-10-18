@@ -42,12 +42,12 @@ export default function RoleAssignmentSection({
       
       {/* Ruoli assegnati */}
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ 
+        <div style={{ 
           display: 'block', 
           fontWeight: '600', 
           color: '#1e3a8a', 
           marginBottom: '0.5rem' 
-        }}>Ruoli Assegnati</label>
+        }}>Ruoli Assegnati</div>
         <div style={{ 
           border: '1px solid #e5e7eb', 
           borderRadius: '0.5rem', 
@@ -82,13 +82,14 @@ export default function RoleAssignmentSection({
 
       {/* Aggiungi ruolo */}
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ 
+        <label htmlFor="add-role-select" style={{ 
           display: 'block', 
           fontWeight: '600', 
           color: '#1e3a8a', 
           marginBottom: '0.5rem' 
         }}>Aggiungi Ruolo</label>
         <select
+          id="add-role-select"
           onChange={(e) => {
             const roleId = e.target.value;
             if (roleId) {

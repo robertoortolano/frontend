@@ -40,7 +40,7 @@ export default function FieldSetCreate() {
 
   const handleAddSelectedConfig = () => {
     if (!selectedConfigId) return;
-    const selected = availableConfigs.find((c) => c.id === parseInt(selectedConfigId));
+    const selected = availableConfigs.find((c) => c.id === Number.parseInt(selectedConfigId));
     if (!selected) return;
     setSelectedConfigs([...selectedConfigs, selected]);
     setSelectedConfigId("");

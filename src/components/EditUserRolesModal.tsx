@@ -87,6 +87,8 @@ export default function EditUserRolesModal({
             {AVAILABLE_ROLES.map(role => (
               <label
                 key={role.name}
+                htmlFor={`role-${role.name}`}
+                aria-label={`Select role ${role.label}`}
                 className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${
                   selectedRole === role.name
                     ? "border-blue-500 bg-blue-50"
@@ -94,6 +96,7 @@ export default function EditUserRolesModal({
                 }`}
               >
                 <input
+                  id={`role-${role.name}`}
                   type="radio"
                   name="userRole"
                   checked={selectedRole === role.name}
