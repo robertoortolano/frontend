@@ -12,7 +12,7 @@ export interface FilterValues {
   status: string; // "All", "None", o ID specifico
   field: string; // "All", "None", o ID specifico
   workflow: string; // "All", "None", o ID specifico
-  grant: string; // "All", "Y", "N"
+  grant: string; // "All", "Y", "N" - indica se ci sono ruoli custom assegnati
 }
 
 interface PermissionFiltersProps {
@@ -501,7 +501,7 @@ export default function PermissionFilters({
 
           {/* Grant Filter */}
           <div style={{ flex: "1 1 150px", minWidth: "150px" }}>
-            <label htmlFor="filter-grant" className={form.label} style={{ fontSize: "0.875rem" }}>Grant</label>
+            <label htmlFor="filter-grant" className={form.label} style={{ fontSize: "0.875rem" }}>Ruoli</label>
             <select
               id="filter-grant"
               value={filters.grant}
@@ -509,8 +509,8 @@ export default function PermissionFilters({
               className={form.select}
             >
               <option value="All">All</option>
-              <option value="Y">Y</option>
-              <option value="N">N</option>
+              <option value="Y">Y (con ruoli)</option>
+              <option value="N">N (senza ruoli)</option>
             </select>
           </div>
         </div>

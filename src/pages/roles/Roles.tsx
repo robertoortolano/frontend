@@ -24,18 +24,12 @@ export default function Roles() {
   const canManageRoles = roles?.some((role: any) => role.name === "ADMIN");
 
   useEffect(() => {
-    console.log("Roles page - isAuthenticated:", isAuthenticated);
-    console.log("Roles page - canManageRoles:", canManageRoles);
-    console.log("Roles page - roles:", roles);
-
     if (!isAuthenticated) {
-      console.log("User not authenticated, redirecting to login");
       navigate("/");
       return;
     }
 
     if (!canManageRoles) {
-      console.log("User cannot manage roles, redirecting to home");
       navigate("/tenant");
       return;
     }

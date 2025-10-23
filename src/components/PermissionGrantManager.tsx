@@ -7,18 +7,7 @@ import alert from '../styles/common/Alerts.module.css';
 
 import PermissionHeader from './permissions/PermissionHeader';
 import RoleAssignmentSection from './permissions/RoleAssignmentSection';
-import GrantAssignmentSection from './permissions/GrantAssignmentSection';
 
-interface User {
-  id: number;
-  username?: string;
-  fullName?: string;
-}
-
-interface Group {
-  id: number;
-  name: string;
-}
 
 interface Role {
   id: number;
@@ -37,11 +26,6 @@ interface Permission {
   toStatus?: { name: string };
   transition?: any;
   assignedRoles?: Role[];
-  assignedUsers?: User[];
-  assignedGroups?: Group[];
-  deniedUsers?: User[];
-  deniedGroups?: Group[];
-  assignedGrants?: any;
 }
 
 interface PermissionGrantManagerProps {
@@ -61,27 +45,13 @@ export default function PermissionGrantManager({
   // Stati per ruoli
   const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
-  
-  // Stati per utenti e gruppi
-  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
-  const [availableGroups, setAvailableGroups] = useState<Group[]>([]);
-  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  const [selectedGroups, setSelectedGroups] = useState<Group[]>([]);
-  const [selectedDeniedUsers, setSelectedDeniedUsers] = useState<User[]>([]);
-  const [selectedDeniedGroups, setSelectedDeniedGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     if (permission) {
       fetchAvailableRoles();
-      fetchAvailableUsers();
-      fetchAvailableGroups();
       
       // Inizializza con i dati esistenti
       setSelectedRoles(permission.assignedRoles || []);
-      setSelectedUsers(permission.assignedUsers || []);
-      setSelectedGroups(permission.assignedGroups || []);
-      setSelectedDeniedUsers(permission.deniedUsers || []);
-      setSelectedDeniedGroups(permission.deniedGroups || []);
     }
   }, [permission]);
 
@@ -94,23 +64,6 @@ export default function PermissionGrantManager({
     }
   };
 
-  const fetchAvailableUsers = async () => {
-    try {
-      const response = await api.get('/itemtypeset-permissions/users');
-      setAvailableUsers(response.data);
-    } catch (err) {
-      console.error('Error fetching users:', err);
-    }
-  };
-
-  const fetchAvailableGroups = async () => {
-    try {
-      const response = await api.get('/itemtypeset-permissions/groups');
-      setAvailableGroups(response.data);
-    } catch (err) {
-      console.error('Error fetching groups:', err);
-    }
-  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -122,7 +75,7 @@ export default function PermissionGrantManager({
         : permission.id;
 
       if (!permissionId) {
-        setError('I WORKER non possono avere ruoli o grants assegnati direttamente. I WORKER sono gestiti automaticamente dal sistema.');
+        setError('I WORKER non possono avere ruoli assegnati direttamente. I WORKER sono gestiti automaticamente dal sistema.');
         setLoading(false);
         return;
       }
@@ -150,17 +103,6 @@ export default function PermissionGrantManager({
         }
       }
 
-      // Salva grant
-      const grantData = {
-        users: selectedUsers,
-        groups: selectedGroups,
-        deniedUsers: selectedDeniedUsers,
-        deniedGroups: selectedDeniedGroups
-      };
-
-      await api.post('/itemtypeset-permissions/assign-grant', grantData, {
-        params: { permissionId, permissionType }
-      });
 
       onSave();
     } catch (err) {
@@ -182,55 +124,17 @@ export default function PermissionGrantManager({
     setSelectedRoles(selectedRoles.filter(r => r.id !== roleId));
   };
 
-  // Funzioni per gestire utenti
-  const addUser = (user: User) => {
-    if (!selectedUsers.find(u => u.id === user.id)) {
-      setSelectedUsers([...selectedUsers, user]);
-    }
-  };
-
-  const removeUser = (userId: number) => {
-    setSelectedUsers(selectedUsers.filter(u => u.id !== userId));
-  };
-
-  // Funzioni per gestire gruppi autorizzati
-  const addGroup = (group: Group) => {
-    if (!selectedGroups.find(g => g.id === group.id)) {
-      setSelectedGroups([...selectedGroups, group]);
-    }
-  };
-
-  const removeGroup = (groupId: number) => {
-    setSelectedGroups(selectedGroups.filter(g => g.id !== groupId));
-  };
-
-  // Funzioni per gestire utenti negati
-  const addDeniedUser = (user: User) => {
-    if (!selectedDeniedUsers.find(u => u.id === user.id)) {
-      setSelectedDeniedUsers([...selectedDeniedUsers, user]);
-    }
-  };
-
-  const removeDeniedUser = (userId: number) => {
-    setSelectedDeniedUsers(selectedDeniedUsers.filter(u => u.id !== userId));
-  };
-
-  // Funzioni per gestire gruppi negati
-  const addDeniedGroup = (group: Group) => {
-    if (!selectedDeniedGroups.find(g => g.id === group.id)) {
-      setSelectedDeniedGroups([...selectedDeniedGroups, group]);
-    }
-  };
-
-  const removeDeniedGroup = (groupId: number) => {
-    setSelectedDeniedGroups(selectedDeniedGroups.filter(g => g.id !== groupId));
-  };
 
   if (!permission) return null;
 
   return (
     <div className="w-full">
       <PermissionHeader permission={permission} />
+      
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">Gestione Ruoli per Permission</h2>
+        <p className="text-sm text-gray-600">Assegna ruoli custom a questa permission. Le grant non sono più supportate.</p>
+      </div>
 
       {error && (
         <div className={`${alert.error} mb-4`}>
@@ -240,35 +144,17 @@ export default function PermissionGrantManager({
 
       {typeof permission.id === 'string' && permission.id.startsWith('worker-') && (
         <div className={`${alert.info} mb-4`}>
-          <p><strong>Nota:</strong> I WORKER sono gestiti automaticamente dal sistema e non possono avere ruoli o grants assegnati direttamente.</p>
+          <p><strong>Nota:</strong> I WORKER sono gestiti automaticamente dal sistema e non possono avere ruoli assegnati direttamente.</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Sezione Ruoli */}
         <RoleAssignmentSection
           selectedRoles={selectedRoles}
           availableRoles={availableRoles}
           onAddRole={addRole}
           onRemoveRole={removeRole}
-        />
-
-        {/* Sezione Grant */}
-        <GrantAssignmentSection
-          selectedUsers={selectedUsers}
-          selectedGroups={selectedGroups}
-          selectedDeniedUsers={selectedDeniedUsers}
-          selectedDeniedGroups={selectedDeniedGroups}
-          availableUsers={availableUsers}
-          availableGroups={availableGroups}
-          onAddUser={addUser}
-          onRemoveUser={removeUser}
-          onAddGroup={addGroup}
-          onRemoveGroup={removeGroup}
-          onAddDeniedUser={addDeniedUser}
-          onRemoveDeniedUser={removeDeniedUser}
-          onAddDeniedGroup={addDeniedGroup}
-          onRemoveDeniedGroup={removeDeniedGroup}
         />
       </div>
 
@@ -286,7 +172,7 @@ export default function PermissionGrantManager({
           className={`${buttons.button} ${buttons.buttonPrimary}`}
           disabled={loading}
         >
-          {loading ? 'Salvataggio...' : 'Salva Assegnazioni'}
+          {loading ? 'Salvataggio...' : 'Salva Ruoli'}
           <Save size={16} className="ml-2" />
         </button>
       </div>

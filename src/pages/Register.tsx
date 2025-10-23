@@ -53,9 +53,7 @@ export default function Register() {
   const fetchUserTenants = async () => {
     try {
       setIsLoading(true);
-      console.log("Fetching tenants...");
       const response = await tenantApi.getTenants();
-      console.log("Tenants received:", response.data);
       setTenants(response.data);
       setIsLoggedIn(true);
     } catch (error: any) {
@@ -80,10 +78,8 @@ export default function Register() {
 
   useEffect(() => {
     if (token) {
-      console.log("Token available, fetching tenants...");
       fetchUserTenants();
     } else {
-      console.log("No token, showing login form");
       setIsLoggedIn(false);
       setTenants([]);
     }
@@ -97,12 +93,10 @@ export default function Register() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      console.log("Attempting login with:", { username: formData.username });
       const response = await api.post("/auth/login", {
         username: formData.username,
         password: formData.password,
       });
-      console.log("Login response:", response.data);
 
       if (response.data.accessToken) {
         setToken(response.data.accessToken);

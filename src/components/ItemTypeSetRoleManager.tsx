@@ -145,13 +145,13 @@ export default function ItemTypeSetRoleManager({
     }
     // All = non filtra (mostra tutte indipendentemente dal workflow)
 
-    // Filtra per grant
+    // Filtra per ruoli custom (ex grant)
     if (filters.grant !== "All") {
-      const hasGrant = permission.hasAssignments === true;
-      if (filters.grant === "Y" && !hasGrant) {
+      const hasRoles = permission.hasAssignments === true;
+      if (filters.grant === "Y" && !hasRoles) {
         return false;
       }
-      if (filters.grant === "N" && hasGrant) {
+      if (filters.grant === "N" && hasRoles) {
         return false;
       }
     }
@@ -250,7 +250,7 @@ export default function ItemTypeSetRoleManager({
                   <thead>
                     <tr>
                       <th>Dettagli</th>
-                      <th>Grants</th>
+                      <th>Ruoli</th>
                       <th>Azioni</th>
                     </tr>
                   </thead>
@@ -280,6 +280,11 @@ export default function ItemTypeSetRoleManager({
                           }`}>
                             {role.hasAssignments ? 'Y' : 'N'}
                           </span>
+                          {role.assignedRoles && role.assignedRoles.length > 0 && (
+                            <div className="mt-1 text-xs text-gray-600">
+                              {role.assignedRoles.length} ruolo{role.assignedRoles.length !== 1 ? 'i' : ''}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <button
@@ -287,7 +292,7 @@ export default function ItemTypeSetRoleManager({
                               onPermissionGrantClick?.(role);
                             }}
                             className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
-                            title="Gestisci Grants"
+                            title="Gestisci Ruoli"
                           >
                             <Shield size={14} />
                           </button>
