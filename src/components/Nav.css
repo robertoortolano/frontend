@@ -35,6 +35,13 @@
   padding-left: 2rem;
 }
 
+.nav-separator {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 1rem 0;
+  list-style: none;
+}
+
 .nav-link-favorite {
   font-weight: 700 !important;
 }

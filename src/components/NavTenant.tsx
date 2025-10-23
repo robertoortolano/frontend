@@ -14,6 +14,14 @@ export default function NavTenant() {
     role.name === "ADMIN" && role.scope === "TENANT"
   );
 
+  // Check if user has any PROJECT ADMIN role
+  const hasProjectAdmin = roles.some((role: any) => 
+    role.name === "ADMIN" && role.scope === "PROJECT"
+  );
+
+  // Fields, Status, Item types: Tenant Admin OR any Project Admin
+  const canAccessBasicFeatures = isAdmin || hasProjectAdmin;
+
   const handleLogout = () => {
     logout();
     localStorage.clear();
@@ -29,54 +37,66 @@ export default function NavTenant() {
             Progetti
           </NavLink>
         </li>
-        <li>
-          <NavLink to="/tenant/fields" className="nav-link">
-            Fields
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/field-configurations" className="nav-link">
-            Field Configurations
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/field-sets" className="nav-link">
-            Field Sets
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/statuses" className="nav-link">
-            Statuses
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/workflows" className="nav-link">
-            Workflows
-          </NavLink>
-        </li>
+        {/* Fields, Status, Item types: Tenant Admin OR any Project Admin */}
+        {canAccessBasicFeatures && (
+          <>
+            <li>
+              <NavLink to="/tenant/fields" className="nav-link">
+                Fields
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/statuses" className="nav-link">
+                Statuses
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/item-types" className="nav-link">
+                Item types
+              </NavLink>
+            </li>
+          </>
+        )}
+
+        {/* Field Configurations, Field Sets, Workflows, Item type Sets, Gestione Ruoli, Gruppi: Tenant Admin only */}
+        {isAdmin && (
+          <>
+            <li>
+              <NavLink to="/tenant/field-configurations" className="nav-link">
+                Field Configurations
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/field-sets" className="nav-link">
+                Field Sets
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/workflows" className="nav-link">
+                Workflows
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/item-type-sets" className="nav-link">
+                Item type Sets
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/roles" className="nav-link">
+                Gestione Ruoli
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/groups" className="nav-link">
+                Gruppi
+              </NavLink>
+            </li>
+          </>
+        )}
+
         <li>
           <NavLink to="/tenant/test" className="nav-link">
             Test
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/item-types" className="nav-link">
-            Item types
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/item-type-sets" className="nav-link">
-            Item type Sets
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/roles" className="nav-link">
-            Gestione Ruoli
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/tenant/groups" className="nav-link">
-            Gruppi
           </NavLink>
         </li>
         {isAdmin && (

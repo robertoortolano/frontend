@@ -3,6 +3,7 @@ import api from "../../api/api";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ProjectDto } from "../../types/project.types";
 import { CheckCircle, Loader2, AlertCircle, Check, Home, Settings, Users } from "lucide-react";
+import ProjectMembersPanel from "../../components/ProjectMembersPanel";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -145,6 +146,15 @@ function ItemTypeSetDetails({
 
   const hasEntries = itemTypeSet.itemTypeConfigurations?.length > 0;
   const isGlobal = itemTypeSet.scope === 'TENANT';
+  
+  // Controlla se ci sono altri ItemTypeSet disponibili oltre a quello attuale
+  const hasOtherItemTypeSets = availableItemTypeSets.length > 1 || 
+    (availableItemTypeSets.length === 1 && availableItemTypeSets[0].id !== itemTypeSet.id);
+
+  // Carica gli ItemTypeSet disponibili al mount del componente
+  useEffect(() => {
+    fetchAvailableItemTypeSets();
+  }, []);
 
   const fetchAvailableItemTypeSets = async () => {
     try {
@@ -249,11 +259,16 @@ function ItemTypeSetDetails({
         <div className="mt-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Cambia ItemTypeSet</h3>
           
-          {!isChanging ? (
+          {!hasOtherItemTypeSets && !loading ? (
+            <div className="text-gray-500 text-sm">
+              Non ci sono altri ItemTypeSet disponibili per il cambio.
+            </div>
+          ) : !isChanging ? (
             <button
               className={`${buttons.button} ${utilities.mt4}`}
               onClick={handleStartChange}
-              disabled={isUpdatingItemTypeSet}
+              disabled={isUpdatingItemTypeSet || !hasOtherItemTypeSets}
+              title={!hasOtherItemTypeSets ? "Non ci sono altri ItemTypeSet disponibili" : "Cambia ItemTypeSet"}
             >
               Cambia ItemTypeSet
             </button>
@@ -413,9 +428,6 @@ export default function ProjectSettings() {
   if (error) return <ErrorMessage message={error} />;
   if (!project) return <ErrorMessage message="Project not found or loading error." />;
 
-  const handleManageMembers = () => {
-    navigate("members", { state: { token } });
-  };
 
   const handleItemTypeSetChange = async (itemTypeSetId: number) => {
     if (!project) return;
@@ -533,12 +545,12 @@ export default function ProjectSettings() {
                 </p>
               )}
               
-              <button
-                className={`${buttons.button} ${utilities.mt4}`}
-                onClick={handleManageMembers}
-              >
-                Gestisci Membri
-              </button>
+              <ProjectMembersPanel 
+                projectId={projectId!}
+                token={token}
+                members={members}
+                onMembersUpdate={setMembers}
+              />
             </div>
           </div>
         );
@@ -550,7 +562,8 @@ export default function ProjectSettings() {
 
   return (
     <div className={layout.container}>
-      <div className="mb-8">
+      <div className="text-center mb-8">
+        <Settings size={64} className="mx-auto text-purple-500 mb-4" />
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Impostazioni Progetto</h1>
         <p className="text-gray-600">Gestisci le configurazioni e le impostazioni del tuo progetto</p>
       </div>

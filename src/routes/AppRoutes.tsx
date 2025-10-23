@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 
 import PrivateRoute from "./PrivateRoute";
+import RoleProtectedRoute from "./RoleProtectedRoute";
 
 // Layouts
 import MainLayout from "../layouts/MainLayout";
@@ -16,6 +17,11 @@ import ProjectSettings from "../pages/projects/ProjectSettings";
 import EditDetails from "../pages/projects/EditDetails";
 import ItemTypeSetEdit from "../pages/projects/ItemTypeSetEdit";
 import ProjectMembers from "../pages/projects/ProjectMembers";
+import ProjectFieldConfigurations from "../pages/projects/ProjectFieldConfigurations";
+import ProjectFieldConfigurationCreate from "../pages/projects/ProjectFieldConfigurationCreate";
+import ProjectFieldConfigurationsLanding from "../pages/projects/ProjectFieldConfigurationsLanding";
+import ProjectWelcome from "../pages/projects/ProjectWelcome";
+import ProjectLayout from "../components/ProjectLayout";
 
 // Item Types
 import ItemTypeList from "../pages/itemtypes/ItemTypes";
@@ -75,38 +81,184 @@ export default function AppRoutes() {
       >
         <Route index element={<HomeTenant />} />
 
-        <Route path="item-types" element={<ItemTypeList />} />
-        <Route path="item-types/:itemTypeId" element={<EditItemType />} />
+        {/* Fields, Status, Item types: Tenant Admin OR any Project Admin */}
+        <Route path="item-types" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ItemTypeList />
+          </RoleProtectedRoute>
+        } />
+        <Route path="item-types/:itemTypeId" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <EditItemType />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="item-type-sets" element={<ItemTypeSets />} />
-        <Route path="item-type-sets/edit/:id" element={<EditItemTypeSet />} />
-        <Route path="item-type-sets/create" element={<ItemTypeSetCreate />} />
+        <Route path="fields" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <Fields />
+          </RoleProtectedRoute>
+        } />
+        <Route path="fields/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <FieldEdit />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="fields" element={<Fields />} />
-        <Route path="fields/:id" element={<FieldEdit />} />
+        <Route path="statuses" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <Statuses />
+          </RoleProtectedRoute>
+        } />
+        <Route path="statuses/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <StatusEdit />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="field-sets" element={<FieldSets />} />
-        <Route path="field-sets/:id" element={<EditFieldSets />} />
-        <Route path="field-sets/create" element={<FieldSetCreate />} />
+        {/* Field Configurations, Field Sets, Workflows, Item type Sets, Gestione Ruoli, Gruppi: Tenant Admin only */}
+        <Route path="item-type-sets" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <ItemTypeSets />
+          </RoleProtectedRoute>
+        } />
+        <Route path="item-type-sets/edit/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <EditItemTypeSet />
+          </RoleProtectedRoute>
+        } />
+        <Route path="item-type-sets/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <ItemTypeSetCreate />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="field-configurations" element={<FieldConfigurations />} />
-        <Route path="field-configurations/:id" element={<FieldConfigurationEdit />} />
-        <Route path="field-configurations/create" element={<FieldConfigurationCreate />} />
+        <Route path="field-sets" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <FieldSets />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-sets/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <EditFieldSets />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-sets/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <FieldSetCreate />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="statuses" element={<Statuses />} />
-        <Route path="statuses/:id" element={<StatusEdit />} />
+        <Route path="field-configurations" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <FieldConfigurations />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-configurations/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <FieldConfigurationEdit />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-configurations/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <FieldConfigurationCreate />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="workflows" element={<Workflows />} />
-        <Route path="workflows/create" element={<WorkflowCreate />} />
-        <Route path="workflows/:id" element={<WorkflowEdit />} />
+        <Route path="workflows" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <Workflows />
+          </RoleProtectedRoute>
+        } />
+        <Route path="workflows/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <WorkflowCreate />
+          </RoleProtectedRoute>
+        } />
+        <Route path="workflows/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <WorkflowEdit />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="roles" element={<Roles />} />
-        <Route path="roles/create" element={<CreateRole />} />
-        <Route path="roles/edit/:id" element={<EditRole />} />
+        <Route path="roles" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <Roles />
+          </RoleProtectedRoute>
+        } />
+        <Route path="roles/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <CreateRole />
+          </RoleProtectedRoute>
+        } />
+        <Route path="roles/edit/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <EditRole />
+          </RoleProtectedRoute>
+        } />
 
-        <Route path="groups" element={<Groups />} />
+        <Route path="groups" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <Groups />
+          </RoleProtectedRoute>
+        } />
         
-        <Route path="users" element={<TenantUserManagement />} />
+        <Route path="users" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" }
+          ]}>
+            <TenantUserManagement />
+          </RoleProtectedRoute>
+        } />
       </Route>
 
       <Route
@@ -118,12 +270,77 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<HomeProjects />} />
-        <Route path=":projectId" element={<HomeProject />} />
+      </Route>
 
-        <Route path=":projectId/settings" element={<ProjectSettings />} />
-        <Route path=":projectId/settings/details" element={<EditDetails />} />
-        <Route path=":projectId/settings/item-type-set/:itemTypeSetId" element={<ItemTypeSetEdit />} />
-        <Route path=":projectId/settings/members" element={<ProjectMembers />} />
+      {/* Route separate per i progetti specifici con la loro navbar */}
+      <Route
+        path="/projects/:projectId"
+        element={
+          <PrivateRoute>
+            <ProjectLayout />
+          </PrivateRoute>
+        }
+      >
+        <Route index element={<ProjectWelcome />} />
+
+        <Route path="settings" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectSettings />
+          </RoleProtectedRoute>
+        } />
+        <Route path="settings/details" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <EditDetails />
+          </RoleProtectedRoute>
+        } />
+        <Route path="settings/item-type-set/:itemTypeSetId" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ItemTypeSetEdit />
+          </RoleProtectedRoute>
+        } />
+        <Route path="settings/members" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectMembers />
+          </RoleProtectedRoute>
+        } />
+
+        {/* Field Configurations del Progetto */}
+        <Route path="field-configurations" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectFieldConfigurations />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-configurations/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectFieldConfigurationCreate />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-configurations/edit/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <FieldConfigurationEdit />
+          </RoleProtectedRoute>
+        } />
       </Route>
     </Routes>
   );
