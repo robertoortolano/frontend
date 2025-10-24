@@ -28,11 +28,13 @@ export default function CreateRole() {
   useEffect(() => {
 
     if (!isAuthenticated) {
+      console.log("User not authenticated, redirecting to login");
       navigate("/");
       return;
     }
 
     if (!canManageRoles) {
+      console.log("User cannot manage roles, redirecting to home");
       navigate("/tenant");
       return;
     }

@@ -14,3 +14,25 @@
   margin-top: 0.5rem;
 }
 
+.errorContainer {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+}
+
+.infoContainer {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+}
+
+.info {
+  color: #1e40af;
+  margin: 0;
+  line-height: 1.5;
+}
+

@@ -32,11 +32,16 @@ export default function NavTenant() {
     <nav className="nav-bar">
       <div className="user-email">{username}</div>
       <ul className="nav-list">
+        {/* Home */}
         <li>
-          <NavLink to="/projects" className="nav-link">
-            Progetti
+          <NavLink to="/tenant" className="nav-link">
+            Home
           </NavLink>
         </li>
+
+        {/* Separatore */}
+        <li className="nav-separator"></li>
+
         {/* Fields, Status, Item types: Tenant Admin OR any Project Admin */}
         {canAccessBasicFeatures && (
           <>
@@ -58,7 +63,7 @@ export default function NavTenant() {
           </>
         )}
 
-        {/* Field Configurations, Field Sets, Workflows, Item type Sets, Gestione Ruoli, Gruppi: Tenant Admin only */}
+        {/* Field Configurations, Field Sets, Workflows, Item type Sets, Gestione Ruoli, Gruppi, Gestione Utenti: Tenant Admin only */}
         {isAdmin && (
           <>
             <li>
@@ -91,21 +96,25 @@ export default function NavTenant() {
                 Gruppi
               </NavLink>
             </li>
+            <li>
+              <NavLink to="/tenant/users" className="nav-link">
+                Gestione Utenti
+              </NavLink>
+            </li>
           </>
         )}
 
+        {/* Separatore */}
+        <li className="nav-separator"></li>
+
+        {/* Progetti */}
         <li>
-          <NavLink to="/tenant/test" className="nav-link">
-            Test
+          <NavLink to="/projects" className="nav-link">
+            Progetti
           </NavLink>
         </li>
-        {isAdmin && (
-          <li>
-            <NavLink to="/tenant/users" className="nav-link">
-              Gestione Utenti
-            </NavLink>
-          </li>
-        )}
+
+        {/* Logout */}
         <li>
           <button onClick={handleLogout} className="nav-logout-button">
             Logout

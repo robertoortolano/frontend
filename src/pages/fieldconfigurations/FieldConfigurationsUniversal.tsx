@@ -95,15 +95,13 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
     }
   };
 
-  // Raggruppa configs per nome campo (solo per tenant)
-  const groupedConfigs = scope === 'tenant' 
-    ? configs.reduce<Record<string, FieldConfigurationViewDto[]>>((acc, config) => {
-        const fieldName = config.fieldName || "Sconosciuto";
-        if (!acc[fieldName]) acc[fieldName] = [];
-        acc[fieldName].push(config);
-        return acc;
-      }, {})
-    : { "Tutte": configs }; // Per i progetti, mostra tutto in un gruppo
+  // Raggruppa configs per nome campo (sia per tenant che per progetto)
+  const groupedConfigs = configs.reduce<Record<string, FieldConfigurationViewDto[]>>((acc, config) => {
+    const fieldName = config.fieldName || "Sconosciuto";
+    if (!acc[fieldName]) acc[fieldName] = [];
+    acc[fieldName].push(config);
+    return acc;
+  }, {});
 
   const toggleExpand = (fieldName: string) => {
     setExpandedFields((prev) => ({
@@ -146,18 +144,16 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
       <ul className={layout.verticalList}>
         {Object.entries(groupedConfigs).map(([fieldName, configsForField]) => (
           <li key={fieldName} className={layout.block}>
-            {scope === 'tenant' && (
-              <button
-                type="button"
-                className={`${layout.blockHeader} cursor-pointer flex items-center justify-between`}
-                onClick={() => toggleExpand(fieldName)}
-              >
-                <h2>{fieldName}</h2>
-              </button>
-            )}
+            <button
+              type="button"
+              className={`${layout.blockHeader} cursor-pointer flex items-center justify-between`}
+              onClick={() => toggleExpand(fieldName)}
+            >
+              <h2>{fieldName}</h2>
+            </button>
 
-            {(scope === 'project' || expandedFields[fieldName]) && (
-              <div className={scope === 'project' ? '' : layout.mt4}>
+            {expandedFields[fieldName] && (
+              <div className={layout.mt4}>
                 {configsForField.length > 0 ? (
                   <table className={table.table}>
                     <thead>
@@ -166,7 +162,7 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
                         <th className="w-15">Tipo</th>
                         <th className="w-30">Descrizione</th>
                         <th className="w-15">Opzioni</th>
-                        {scope === 'tenant' && <th className="w-20">FieldSet</th>}
+                        <th className="w-20">FieldSet</th>
                         <th className="w-15"></th>
                       </tr>
                     </thead>
@@ -186,11 +182,9 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
                               <OptionsPopup options={config.options || []} />
                             </td>
 
-                            {scope === 'tenant' && (
-                              <td>
-                                <UsedInFieldSetsPopup configs={config} />
-                              </td>
-                            )}
+                            <td>
+                              <UsedInFieldSetsPopup configs={config} />
+                            </td>
 
                             <td>
                               <div className="flex flex-col gap-1">
@@ -218,10 +212,10 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
                                   }}
                                   disabled={
                                     config.defaultFieldConfiguration ||
-                                    (scope === 'tenant' && config.usedInFieldSets && config.usedInFieldSets.length > 0)
+                                    (config.usedInFieldSets && config.usedInFieldSets.length > 0)
                                   }
                                   title={
-                                    scope === 'tenant' && config.usedInFieldSets && config.usedInFieldSets.length > 0
+                                    config.usedInFieldSets && config.usedInFieldSets.length > 0
                                       ? "Non puoi eliminare: usata in uno o più FieldSet"
                                       : "Elimina configurazione"
                                   }

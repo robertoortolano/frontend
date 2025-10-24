@@ -65,6 +65,9 @@ export default function NavProject() {
           </button>
         </li>
 
+        {/* Separatore dopo Home */}
+        <li className="nav-separator"></li>
+
         {/* Field Configurations */}
         {canAccessFieldConfigurations && (
           <li>
@@ -73,6 +76,18 @@ export default function NavProject() {
               className={`nav-link ${isOnFieldConfigurationsPage ? "active" : ""}`}
             >
               Field Configurations
+            </button>
+          </li>
+        )}
+
+        {/* Field Sets */}
+        {canAccessFieldConfigurations && (
+          <li>
+            <button
+              onClick={() => handleNavigation(`/projects/${projectId}/field-sets`)}
+              className={`nav-link ${pathname.includes('/field-sets') ? "active" : ""}`}
+            >
+              Field Sets
             </button>
           </li>
         )}

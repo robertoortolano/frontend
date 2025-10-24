@@ -35,3 +35,31 @@
 .secondary:hover {
   background-color: #6b7280;
 }
+
+/* === Enhanced Button Variants === */
+.buttonPrimary {
+  background-color: #3b82f6;
+  color: white;
+  border: 1px solid #3b82f6;
+}
+
+.buttonPrimary:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.buttonSecondary {
+  background-color: #6b7280;
+  color: white;
+  border: 1px solid #6b7280;
+}
+
+.buttonSecondary:hover {
+  background-color: #4b5563;
+  border-color: #4b5563;
+}
+
+.buttonLarge {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}

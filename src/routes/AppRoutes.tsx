@@ -19,6 +19,10 @@ import ItemTypeSetEdit from "../pages/projects/ItemTypeSetEdit";
 import ProjectMembers from "../pages/projects/ProjectMembers";
 import ProjectFieldConfigurations from "../pages/projects/ProjectFieldConfigurations";
 import ProjectFieldConfigurationCreate from "../pages/projects/ProjectFieldConfigurationCreate";
+import ProjectFieldConfigurationEdit from "../pages/projects/ProjectFieldConfigurationEdit";
+import ProjectFieldSets from "../pages/projects/ProjectFieldSets";
+import ProjectFieldSetCreate from "../pages/projects/ProjectFieldSetCreate";
+import ProjectFieldSetEdit from "../pages/projects/ProjectFieldSetEdit";
 import ProjectFieldConfigurationsLanding from "../pages/projects/ProjectFieldConfigurationsLanding";
 import ProjectWelcome from "../pages/projects/ProjectWelcome";
 import ProjectLayout from "../components/ProjectLayout";
@@ -39,6 +43,7 @@ import FieldEdit from "../pages/fields/FieldEdit";
 // Field Configurations
 import FieldConfigurations from "../pages/fieldconfigurations/FieldConfigurations";
 import FieldConfigurationEdit from "../pages/fieldconfigurations/FieldConfigurationEdit";
+import FieldConfigurationEditUniversal from "../pages/fieldconfigurations/FieldConfigurationEditUniversal";
 import FieldConfigurationCreate from "../pages/fieldconfigurations/FieldConfigurationCreate";
 
 // Field Sets
@@ -189,7 +194,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <FieldConfigurationEdit />
+            <FieldConfigurationEditUniversal scope="tenant" />
           </RoleProtectedRoute>
         } />
         <Route path="field-configurations/create" element={
@@ -317,14 +322,6 @@ export default function AppRoutes() {
         } />
 
         {/* Field Configurations del Progetto */}
-        <Route path="field-configurations" element={
-          <RoleProtectedRoute requiredRoles={[
-            { name: "ADMIN", scope: "TENANT" },
-            { name: "ADMIN", scope: "PROJECT" }
-          ]}>
-            <ProjectFieldConfigurations />
-          </RoleProtectedRoute>
-        } />
         <Route path="field-configurations/create" element={
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
@@ -338,7 +335,41 @@ export default function AppRoutes() {
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
           ]}>
-            <FieldConfigurationEdit />
+            <ProjectFieldConfigurationEdit />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-configurations" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectFieldConfigurations />
+          </RoleProtectedRoute>
+        } />
+
+        {/* Field Sets del Progetto */}
+        <Route path="field-sets/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectFieldSetCreate />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-sets/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectFieldSetEdit />
+          </RoleProtectedRoute>
+        } />
+        <Route path="field-sets" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectFieldSets />
           </RoleProtectedRoute>
         } />
       </Route>
