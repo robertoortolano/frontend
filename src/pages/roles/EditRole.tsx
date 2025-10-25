@@ -97,19 +97,25 @@ export default function EditRole() {
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Modifica Ruolo</h1>
-      <p className={layout.paragraphMuted}>
-        Modifica un ruolo personalizzato del tenant. Puoi modificare solo nome e descrizione.
-      </p>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Modifica Ruolo</h1>
+        <p className={layout.paragraphMuted}>
+          Modifica un ruolo personalizzato del tenant. Puoi modificare solo nome e descrizione.
+        </p>
+      </div>
 
       {error && (
-        <div className={`${alert.error} mb-4`}>
-          <p>{error}</p>
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mb-8">
+      <form onSubmit={handleSubmit} className={form.form}>
+        {/* Basic Information Section */}
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
         <div className={form.formGroup}>
           <label htmlFor="name" className={form.label}>
             Nome Ruolo *
@@ -144,15 +150,17 @@ export default function EditRole() {
           />
           <p className={form.helpText}>Descrizione opzionale del ruolo e delle sue funzionalità</p>
         </div>
+        </div>
 
-        <div className="flex gap-4">
-          <button type="submit" className={`${buttons.button} ${buttons.buttonPrimary}`} disabled={saving}>
+        {/* Action Buttons */}
+        <div className={layout.buttonRow}>
+          <button type="submit" className={buttons.button} disabled={saving}>
             {saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>
           <button
             type="button"
             onClick={handleCancel}
-            className={`${buttons.button} ${buttons.buttonSecondary}`}
+            className={buttons.button}
             disabled={saving}
           >
             Annulla

@@ -60,78 +60,106 @@ export default function HomeProjects() {
   let content;
 
   if (loading) {
-    content = <p className="list-loading">Caricamento progetti...</p>;
-  } else if (error) {
-    content = <p className={alert.error}>{error}</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Caricamento progetti...</p>
+      </div>
+    );
   } else if (projects.length === 0) {
-    content = <p className="list-loading">Nessun progetto trovato.</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Nessun progetto trovato.</p>
+        <p className="mt-2 text-sm text-gray-600">Clicca su "Crea Nuovo Progetto" per iniziare.</p>
+      </div>
+    );
   } else {
     content = (
-      <table className={table.table}>
-        <thead>
-          <tr>
-            <th style={{ width: '40px' }}></th>
-            <th>Name</th>
-            <th>Key</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((proj) => {
-            const isFavorite = favoriteIds.has(proj.id);
-            return (
-              <tr key={proj.id}>
-                <td style={{ textAlign: 'center' }}>
-                  <button
-                    onClick={(e) => handleToggleFavorite(proj.id, e)}
-                    className="cursor-pointer hover:scale-110 transition-transform"
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      padding: '4px',
-                      cursor: 'pointer'
-                    }}
-                    title={isFavorite ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
-                  >
-                    <Star 
-                      size={20} 
-                      fill={isFavorite ? "#fbbf24" : "none"}
-                      stroke={isFavorite ? "#fbbf24" : "#9ca3af"}
-                      strokeWidth={2}
-                    />
-                  </button>
-                </td>
-                <td>
-                  <Link to={`/projects/${proj.id}`} className={layout.link}>
-                    {proj.name}
-                  </Link>
-                </td>
-                <td>
-                  <Link to={`/projects/${proj.id}`} className={layout.link}>
-                    {proj.key}
-                  </Link>
-                </td>
-                <td>{proj.description}</td>
+      <div className={layout.block}>
+        <div className="overflow-x-auto">
+          <table className={table.table}>
+            <thead>
+              <tr>
+                <th style={{ width: '40px' }}></th>
+                <th>Nome</th>
+                <th>Chiave</th>
+                <th>Descrizione</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {projects.map((proj) => {
+                const isFavorite = favoriteIds.has(proj.id);
+                return (
+                  <tr key={proj.id}>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        onClick={(e) => handleToggleFavorite(proj.id, e)}
+                        className="cursor-pointer hover:scale-110 transition-transform"
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          padding: '4px',
+                          cursor: 'pointer'
+                        }}
+                        title={isFavorite ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+                      >
+                        <Star 
+                          size={20} 
+                          fill={isFavorite ? "#fbbf24" : "none"}
+                          stroke={isFavorite ? "#fbbf24" : "#9ca3af"}
+                          strokeWidth={2}
+                        />
+                      </button>
+                    </td>
+                    <td>
+                      <Link to={`/projects/${proj.id}`} className={layout.link}>
+                        {proj.name}
+                      </Link>
+                    </td>
+                    <td>
+                      <Link to={`/projects/${proj.id}`} className={layout.link}>
+                        {proj.key}
+                      </Link>
+                    </td>
+                    <td>{proj.description || <span className="text-gray-400 italic">Nessuna descrizione</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Projects</h1>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Progetti</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci i tuoi progetti e accedi alle loro configurazioni.
+        </p>
+        <div className={layout.buttonRow}>
+          <button 
+            className={buttons.button}
+            onClick={() => setShowCreateModal(true)}
+          >
+            + Crea Nuovo Progetto
+          </button>
+        </div>
+      </div>
 
-      <button 
-        className={buttons.button}
-        onClick={() => setShowCreateModal(true)}
-      >
-        + Crea nuovo progetto
-      </button>
+      {/* Error Message */}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
 
-      {content}
+      {/* Content Section */}
+      <div className={layout.section}>
+        {content}
+      </div>
       
       {showCreateModal && (
         <CreateProjectModal

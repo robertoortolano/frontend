@@ -183,8 +183,9 @@ export default function TenantUserManagement() {
   }
 
   return (
-    <div className={layout.container}>
-      <div className="mb-6">
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
         <h1 className={layout.title}>Gestione Utenti Tenant</h1>
         <p className={layout.paragraphMuted}>
           Concedi o revoca l'accesso alla tenant corrente per gli utenti registrati. Solo gli utenti con ruolo ADMIN
@@ -193,8 +194,8 @@ export default function TenantUserManagement() {
       </div>
 
       {/* Search Section */}
-      <div className={`${layout.block} mb-6`}>
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>
           <Search size={20} />
           Aggiungi Utente alla Tenant
         </h2>
@@ -215,7 +216,7 @@ export default function TenantUserManagement() {
           <button
             onClick={handleSearch}
             disabled={searching}
-            className={`${buttons.button} ${buttons.buttonPrimary}`}
+            className={buttons.button}
           >
             {searching ? "Ricerca..." : "Cerca"}
           </button>
@@ -274,7 +275,7 @@ export default function TenantUserManagement() {
                     </div>
                     <button
                       onClick={handleGrantAccess}
-                      className={`${buttons.button} ${buttons.buttonPrimary} self-end`}
+                      className={`${buttons.button} self-end`}
                     >
                       <UserPlus size={18} className="mr-2" />
                       Assegna Accesso
@@ -288,21 +289,21 @@ export default function TenantUserManagement() {
 
       {/* Success Message */}
       {successMessage && (
-        <div className={`${alert.success} mb-4`}>
-          <p>{successMessage}</p>
+        <div className={alert.successContainer}>
+          <p className={alert.success}>{successMessage}</p>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className={`${alert.error} mb-4`}>
-          <p>{error}</p>
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
         </div>
       )}
 
       {/* Users List */}
-      <div className={layout.block}>
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>
           <Users size={20} />
           Utenti con Accesso ({usersWithAccess.length})
         </h2>
@@ -334,16 +335,18 @@ export default function TenantUserManagement() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEditRoles(user)}
-                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
+                          className={buttons.button}
                           title="Modifica Ruoli"
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                         >
                           <Edit size={16} className="mr-1" />
                           Modifica Ruoli
                         </button>
                         <button
                           onClick={() => handleRevokeAccess(user.id, user.username)}
-                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
+                          className={buttons.button}
                           title="Revoca Accesso"
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                         >
                           <UserMinus size={16} className="mr-1" />
                           Revoca

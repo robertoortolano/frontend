@@ -33,19 +33,28 @@ export default function ProjectWelcome() {
   }, [projectId, token]);
 
   if (loading) {
-    return <div className={layout.loading}>Caricamento progetto...</div>;
+    return (
+      <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div className={layout.headerSection}>
+          <h1 className={layout.title}>Caricamento progetto...</h1>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className={layout.container}>
-      <div className="text-center">
-        <FolderOpen size={80} className="mx-auto text-blue-500 mb-6" />
-        <h1 className={layout.title}>
-          Benvenuto in {project?.name || "Progetto"}
-        </h1>
-        <p className={layout.paragraphMuted}>
-          Utilizza la barra di navigazione per accedere alle funzionalità del progetto.
-        </p>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <div className="text-center">
+          <FolderOpen size={80} className="mx-auto text-blue-500 mb-6" />
+          <h1 className={layout.title}>
+            Benvenuto in {project?.name || "Progetto"}
+          </h1>
+          <p className={layout.paragraphMuted}>
+            Utilizza la barra di navigazione per accedere alle funzionalità del progetto.
+          </p>
+        </div>
       </div>
     </div>
   );

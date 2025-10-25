@@ -177,10 +177,25 @@ export default function EditItemTypeSet() {
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Modifica Item Type Set</h1>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Modifica Item Type Set</h1>
+        <p className={layout.paragraphMuted}>
+          Modifica le informazioni dell'item type set e le sue configurazioni.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mb-8">
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className={form.form}>
+        {/* Basic Information Section */}
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
         <div className={form.formGroup}>
           <label htmlFor="name" className={form.label}>
             Nome
@@ -347,20 +362,20 @@ export default function EditItemTypeSet() {
             );
           })}
         </fieldset>
+        </div>
 
-        {error && <p className={alert.error}>{error}</p>}
-
-        <div className={form.buttonGroup}>
+        {/* Action Buttons */}
+        <div className={layout.buttonRow}>
           <button type="submit" disabled={saving} className={buttons.button}>
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>
           <button
             type="button"
             onClick={handleCancel}
-            className={`${buttons.button} ${buttons.secondary}`}
+            className={buttons.button}
             disabled={saving}
           >
-            Cancel
+            Annulla
           </button>
         </div>
       </form>

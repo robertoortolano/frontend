@@ -99,55 +99,79 @@ export default function Workflows() {
 
   let content;
   if (loading) {
-    content = <p className="list-loading">Caricamento workflow...</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Caricamento workflow...</p>
+      </div>
+    );
   } else if (workflows.length === 0) {
-    content = <p className="list-loading">Nessun workflow trovato.</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Nessun workflow trovato.</p>
+        <p className="mt-2 text-sm text-gray-600">Clicca su "Crea nuovo workflow" per iniziare.</p>
+      </div>
+    );
   } else {
     content = (
-      <table className={table.table}>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {workflows.map((wf) => (
-            <tr key={wf.id}>
-              <td>{wf.name}</td>
-              <td className="flex gap-2">
-                <button
-                  className={buttons.button}
-                  onClick={() => handleView(wf.id)}
-                >
-                  👁 View
-                </button>
-                <button
-                  className={buttons.button}
-                  onClick={() => handleEdit(wf.id)}
-                  disabled={wf.defaultWorkflow}
-                  title={wf.defaultWorkflow ? "Modifica disabilitata: workflow di default" : ""}
-                >
-                  ✎ Edit
-                </button>
-                <button
-                  className={buttons.button}
-                  onClick={() => handleDelete(wf.id)}
-                  disabled={wf.defaultWorkflow}
-                  title={wf.defaultWorkflow ? "Eliminazione disabilitata: workflow di default" : ""}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className={layout.block}>
+        <div className="overflow-x-auto">
+          <table className={table.table}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {workflows.map((wf) => (
+                <tr key={wf.id}>
+                  <td>{wf.name}</td>
+                  <td>
+                    <div className="flex gap-2">
+                      <button
+                        className={buttons.button}
+                        onClick={() => handleView(wf.id)}
+                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                      >
+                        👁 Visualizza
+                      </button>
+                      <button
+                        className={buttons.button}
+                        onClick={() => handleEdit(wf.id)}
+                        disabled={wf.defaultWorkflow}
+                        title={wf.defaultWorkflow ? "Modifica disabilitata: workflow di default" : ""}
+                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                      >
+                        ✎ Modifica
+                      </button>
+                      <button
+                        className={buttons.button}
+                        onClick={() => handleDelete(wf.id)}
+                        disabled={wf.defaultWorkflow}
+                        title={wf.defaultWorkflow ? "Eliminazione disabilitata: workflow di default" : ""}
+                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                      >
+                        Elimina
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     );
   }
 
   if (!isTenantAdmin && !isProjectAdmin) {
-    return <p className={alert.error}>Accesso negato</p>;
+    return (
+      <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>Accesso negato</p>
+        </div>
+      </div>
+    );
   }
 
   let modalContent;
@@ -250,19 +274,34 @@ export default function Workflows() {
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Workflow</h1>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Workflow</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci i workflow disponibili nel sistema.
+        </p>
+        <div className={layout.buttonRow}>
+          <button
+            className={buttons.button}
+            onClick={() => navigate("/tenant/workflows/create")}
+          >
+            + Crea Nuovo Workflow
+          </button>
+        </div>
+      </div>
 
-      <button
-        className={buttons.button}
-        onClick={() => navigate("/tenant/workflows/create")}
-      >
-        + Crea nuovo workflow
-      </button>
+      {/* Error Message */}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
 
-      {error && <p className={alert.error}>{error}</p>}
-
-      {content}
+      {/* Content Section */}
+      <div className={layout.section}>
+        {content}
+      </div>
 
       {showModal && (
         <div

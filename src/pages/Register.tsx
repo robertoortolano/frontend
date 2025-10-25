@@ -301,7 +301,7 @@ export default function Register() {
               required
             />
           </div>
-          <button type="submit" className={`${button.primary} ${button.fullWidth}`} disabled={isLoading}>
+          <button type="submit" className={button.button} disabled={isLoading}>
             {isLoading ? "Caricamento..." : "Accedi"}
           </button>
         </form>
@@ -332,7 +332,7 @@ export default function Register() {
               minLength={6}
             />
           </div>
-          <button type="submit" className={`${button.primary} ${button.fullWidth}`} disabled={isLoading}>
+          <button type="submit" className={button.button} disabled={isLoading}>
             {isLoading ? "Caricamento..." : "Registrati"}
           </button>
         </form>
@@ -352,7 +352,7 @@ export default function Register() {
           }}
         >
           <h2 style={{ margin: 0, color: "#1f2937" }}>Seleziona un Tenant</h2>
-          <button onClick={handleLogout} className={button.secondary} style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}>
+          <button onClick={handleLogout} className={button.button} style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}>
             Logout
           </button>
         </div>
@@ -408,7 +408,7 @@ export default function Register() {
               <p style={{ color: "#6b7280", margin: "2rem 0" }}>Nessun tenant disponibile. Creane uno nuovo.</p>
             )}
 
-            <button onClick={() => setShowTenantForm(true)} className={`${button.secondary} ${button.fullWidth}`}>
+            <button onClick={() => setShowTenantForm(true)} className={button.button}>
               Crea un nuovo Tenant
             </button>
 

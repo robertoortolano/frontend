@@ -314,7 +314,7 @@ export default function FieldSetCreateUniversal({ scope, projectId }: FieldSetCr
   }
 
   return (
-    <div className={layout.container}>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
       {/* Header Section */}
       <div className={layout.headerSection}>
         <h1 className={layout.title}>{getTitle()}</h1>
@@ -555,3 +555,4 @@ export default function FieldSetCreateUniversal({ scope, projectId }: FieldSetCr
     </div>
   );
 }
+

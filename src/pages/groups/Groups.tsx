@@ -153,34 +153,48 @@ export default function Groups() {
   }
 
   return (
-    <div className={layout.container}>
-      <div className="flex items-center justify-between mb-6">
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
         <h1 className={layout.title}>Gestione Gruppi</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci i gruppi di utenti e le loro appartenenze.
+        </p>
         {!showForm && (
-          <button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-              setError(null);
-              setSuccess(null);
-            }}
-            className={`${buttons.button} ${buttons.buttonPrimary}`}
-          >
-            <Plus size={20} />
-            Nuovo Gruppo
-          </button>
+          <div className={layout.buttonRow}>
+            <button
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+                setError(null);
+                setSuccess(null);
+              }}
+              className={buttons.button}
+            >
+              <Plus size={20} />
+              Nuovo Gruppo
+            </button>
+          </div>
         )}
       </div>
 
-      {error && <div className={`${alert.error} mb-4`}>{error}</div>}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
 
-      {success && <div className={`${alert.success} mb-4`}>{success}</div>}
+      {success && (
+        <div className={alert.successContainer}>
+          <p className={alert.success}>{success}</p>
+        </div>
+      )}
 
       {showForm ? (
-        <div className={layout.block}>
+        <div className={layout.section}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className={layout.blockTitleBlue}>{editingGroup ? "Modifica Gruppo" : "Nuovo Gruppo"}</h2>
-            <button onClick={resetForm} className={`${buttons.button} ${buttons.buttonSecondary}`}>
+            <h2 className={layout.sectionTitle}>{editingGroup ? "Modifica Gruppo" : "Nuovo Gruppo"}</h2>
+            <button onClick={resetForm} className={buttons.button}>
               <X size={18} />
               Annulla
             </button>
@@ -219,11 +233,11 @@ export default function Groups() {
             />
 
             <div className={form.formActions}>
-              <button type="submit" className={`${buttons.button} ${buttons.buttonPrimary}`}>
+              <button type="submit" className={buttons.button}>
                 <Save size={18} />
                 {editingGroup ? "Aggiorna" : "Crea"} Gruppo
               </button>
-              <button type="button" onClick={resetForm} className={`${buttons.button} ${buttons.buttonSecondary}`}>
+              <button type="button" onClick={resetForm} className={buttons.button}>
                 <X size={18} />
                 Annulla
               </button>
@@ -231,8 +245,8 @@ export default function Groups() {
           </form>
         </div>
       ) : (
-        <div className={layout.block}>
-          <h2 className={layout.blockTitleBlue}>Gruppi ({groups.length})</h2>
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Gruppi ({groups.length})</h2>
 
           {groups.length === 0 ? (
             <div className={alert.info}>
@@ -271,15 +285,17 @@ export default function Groups() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleEdit(group)}
-                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
+                          className={buttons.button}
                           title="Modifica gruppo"
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                         >
                           <Edit size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(group.id)}
-                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
+                          className={buttons.button}
                           title="Elimina gruppo"
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                         >
                           <Trash2 size={14} />
                         </button>

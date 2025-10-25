@@ -113,97 +113,143 @@ export default function Fields() {
 
   let content;
   if (loading) {
-    content = <p className="list-loading">Caricamento campi...</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Caricamento campi...</p>
+      </div>
+    );
   } else if (fields.length === 0) {
-    content = <p className="list-loading">Nessun campo trovato.</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Nessun campo trovato.</p>
+        <p className="mt-2 text-sm text-gray-600">Clicca su "Crea nuovo campo" per iniziare.</p>
+      </div>
+    );
   } else {
     content = (
-      <table className={table.table}>
-        <thead>
-          <tr>
-            <th className="w-30">Nome</th>
-            <th className="w-20"># Config</th>
-            <th className="w-30">FieldSet</th>
-            <th className="w-20"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {fields.map((field) => {
-            const used =
-              (field.fieldConfigurations?.length ?? 0) > 0 ||
-              (field.fieldSets?.length ?? 0) > 0;
-
-            return (
-              <tr key={field.id}>
-                <td>{field.name}</td>
-
-                <td>
-                  <FieldConfigurationsPopup field={field} />
-                </td>
-                <td>
-                  <FieldSetsPopup field={field} />
-                </td>
-
-                <td className="flex gap-2">
-                  <button
-                    className={buttons.button}
-                    onClick={() => handleEdit(field.id)}
-                    disabled={field.defaultField}
-                    title={
-                      field.defaultField
-                        ? "Campo di default non modificabile"
-                        : ""
-                    }
-                  >
-                    ✎ Edit
-                  </button>
-                  <button
-                    className={buttons.button}
-                    onClick={() => handleDelete(field.id)}
-                    disabled={field.defaultField || used}
-                    title={getDeleteTitle(field, used)}
-                  >
-                    Delete
-                  </button>
-                </td>
+      <div className={layout.block}>
+        <div className="overflow-x-auto">
+          <table className={table.table}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th># Config</th>
+                <th>FieldSet</th>
+                <th>Azioni</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {fields.map((field) => {
+                const used =
+                  (field.fieldConfigurations?.length ?? 0) > 0 ||
+                  (field.fieldSets?.length ?? 0) > 0;
+
+                return (
+                  <tr key={field.id}>
+                    <td>{field.name}</td>
+                    <td>
+                      <FieldConfigurationsPopup field={field} />
+                    </td>
+                    <td>
+                      <FieldSetsPopup field={field} />
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button
+                          className={buttons.button}
+                          onClick={() => handleEdit(field.id)}
+                          disabled={field.defaultField}
+                          title={
+                            field.defaultField
+                              ? "Campo di default non modificabile"
+                              : ""
+                          }
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          ✎ Modifica
+                        </button>
+                        <button
+                          className={buttons.button}
+                          onClick={() => handleDelete(field.id)}
+                          disabled={field.defaultField || used}
+                          title={getDeleteTitle(field, used)}
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          Elimina
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     );
   }
 
   if (!isTenantAdmin && !isProjectAdmin) {
-    return <p className="list-loading">You are not authorized</p>;
+    return (
+      <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>Accesso negato</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Fields</h1>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Campi</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci i campi disponibili nel sistema.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className={form.formGroup}>
-          <label className={form.label} htmlFor="name">Nome</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className={form.input}
-            disabled={saving}
-          />
+      {/* Error Message */}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
         </div>
+      )}
 
-        {error && <p className={alert.error}>{error}</p>}
+      {/* Create Form Section */}
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>Crea Nuovo Campo</h2>
+        <form onSubmit={handleSubmit} className={form.form}>
+          <div className={form.formGroup}>
+            <label className={form.label} htmlFor="name">Nome *</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className={form.input}
+              disabled={saving}
+              placeholder="Inserisci il nome del campo"
+            />
+            <p className={form.helpText}>
+              Il nome del campo deve essere unico.
+            </p>
+          </div>
 
-        <button type="submit" disabled={saving} className={buttons.button}>
-          {saving ? "Salvataggio in corso..." : "Crea nuovo campo"}
-        </button>
-      </form>
+          <div className={layout.buttonRow}>
+            <button type="submit" disabled={saving} className={buttons.button}>
+              {saving ? "Salvataggio..." : "Crea Nuovo Campo"}
+            </button>
+          </div>
+        </form>
+      </div>
 
-      {content}
+      {/* List Section */}
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>Campi Esistenti</h2>
+        {content}
+      </div>
     </div>
   );
 }

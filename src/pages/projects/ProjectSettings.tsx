@@ -105,19 +105,27 @@ interface ProjectDetailsProps {
 
 function ProjectDetails({ project, onEdit }: ProjectDetailsProps) {
   return (
-    <div className={layout.block}>
-      <p>
-        <strong>Name:</strong> {project.name}
-      </p>
-      <p>
-        <strong>Key:</strong> <span className={utilities.monospace}>{project.key}</span>
-      </p>
-      <p>
-        <strong>Description:</strong> {project.description || <em>No description</em>}
-      </p>
-      <button className={`${buttons.button} ${layout.mt4}`} onClick={onEdit}>
-        Edit
-      </button>
+    <div>
+      <h2 className={layout.sectionTitle}>Dettagli Progetto</h2>
+      <div className={layout.block}>
+        <div className={form.formGroup}>
+          <label className={form.label}>Nome</label>
+          <p className="text-lg font-medium">{project.name}</p>
+        </div>
+        <div className={form.formGroup}>
+          <label className={form.label}>Chiave</label>
+          <p className={utilities.monospace}>{project.key}</p>
+        </div>
+        <div className={form.formGroup}>
+          <label className={form.label}>Descrizione</label>
+          <p>{project.description || <em>Nessuna descrizione</em>}</p>
+        </div>
+        <div className={layout.buttonRow}>
+          <button className={buttons.button} onClick={onEdit}>
+            Modifica
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -193,15 +201,15 @@ function ItemTypeSetDetails({
   const renderItemTypeSetInfo = (itemTypeSet: any, title: string, showEditButton = false) => (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <h3 className={layout.sectionTitle}>{title}</h3>
         {showEditButton && (
           <button
-            className={`${buttons.button} ${utilities.mt4}`}
+            className={buttons.button}
             onClick={onEdit}
             disabled={isGlobal}
             title={isGlobal ? "Global sets cannot be edited" : "Edit item type set"}
           >
-            Edit
+            Modifica
           </button>
         )}
       </div>
@@ -312,17 +320,17 @@ function ItemTypeSetDetails({
               )}
 
               {/* Pulsanti azione */}
-              <div className="flex gap-2">
+              <div className={layout.buttonRow}>
                 <button
                   onClick={handleCancelChange}
-                  className={`${buttons.button} ${utilities.mt4}`}
+                  className={buttons.button}
                   disabled={isUpdatingItemTypeSet}
                 >
                   Annulla
                 </button>
                 <button
                   onClick={handleApplyChange}
-                  className={`${buttons.button} ${utilities.mt4} flex items-center gap-2`}
+                  className={`${buttons.button} flex items-center gap-2`}
                   disabled={!selectedItemTypeSet || isUpdatingItemTypeSet}
                 >
                   {isUpdatingItemTypeSet ? (
@@ -344,23 +352,29 @@ function ItemTypeSetDetails({
 
         {/* Messaggi di stato */}
         {isUpdatingItemTypeSet && (
-          <div className={`${alert.info} ${utilities.mt4} flex items-center gap-2`}>
-            <Loader2 size={16} className="animate-spin" />
-            Aggiornamento ItemTypeSet in corso...
+          <div className={alert.infoContainer}>
+            <p className={alert.info}>
+              <Loader2 size={16} className="animate-spin" />
+              Aggiornamento ItemTypeSet in corso...
+            </p>
           </div>
         )}
 
         {successMessage && (
-          <div className={`${alert.success} ${utilities.mt4} flex items-center gap-2`}>
-            <CheckCircle size={16} />
-            {successMessage}
+          <div className={alert.successContainer}>
+            <p className={alert.success}>
+              <CheckCircle size={16} />
+              {successMessage}
+            </p>
           </div>
         )}
 
         {error && (
-          <div className={`${alert.error} ${utilities.mt4} flex items-center gap-2`}>
-            <AlertCircle size={16} />
-            {error}
+          <div className={alert.errorContainer}>
+            <p className={alert.error}>
+              <AlertCircle size={16} />
+              {error}
+            </p>
           </div>
         )}
       </div>
@@ -561,16 +575,22 @@ export default function ProjectSettings() {
   };
 
   return (
-    <div className={layout.container}>
-      <div className="text-center mb-8">
-        <Settings size={64} className="mx-auto text-purple-500 mb-4" />
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Impostazioni Progetto</h1>
-        <p className="text-gray-600">Gestisci le configurazioni e le impostazioni del tuo progetto</p>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Impostazioni Progetto</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci le configurazioni e le impostazioni del tuo progetto.
+        </p>
       </div>
       
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* Tab Navigation */}
+      <div className={layout.section}>
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
       
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      {/* Tab Content */}
+      <div className={layout.section}>
         {renderTabContent()}
       </div>
     </div>

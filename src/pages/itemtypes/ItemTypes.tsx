@@ -151,33 +151,57 @@ export default function ItemTypes() {
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Item Types</h1>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Item Types</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci i tipi di item disponibili nel sistema.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className={form.formGroup}>
-          <label className={form.label} htmlFor="name">
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className={form.input}
-            disabled={saving}
-          />
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
         </div>
+      )}
 
-        {error && <p className={alert.error}>{error}</p>}
+      {/* Create Form Section */}
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>Crea Nuovo Item Type</h2>
+        <form onSubmit={handleSubmit} className={form.form}>
+          <div className={form.formGroup}>
+            <label className={form.label} htmlFor="name">
+              Nome *
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className={form.input}
+              disabled={saving}
+              placeholder="Inserisci il nome dell'item type"
+            />
+            <p className={form.helpText}>
+              Il nome dell'item type deve essere unico.
+            </p>
+          </div>
 
-        <button type="submit" disabled={saving} className={buttons.button}>
-          {saving ? "Saving..." : "Create Item Type"}
-        </button>
-      </form>
+          <div className={layout.buttonRow}>
+            <button type="submit" disabled={saving} className={buttons.button}>
+              {saving ? "Salvataggio..." : "Crea Item Type"}
+            </button>
+          </div>
+        </form>
+      </div>
 
-      {content}
+      {/* List Section */}
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>Item Types Esistenti</h2>
+        {content}
+      </div>
     </div>
   );
 }

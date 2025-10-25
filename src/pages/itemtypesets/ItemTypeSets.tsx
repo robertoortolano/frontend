@@ -220,15 +220,23 @@ export default function ItemTypeSets() {
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Item Type Sets {isProjectContext ? "di Progetto" : "Globali"}</h1>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Item Type Sets {isProjectContext ? "di Progetto" : "Globali"}</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci i set di tipi di item e le loro configurazioni.
+        </p>
+        <div className={layout.buttonRow}>
+          <button onClick={handleCreate} className={buttons.button}>
+            + Crea Nuovo Item Type Set
+          </button>
+        </div>
+      </div>
 
-      {content}
-
-      <div className={layout.buttonRow}>
-        <button onClick={handleCreate} className={`${buttons.button} ${buttons.buttonSmall}`}>
-          + Crea Nuovo Item Type Set
-        </button>
+      {/* Content Section */}
+      <div className={layout.section}>
+        {content}
       </div>
 
       {/* Panel per gestione permissions - si espande nella pagina */}

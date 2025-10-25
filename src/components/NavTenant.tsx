@@ -34,7 +34,7 @@ export default function NavTenant() {
       <ul className="nav-list">
         {/* Home */}
         <li>
-          <NavLink to="/tenant" className="nav-link">
+          <NavLink to="/tenant" className="nav-link" end>
             Home
           </NavLink>
         </li>
@@ -46,17 +46,17 @@ export default function NavTenant() {
         {canAccessBasicFeatures && (
           <>
             <li>
-              <NavLink to="/tenant/fields" className="nav-link">
+              <NavLink to="/tenant/fields" className="nav-link" end>
                 Fields
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/statuses" className="nav-link">
+              <NavLink to="/tenant/statuses" className="nav-link" end>
                 Statuses
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/item-types" className="nav-link">
+              <NavLink to="/tenant/item-types" className="nav-link" end>
                 Item types
               </NavLink>
             </li>
@@ -67,37 +67,37 @@ export default function NavTenant() {
         {isAdmin && (
           <>
             <li>
-              <NavLink to="/tenant/field-configurations" className="nav-link">
+              <NavLink to="/tenant/field-configurations" className="nav-link" end>
                 Field Configurations
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/field-sets" className="nav-link">
+              <NavLink to="/tenant/field-sets" className="nav-link" end>
                 Field Sets
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/workflows" className="nav-link">
+              <NavLink to="/tenant/workflows" className="nav-link" end>
                 Workflows
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/item-type-sets" className="nav-link">
+              <NavLink to="/tenant/item-type-sets" className="nav-link" end>
                 Item type Sets
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/roles" className="nav-link">
+              <NavLink to="/tenant/roles" className="nav-link" end>
                 Gestione Ruoli
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/groups" className="nav-link">
+              <NavLink to="/tenant/groups" className="nav-link" end>
                 Gruppi
               </NavLink>
             </li>
             <li>
-              <NavLink to="/tenant/users" className="nav-link">
+              <NavLink to="/tenant/users" className="nav-link" end>
                 Gestione Utenti
               </NavLink>
             </li>
@@ -109,7 +109,7 @@ export default function NavTenant() {
 
         {/* Progetti */}
         <li>
-          <NavLink to="/projects" className="nav-link">
+          <NavLink to="/projects" className="nav-link" end>
             Progetti
           </NavLink>
         </li>

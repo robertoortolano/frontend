@@ -133,10 +133,25 @@ export default function ItemTypeSetCreate() {
   };
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Crea nuovo Item Type Set</h1>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Crea nuovo Item Type Set</h1>
+        <p className={layout.paragraphMuted}>
+          Crea un nuovo item type set con le configurazioni necessarie.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mb-8">
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className={form.form}>
+        {/* Basic Information Section */}
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
         <div className={form.formGroup}>
           <label htmlFor="name" className={form.label}>
             Name
@@ -261,20 +276,20 @@ export default function ItemTypeSetCreate() {
             );
           })}
         </fieldset>
+        </div>
 
-        {error && <p className={alert.error}>{error}</p>}
-
-        <div className={form.buttonGroup}>
+        {/* Action Buttons */}
+        <div className={layout.buttonRow}>
           <button type="submit" disabled={saving} className={buttons.button}>
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Salvataggio..." : "Crea Item Type Set"}
           </button>
           <button
             type="button"
             onClick={handleCancel}
-            className={`${buttons.button} ${buttons.secondary}`}
+            className={buttons.button}
             disabled={saving}
           >
-            Cancel
+            Annulla
           </button>
         </div>
       </form>

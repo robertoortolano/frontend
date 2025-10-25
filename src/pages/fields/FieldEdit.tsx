@@ -80,39 +80,59 @@ export default function FieldEdit() {
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Modifica Campo</h1>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Modifica Campo</h1>
+        <p className={layout.paragraphMuted}>
+          Modifica le informazioni del campo.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className={form.formGroup}>
-          <label className={form.label} htmlFor="name">Nome</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className={form.input}
-            disabled={saving || defaultField}
-          />
+      {/* Error Message */}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className={form.form}>
+        {/* Basic Information Section */}
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
+          <div className={form.formGroup}>
+            <label className={form.label} htmlFor="name">Nome *</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className={form.input}
+              disabled={saving || defaultField}
+              placeholder="Inserisci il nome del campo"
+            />
+            <p className={form.helpText}>
+              Il nome del campo deve essere unico.
+            </p>
+          </div>
         </div>
 
-        {error && <p className={alert.error}>{error}</p>}
-
-        <div className={buttons.buttonRow}>
+        {/* Action Buttons */}
+        <div className={layout.buttonRow}>
           <button
             type="submit"
             disabled={saving || defaultField}
             className={buttons.button}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>
           <button
             type="button"
             onClick={() => navigate("/tenant/fields")}
             className={buttons.button}
           >
-            Cancel
+            Annulla
           </button>
         </div>
       </form>

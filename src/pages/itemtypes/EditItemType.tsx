@@ -83,42 +83,62 @@ export default function EditItemType() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Modifica Item Type</h1>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Modifica Item Type</h1>
+        <p className={layout.paragraphMuted}>
+          Modifica le informazioni dell'item type.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className={form.formGroup}>
-          <label htmlFor="name" className={form.label}>
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className={form.input}
-            disabled={saving}
-          />
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className={form.form}>
+        {/* Basic Information Section */}
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
+          
+          <div className={form.formGroup}>
+            <label htmlFor="name" className={form.label}>
+              Nome *
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className={form.input}
+              disabled={saving}
+              placeholder="Inserisci il nome dell'item type"
+            />
+            <p className={form.helpText}>
+              Il nome dell'item type deve essere unico.
+            </p>
+          </div>
         </div>
 
-        {error && <p className={alert.error}>{error}</p>}
-
-        <div className={form.buttonGroup}>
+        {/* Action Buttons */}
+        <div className={layout.buttonRow}>
           <button
             type="submit"
             disabled={saving}
-            className={`${buttons.button} ${buttons.buttonSmall}`}
+            className={buttons.button}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>
           <button
             type="button"
             onClick={handleCancel}
             disabled={saving}
-            className={`${buttons.button} ${buttons.buttonSmall}`}
+            className={buttons.button}
           >
-            Cancel
+            Annulla
           </button>
         </div>
       </form>

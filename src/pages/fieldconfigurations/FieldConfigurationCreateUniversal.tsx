@@ -126,7 +126,7 @@ export default function FieldConfigurationCreateUniversal({ scope, projectId }: 
       const dto: FieldConfigurationCreateDto = {
         name,
         alias: alias || null,
-        fieldId: selectedFieldId || null,
+        fieldId: selectedFieldId ? parseInt(selectedFieldId) : null,
         fieldType: fieldTypeKey,
         description,
         options: canEditOptions
@@ -177,147 +177,218 @@ export default function FieldConfigurationCreateUniversal({ scope, projectId }: 
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>{getTitle()}</h1>
-      <p className="text-gray-600 mb-6">{getDescription()}</p>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>{getTitle()}</h1>
+        <p className={layout.paragraphMuted}>{getDescription()}</p>
+      </div>
 
-      {error && <p className={alert.error}>{error}</p>}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className={form.form}>
-        <div className={form.formGroup}>
-          <label htmlFor="name">Nome configurazione</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Es. Title Default Config"
-            required
-          />
-        </div>
-        <div className={form.formGroup}>
-          <label htmlFor="field">Field</label>
-          <select
-            id="field"
-            value={selectedFieldId}
-            onChange={(e) => setSelectedFieldId(e.target.value)}
-            required
-          >
-            <option value="">-- seleziona campo --</option>
-            {fields.map((field) => (
-              <option key={field.id} value={field.id}>
-                {field.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={form.formGroup}>
-          <label htmlFor="fieldType">Tipo campo</label>
-          <select
-            id="fieldType"
-            value={fieldTypeKey}
-            onChange={(e) => setFieldTypeKey(e.target.value)}
-            required
-          >
-            <option value="">-- seleziona tipo --</option>
-            {Object.entries(fieldTypes).map(([key, val]) => (
-              <option key={key} value={key}>
-                {val.displayName || key}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Basic Information Section */}
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
+          
+          <div className={form.formGroup}>
+            <label htmlFor="name" className={form.label}>
+              Nome configurazione *
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Es. Title Default Config"
+              required
+              disabled={saving}
+              className={form.input}
+            />
+            <p className={form.helpText}>
+              Scegli un nome descrittivo per identificare facilmente questa configurazione.
+            </p>
+          </div>
 
-        <div className={form.formGroup}>
-          <label htmlFor="alias">Alias</label>
-          <input
-            id="alias"
-            type="text"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            placeholder="Alias personalizzato per il campo"
-          />
-        </div>
-
-        <div className={form.formGroup}>
-          <label htmlFor="description">Descrizione</label>
-          <textarea
-            id="description"
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descrizione opzionale"
-          />
-        </div>
-
-        {canEditOptions && (
-          <fieldset className={form.formGroup}>
-            <legend>Opzioni</legend>
-            {options.map((opt, idx) => (
-              <div key={opt.id} className={form.inlineInputGroup}>
-                <input
-                  type="text"
-                  value={opt.label}
-                  onChange={(e) => handleOptionChange(idx, "label", e.target.value)}
-                  placeholder={`Etichetta opzione ${idx + 1}`}
-                  required
-                />
-                <input
-                  type="text"
-                  value={opt.value}
-                  onChange={(e) => handleOptionChange(idx, "value", e.target.value)}
-                  placeholder={`Valore opzione ${idx + 1}`}
-                  required
-                />
-                <div style={{ display: "flex", gap: "0.25rem" }}>
-                  <button
-                    type="button"
-                    onClick={() => moveOptionUp(idx)}
-                    disabled={idx === 0}
-                    className={buttons.smallButton}
-                    title="Sposta su"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveOptionDown(idx)}
-                    disabled={idx === options.length - 1}
-                    className={buttons.smallButton}
-                    title="Sposta giù"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeOption(idx)}
-                    className={buttons.smallButton}
-                    title="Rimuovi"
-                  >
-                    &times;
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={addOption}
-              className={buttons.button}
-              style={{ marginTop: "0.5rem" }}
+          <div className={form.formGroup}>
+            <label htmlFor="field" className={form.label}>
+              Campo *
+            </label>
+            <select
+              id="field"
+              value={selectedFieldId}
+              onChange={(e) => setSelectedFieldId(e.target.value)}
+              required
+              disabled={saving}
+              className={form.select}
             >
-              Aggiungi opzione
-            </button>
-          </fieldset>
+              <option value="">-- seleziona campo --</option>
+              {fields.map((field) => (
+                <option key={field.id} value={field.id}>
+                  {field.name}
+                </option>
+              ))}
+            </select>
+            <p className={form.helpText}>
+              Seleziona il campo per cui vuoi creare questa configurazione.
+            </p>
+          </div>
+
+          <div className={form.formGroup}>
+            <label htmlFor="fieldType" className={form.label}>
+              Tipo campo *
+            </label>
+            <select
+              id="fieldType"
+              value={fieldTypeKey}
+              onChange={(e) => setFieldTypeKey(e.target.value)}
+              required
+              disabled={saving}
+              className={form.select}
+            >
+              <option value="">-- seleziona tipo --</option>
+              {Object.entries(fieldTypes).map(([key, val]) => (
+                <option key={key} value={key}>
+                  {val.displayName || key}
+                </option>
+              ))}
+            </select>
+            <p className={form.helpText}>
+              Seleziona il tipo di campo per questa configurazione.
+            </p>
+          </div>
+
+          <div className={form.formGroup}>
+            <label htmlFor="alias" className={form.label}>
+              Alias
+            </label>
+            <input
+              id="alias"
+              type="text"
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+              placeholder="Alias personalizzato per il campo"
+              disabled={saving}
+              className={form.input}
+            />
+            <p className={form.helpText}>
+              Un alias personalizzato per questo campo (opzionale).
+            </p>
+          </div>
+
+          <div className={form.formGroup}>
+            <label htmlFor="description" className={form.label}>
+              Descrizione
+            </label>
+            <textarea
+              id="description"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descrizione opzionale"
+              disabled={saving}
+              className={form.textarea}
+            />
+            <p className={form.helpText}>
+              Aggiungi una descrizione per aiutare gli altri utenti a capire questa configurazione.
+            </p>
+          </div>
+        </div>
+
+        {/* Options Section */}
+        {canEditOptions && (
+          <div className={layout.section}>
+            <h2 className={layout.sectionTitle}>Opzioni</h2>
+            <p className={form.infoText}>
+              Configura le opzioni disponibili per questo campo. Puoi riordinarle usando i pulsanti freccia.
+            </p>
+            
+            <fieldset className={form.formGroup}>
+              <legend className={form.label}>Opzioni del Campo</legend>
+              {options.map((opt, idx) => (
+                <div key={opt.id} className={form.inlineInputGroup}>
+                  <input
+                    type="text"
+                    value={opt.label}
+                    onChange={(e) => handleOptionChange(idx, "label", e.target.value)}
+                    placeholder={`Etichetta opzione ${idx + 1}`}
+                    required
+                    disabled={saving}
+                    className={form.input}
+                  />
+                  <input
+                    type="text"
+                    value={opt.value}
+                    onChange={(e) => handleOptionChange(idx, "value", e.target.value)}
+                    placeholder={`Valore opzione ${idx + 1}`}
+                    required
+                    disabled={saving}
+                    className={form.input}
+                  />
+                  <div style={{ display: "flex", gap: "0.25rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => moveOptionUp(idx)}
+                      disabled={idx === 0 || saving}
+                      className={buttons.button}
+                      title="Sposta su"
+                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveOptionDown(idx)}
+                      disabled={idx === options.length - 1 || saving}
+                      className={buttons.button}
+                      title="Sposta giù"
+                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeOption(idx)}
+                      disabled={saving}
+                      className={buttons.button}
+                      title="Rimuovi"
+                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addOption}
+                className={buttons.button}
+                disabled={saving}
+                style={{ marginTop: "0.5rem" }}
+              >
+                Aggiungi opzione
+              </button>
+            </fieldset>
+          </div>
         )}
 
-        <div className={form.formGroup}>
-          <button type="submit" className={buttons.button} disabled={saving}>
-            {saving ? "Salvando..." : "Salva"}
+        {/* Action Buttons */}
+        <div className={layout.buttonRow}>
+          <button
+            type="submit"
+            className={buttons.button}
+            disabled={saving}
+          >
+            {saving ? "Salvataggio..." : "Crea Configurazione"}
           </button>
           <button
             type="button"
-            className={`${buttons.button} ${buttons.secondaryButton}`}
+            className={buttons.button}
             onClick={() => {
               if (scope === 'tenant') {
                 navigate("/tenant/field-configurations");
@@ -326,7 +397,6 @@ export default function FieldConfigurationCreateUniversal({ scope, projectId }: 
               }
             }}
             disabled={saving}
-            style={{ marginLeft: "0.5rem" }}
           >
             Annulla
           </button>

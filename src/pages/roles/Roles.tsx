@@ -85,38 +85,41 @@ export default function Roles() {
   }
 
   return (
-    <div className={layout.container}>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className={layout.title}>Gestione Ruoli</h1>
-          <p className={layout.paragraphMuted}>
-            Gestisci i ruoli personalizzati del tenant. Questi ruoli possono essere associati alle permissions degli
-            ItemTypeSet. Le permissions di sistema (Workers, Status Owners, Field Owners, Creators, Executors, Editors,
-            Viewers) sono predefinite e non modificabili.
-          </p>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Gestione Ruoli</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci i ruoli personalizzati del tenant. Questi ruoli possono essere associati alle permissions degli
+          ItemTypeSet. Le permissions di sistema (Workers, Status Owners, Field Owners, Creators, Executors, Editors,
+          Viewers) sono predefinite e non modificabili.
+        </p>
+        <div className={layout.buttonRow}>
+          <button
+            className={buttons.button}
+            onClick={() => navigate("/tenant/roles/create")}
+          >
+            <Plus size={20} className="mr-2" />
+            Crea Nuovo Ruolo
+          </button>
         </div>
-        <button
-          className={`${buttons.button} ${buttons.buttonPrimary}`}
-          onClick={() => navigate("/tenant/roles/create")}
-        >
-          <Plus size={20} className="mr-2" />
-          Crea Nuovo Ruolo
-        </button>
       </div>
 
       {error && (
-        <div className={`${alert.error} mb-4`}>
-          <p>{error}</p>
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
         </div>
       )}
 
-      {rolesList.length === 0 ? (
-        <div className={alert.info}>
-          <p>Nessun ruolo personalizzato configurato.</p>
-          <p className="mt-2">Clicca su &quot;Crea Nuovo Ruolo&quot; per iniziare.</p>
-        </div>
-      ) : (
-        <div className={layout.block}>
+      {/* Content Section */}
+      <div className={layout.section}>
+        {rolesList.length === 0 ? (
+          <div className={alert.info}>
+            <p>Nessun ruolo personalizzato configurato.</p>
+            <p className="mt-2">Clicca su &quot;Crea Nuovo Ruolo&quot; per iniziare.</p>
+          </div>
+        ) : (
+          <div className={layout.block}>
           <div className="overflow-x-auto">
             <table className={table.table}>
               <thead>
@@ -168,8 +171,9 @@ export default function Roles() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

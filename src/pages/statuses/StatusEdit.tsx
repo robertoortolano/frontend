@@ -78,36 +78,62 @@ export default function StatusEdit() {
   };
 
   if (loading) {
-    return <p className="list-loading">Caricamento status...</p>;
+    return (
+      <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div className={alert.infoContainer}>
+          <p className={alert.info}>Caricamento status...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Modifica Status</h1>
+    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Modifica Status</h1>
+        <p className={layout.paragraphMuted}>
+          Modifica le informazioni dello status.
+        </p>
+      </div>
 
-      {error && <p className={alert.error}>{error}</p>}
+      {/* Error Message */}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className={form.form}>
-        <div className={form.formGroup}>
-          <label htmlFor="name">Nome</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            disabled={saving}
-            className={form.input}
-          />
+        {/* Basic Information Section */}
+        <div className={layout.section}>
+          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
+          <div className={form.formGroup}>
+            <label htmlFor="name" className={form.label}>Nome *</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              disabled={saving}
+              className={form.input}
+              placeholder="Inserisci il nome dello status"
+            />
+            <p className={form.helpText}>
+              Il nome dello status deve essere unico.
+            </p>
+          </div>
         </div>
 
-        <div className={form.formGroup}>
+        {/* Action Buttons */}
+        <div className={layout.buttonRow}>
           <button type="submit" className={buttons.button} disabled={saving}>
-            {saving ? "Salvataggio in corso..." : "Salva"}
+            {saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>
           <button
             type="button"
-            className={`${buttons.button} ${buttons.secondaryButton}`}
+            className={buttons.button}
             onClick={() => navigate(-1)}
             disabled={saving}
           >

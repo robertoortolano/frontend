@@ -97,91 +97,131 @@ export default function Statuses() {
 
   let content;
   if (loading) {
-    content = <p className="list-loading">Caricamento status...</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Caricamento status...</p>
+      </div>
+    );
   } else if (statuses.length === 0) {
-    content = <p className="list-loading">Nessuno status trovato.</p>;
+    content = (
+      <div className={alert.infoContainer}>
+        <p className={alert.info}>Nessuno status trovato.</p>
+        <p className="mt-2 text-sm text-gray-600">Clicca su "Crea nuovo status" per iniziare.</p>
+      </div>
+    );
   } else {
     content = (
-      <table className={table.table}>
-        <thead>
-          <tr>
-            <th className="w-60">Nome</th>
-            <th className="w-10">Workflow</th>
-            <th className="w-30"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {statuses.map((status) => {
-            const usedInDefaultWorkflow = status.workflows?.some((w) => w.defaultWorkflow);
-
-            return (
-              <tr key={status.id}>
-                <td>{status.name}</td>
-                <td>
-                  <WorkflowsPopup workflows={status.workflows} />
-                </td>
-                <td className="flex gap-2">
-                  <button
-                    className={buttons.button}
-                    onClick={() => handleEdit(status.id)}
-                    disabled={usedInDefaultWorkflow || status.defaultStatus}
-                    title={
-                      usedInDefaultWorkflow || status.defaultStatus
-                        ? "Modifica disabilitata: usato in un workflow di default"
-                        : ""
-                    }
-                  >
-                    ✎ Edit
-                  </button>
-                  <button
-                    className={buttons.button}
-                    onClick={() => handleDelete(status.id)}
-                    disabled={usedInDefaultWorkflow || status.defaultStatus}
-                    title={
-                      usedInDefaultWorkflow || status.defaultStatus
-                        ? "Cancellazione disabilitata: usato in un workflow di default"
-                        : ""
-                    }
-                  >
-                    Delete
-                  </button>
-                </td>
+      <div className={layout.block}>
+        <div className="overflow-x-auto">
+          <table className={table.table}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Workflow</th>
+                <th>Azioni</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {statuses.map((status) => {
+                const usedInDefaultWorkflow = status.workflows?.some((w) => w.defaultWorkflow);
+
+                return (
+                  <tr key={status.id}>
+                    <td>{status.name}</td>
+                    <td>
+                      <WorkflowsPopup workflows={status.workflows} />
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button
+                          className={buttons.button}
+                          onClick={() => handleEdit(status.id)}
+                          disabled={usedInDefaultWorkflow || status.defaultStatus}
+                          title={
+                            usedInDefaultWorkflow || status.defaultStatus
+                              ? "Modifica disabilitata: usato in un workflow di default"
+                              : ""
+                          }
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          ✎ Modifica
+                        </button>
+                        <button
+                          className={buttons.button}
+                          onClick={() => handleDelete(status.id)}
+                          disabled={usedInDefaultWorkflow || status.defaultStatus}
+                          title={
+                            usedInDefaultWorkflow || status.defaultStatus
+                              ? "Cancellazione disabilitata: usato in un workflow di default"
+                              : ""
+                          }
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          Elimina
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className={layout.container}>
-      <h1 className={layout.title}>Status</h1>
+    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Section */}
+      <div className={layout.headerSection}>
+        <h1 className={layout.title}>Status</h1>
+        <p className={layout.paragraphMuted}>
+          Gestisci gli status disponibili nel sistema.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className={form.form}>
-        <div className={form.formGroup}>
-          <label className={form.label} htmlFor="name">
-            Nome
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className={form.input}
-            disabled={saving}
-          />
+      {/* Error Message */}
+      {error && (
+        <div className={alert.errorContainer}>
+          <p className={alert.error}>{error}</p>
         </div>
+      )}
 
-        {error && <p className={alert.error}>{error}</p>}
+      {/* Create Form Section */}
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>Crea Nuovo Status</h2>
+        <form onSubmit={handleSubmit} className={form.form}>
+          <div className={form.formGroup}>
+            <label className={form.label} htmlFor="name">Nome *</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className={form.input}
+              disabled={saving}
+              placeholder="Inserisci il nome dello status"
+            />
+            <p className={form.helpText}>
+              Il nome dello status deve essere unico.
+            </p>
+          </div>
 
-        <button type="submit" disabled={saving} className={buttons.button}>
-          {saving ? "Salvataggio in corso..." : "Crea nuovo status"}
-        </button>
-      </form>
+          <div className={layout.buttonRow}>
+            <button type="submit" disabled={saving} className={buttons.button}>
+              {saving ? "Salvataggio..." : "Crea Nuovo Status"}
+            </button>
+          </div>
+        </form>
+      </div>
 
-      {content}
+      {/* List Section */}
+      <div className={layout.section}>
+        <h2 className={layout.sectionTitle}>Status Esistenti</h2>
+        {content}
+      </div>
     </div>
   );
 }
