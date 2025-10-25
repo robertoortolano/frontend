@@ -1,13 +1,33 @@
 import React, { useState, useEffect, FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import api from "../../api/api";
 import { 
   FieldConfigurationViewDto, 
   FieldViewDto, 
   FieldTypesMap, 
   FieldOptionDto,
-  FieldConfigurationUpdateDto 
+  FieldConfigurationUpdateDto,
+  FieldOptionUpdateDto
 } from "../../types/field.types";
 import buttons from "../../styles/common/Buttons.module.css";
 import form from "../../styles/common/Forms.module.css";
@@ -18,6 +38,112 @@ import { useAuth } from "../../context/AuthContext";
 interface FieldConfigurationEditUniversalProps {
   scope: 'tenant' | 'project';
   projectId?: string;
+}
+
+interface SortableOptionItemProps {
+  option: FieldOptionDto;
+  index: number;
+  onLabelChange: (value: string) => void;
+  onValueChange: (value: string) => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  saving: boolean;
+  isLast: boolean;
+}
+
+function SortableOptionItem({
+  option,
+  index,
+  onLabelChange,
+  onValueChange,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+  saving,
+  isLast,
+}: SortableOptionItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: option.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`${form.inlineInputGroup} ${isDragging ? form.dragging : ''}`}
+    >
+      <span 
+        className={form.dragHandle} 
+        title="Trascina per riordinare"
+        {...attributes}
+        {...listeners}
+      >
+        ⋮⋮
+      </span>
+      <input
+        type="text"
+        value={option.label}
+        onChange={(e) => onLabelChange(e.target.value)}
+        placeholder={`Etichetta opzione ${index + 1}`}
+        required
+        disabled={saving}
+        className={form.input}
+      />
+      <input
+        type="text"
+        value={option.value}
+        onChange={(e) => onValueChange(e.target.value)}
+        placeholder={`Valore opzione ${index + 1}`}
+        required
+        disabled={saving}
+        className={form.input}
+      />
+      <div style={{ display: "flex", gap: "0.25rem" }}>
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={index === 0 || saving}
+          className={buttons.button}
+          title="Sposta su"
+          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={isLast || saving}
+          className={buttons.button}
+          title="Sposta giù"
+          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={saving}
+          className={buttons.button}
+          title="Rimuovi"
+          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+        >
+          &times;
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function FieldConfigurationEditUniversal({ 
@@ -39,6 +165,14 @@ export default function FieldConfigurationEditUniversal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Drag & Drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,8 +196,23 @@ export default function FieldConfigurationEditUniversal({
         
         // Set initial values
         setSelectedFieldId(config.fieldId?.toString() || "");
-        setFieldTypeKey(config.fieldType || "");
-        setOptions(config.options || []);
+        
+        // Find the field type key by comparing the descriptor with available types
+        const fieldTypeKey = Object.entries(typesRes.data).find(([key, descriptor]) => 
+          descriptor.displayName === config.fieldType?.displayName
+        )?.[0] || "";
+        setFieldTypeKey(fieldTypeKey);
+        
+        // Convert FieldOptionViewDto to FieldOptionDto
+        // Keep numeric IDs for existing options, use UUID for new ones
+        const convertedOptions = (config.options || []).map(opt => ({
+          id: opt.id?.toString() || uuidv4(),
+          label: opt.label,
+          value: opt.value,
+          enabled: opt.enabled,
+          orderIndex: opt.orderIndex
+        }));
+        setOptions(convertedOptions);
       } catch (e: any) {
         setError(e.response?.data?.message || "Errore nel caricamento della configurazione");
       } finally {
@@ -75,6 +224,17 @@ export default function FieldConfigurationEditUniversal({
   }, [id, token, scope, projectId]);
 
   const canEditOptions = fieldTypes[fieldTypeKey]?.supportsOptions === true;
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = options.findIndex(opt => opt.id === active.id);
+      const newIndex = options.findIndex(opt => opt.id === over.id);
+      
+      setOptions(arrayMove(options, oldIndex, newIndex));
+    }
+  };
 
   const handleOptionChange = (idx: number, field: keyof FieldOptionDto, value: string) => {
     setOptions((opts) =>
@@ -149,7 +309,15 @@ export default function FieldConfigurationEditUniversal({
         fieldType: fieldTypeKey,
         description: fieldConfiguration.description?.trim() || null,
         options: canEditOptions
-          ? options.map((opt, index) => ({ ...opt, orderIndex: index }))
+          ? options.map((opt, index) => ({
+              id: typeof opt.id === 'string' && !isNaN(Number(opt.id)) 
+                ? Number(opt.id) 
+                : null, // null for new options (UUID strings)
+              label: opt.label,
+              value: opt.value,
+              enabled: opt.enabled ?? true,
+              orderIndex: index
+            }))
           : [],
       };
 
@@ -343,65 +511,38 @@ export default function FieldConfigurationEditUniversal({
           <div className={layout.section}>
             <h2 className={layout.sectionTitle}>Opzioni</h2>
             <p className={form.infoText}>
-              Configura le opzioni disponibili per questo campo. Puoi riordinarle usando i pulsanti freccia.
+              Configura le opzioni disponibili per questo campo. Puoi riordinarle trascinandole o usando i pulsanti freccia.
             </p>
             
             <fieldset className={form.formGroup}>
               <legend className={form.label}>Opzioni del Campo</legend>
-              {options.map((opt, idx) => (
-                <div key={opt.id} className={form.inlineInputGroup}>
-                  <input
-                    type="text"
-                    value={opt.label}
-                    onChange={(e) => handleOptionChange(idx, "label", e.target.value)}
-                    placeholder={`Etichetta opzione ${idx + 1}`}
-                    required
-                    disabled={saving}
-                    className={form.input}
-                  />
-                  <input
-                    type="text"
-                    value={opt.value}
-                    onChange={(e) => handleOptionChange(idx, "value", e.target.value)}
-                    placeholder={`Valore opzione ${idx + 1}`}
-                    required
-                    disabled={saving}
-                    className={form.input}
-                  />
-                  <div style={{ display: "flex", gap: "0.25rem" }}>
-                    <button
-                      type="button"
-                      onClick={() => moveOptionUp(idx)}
-                      disabled={idx === 0 || saving}
-                      className={buttons.button}
-                      title="Sposta su"
-                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveOptionDown(idx)}
-                      disabled={idx === options.length - 1 || saving}
-                      className={buttons.button}
-                      title="Sposta giù"
-                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeOption(idx)}
-                      disabled={saving}
-                      className={buttons.button}
-                      title="Rimuovi"
-                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                    >
-                      &times;
-                    </button>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={options.map(opt => opt.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className={form.optionsList}>
+                    {options.map((opt, idx) => (
+                      <SortableOptionItem
+                        key={opt.id}
+                        option={opt}
+                        index={idx}
+                        onLabelChange={(value) => handleOptionChange(idx, "label", value)}
+                        onValueChange={(value) => handleOptionChange(idx, "value", value)}
+                        onRemove={() => removeOption(idx)}
+                        onMoveUp={() => moveOptionUp(idx)}
+                        onMoveDown={() => moveOptionDown(idx)}
+                        saving={saving}
+                        isLast={idx === options.length - 1}
+                      />
+                    ))}
                   </div>
-                </div>
-              ))}
+                </SortableContext>
+              </DndContext>
 
               <button
                 type="button"

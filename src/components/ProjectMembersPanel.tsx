@@ -296,7 +296,7 @@ export default function ProjectMembersPanel({
               <button
                 onClick={handleAddMember}
                 disabled={!selectedUser || adding}
-                className={`${buttons.button} ${buttons.buttonPrimary}`}
+                className={buttons.button}
               >
                 {adding ? "Aggiunta..." : "Aggiungi"}
               </button>

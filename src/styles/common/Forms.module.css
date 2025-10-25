@@ -427,6 +427,29 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+.dragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  cursor: grab;
+  color: #6b7280;
+  font-size: 12px;
+  user-select: none;
+  margin-right: 8px;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.optionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .previewActions {
   display: flex;
   gap: 0.25rem;

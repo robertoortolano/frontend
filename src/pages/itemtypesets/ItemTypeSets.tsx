@@ -148,11 +148,12 @@ export default function ItemTypeSets() {
 
               <div className="flex gap-2">
                 <button
-                  className={`${buttons.button} ${buttons.buttonSmall} ${
-                    showRoles && selectedSetForRoles?.id === set.id
-                      ? buttons.buttonPrimary
-                      : buttons.buttonSecondary
-                  }`}
+                  className={buttons.button}
+                  style={{ 
+                    padding: "0.25rem 0.5rem", 
+                    fontSize: "0.75rem",
+                    backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0"
+                  }}
                   onClick={() => {
                     if (showRoles && selectedSetForRoles?.id === set.id) {
                       setShowRoles(false);

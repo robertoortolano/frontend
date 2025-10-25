@@ -204,7 +204,7 @@ export default function ProjectMembers() {
       <div className="flex items-center gap-4 mb-4">
         <button
           onClick={() => navigate(`/projects/${projectId}/settings`)}
-          className={`${buttons.button} ${buttons.buttonSecondary}`}
+          className={buttons.button}
           title="Torna alle impostazioni"
         >
           <ArrowLeft size={20} />
@@ -300,7 +300,7 @@ export default function ProjectMembers() {
           <button
             onClick={handleAddMember}
             disabled={!selectedUser || adding}
-            className={`${buttons.button} ${buttons.buttonPrimary}`}
+            className={buttons.button}
           >
             {adding ? "Aggiunta..." : "Aggiungi"}
           </button>

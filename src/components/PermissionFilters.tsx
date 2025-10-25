@@ -337,7 +337,7 @@ export default function PermissionFilters({
               e.stopPropagation();
               handleReset();
             }}
-            className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
+            className={buttons.button}
             style={{ padding: "4px 8px", fontSize: "0.875rem" }}
           >
             <X size={12} />

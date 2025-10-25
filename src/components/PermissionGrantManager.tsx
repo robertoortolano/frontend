@@ -162,14 +162,14 @@ export default function PermissionGrantManager({
       <div className="flex justify-end gap-4 mt-6 pt-4 border-t">
         <button
           onClick={onClose}
-          className={`${buttons.button} ${buttons.buttonSecondary}`}
+          className={buttons.button}
           disabled={loading}
         >
           Annulla
         </button>
         <button
           onClick={handleSave}
-          className={`${buttons.button} ${buttons.buttonPrimary}`}
+          className={buttons.button}
           disabled={loading}
         >
           {loading ? 'Salvataggio...' : 'Salva Ruoli'}

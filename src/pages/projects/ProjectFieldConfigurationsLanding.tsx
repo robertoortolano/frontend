@@ -62,7 +62,7 @@ export default function ProjectFieldConfigurationsLanding() {
         <div className="mt-6 text-center">
           <button
             onClick={handleGoToProjects}
-            className={`${buttons.button} ${buttons.buttonSecondary} flex items-center gap-2 mx-auto`}
+            className={`${buttons.button} flex items-center gap-2 mx-auto`}
           >
             <FolderOpen size={16} />
             Vai alla Lista Progetti

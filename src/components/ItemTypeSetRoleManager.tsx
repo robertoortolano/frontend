@@ -291,7 +291,8 @@ export default function ItemTypeSetRoleManager({
                             onClick={() => {
                               onPermissionGrantClick?.(role);
                             }}
-                            className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
+                            className={buttons.button}
+                            style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                             title="Gestisci Ruoli"
                           >
                             <Shield size={14} />

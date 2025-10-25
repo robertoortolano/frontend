@@ -170,111 +170,183 @@ export default function ItemTypeSetCreate() {
         <fieldset className={form.formGroup}>
           <legend className={form.label}>ItemTypeConfigurations</legend>
 
-          <div className={`${form.inlineGroup} ${utilities.mb4}`}>
-            <select
-              value={selectedItemTypeId}
-              onChange={(e) => setSelectedItemTypeId(e.target.value)}
-              className={form.select}
-              disabled={saving}
-            >
-              <option value="">-- Seleziona un item type --</option>
-              {availableItemTypes.map((it) => (
-                <option key={it.id} value={it.id}>
-                  {it.name}
-                </option>
-              ))}
-            </select>
+          {/* Form per aggiungere nuove configurazioni */}
+          <div className={utilities.mb4} style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '1rem',
+            padding: '1rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: '0.5rem',
+            backgroundColor: '#f9fafb'
+          }}>
+            <div className={form.formGroup}>
+              <label className={form.label} style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                Item Type
+              </label>
+              <select
+                value={selectedItemTypeId}
+                onChange={(e) => setSelectedItemTypeId(e.target.value)}
+                className={form.select}
+                disabled={saving}
+              >
+                <option value="">-- Seleziona un item type --</option>
+                {availableItemTypes.map((it) => (
+                  <option key={it.id} value={it.id}>
+                    {it.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className={form.select}
-              disabled={saving || categories.length === 0}
-            >
-              <option value="">-- Seleziona una categoria --</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            <div className={form.formGroup}>
+              <label className={form.label} style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                Categoria
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className={form.select}
+                disabled={saving || categories.length === 0}
+              >
+                <option value="">-- Seleziona una categoria --</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <select
-              value={selectedFieldSetId}
-              onChange={(e) => setSelectedFieldSetId(e.target.value)}
-              className={form.select}
-              disabled={saving}
-            >
-              <option value="">-- Seleziona un field set --</option>
-              {fieldSets.map((fs) => (
-                <option key={fs.id} value={fs.id}>
-                  {fs.name}
-                </option>
-              ))}
-            </select>
+            <div className={form.formGroup}>
+              <label className={form.label} style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                Field Set
+              </label>
+              <select
+                value={selectedFieldSetId}
+                onChange={(e) => setSelectedFieldSetId(e.target.value)}
+                className={form.select}
+                disabled={saving}
+              >
+                <option value="">-- Seleziona un field set --</option>
+                {fieldSets.map((fs) => (
+                  <option key={fs.id} value={fs.id}>
+                    {fs.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <select
-              value={selectedWorkflowId}
-              onChange={(e) => setSelectedWorkflowId(e.target.value)}
-              className={form.select}
-              disabled={saving}
-            >
-              <option value="">-- Seleziona un workflow --</option>
-              {workflows.map((wf) => (
-                <option key={wf.id} value={wf.id}>
-                  {wf.name}
-                </option>
-              ))}
-            </select>
+            <div className={form.formGroup}>
+              <label className={form.label} style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                Workflow
+              </label>
+              <select
+                value={selectedWorkflowId}
+                onChange={(e) => setSelectedWorkflowId(e.target.value)}
+                className={form.select}
+                disabled={saving}
+              >
+                <option value="">-- Seleziona un workflow --</option>
+                {workflows.map((wf) => (
+                  <option key={wf.id} value={wf.id}>
+                    {wf.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <button
-              type="button"
-              onClick={handleAddEntry}
-              className={buttons.button}
-              disabled={saving || !selectedItemTypeId || !selectedCategory}
-            >
-              Add Entry
-            </button>
+            <div className={form.formGroup} style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={handleAddEntry}
+                className={buttons.button}
+                disabled={saving || !selectedItemTypeId || !selectedCategory || !selectedFieldSetId || !selectedWorkflowId}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                Aggiungi Configurazione
+              </button>
+            </div>
           </div>
 
-          {itemTypeConfigurations.map((entry, index) => {
-            const itemType = itemTypes.find((it) => it.id === entry.itemTypeId);
-            return (
-              <div key={entry.itemTypeId} className={form.inlineGroup}>
-                <input
-                  type="text"
-                  value={itemType?.name || ""}
-                  disabled
-                  className={form.input}
-                  aria-label="Item Type name"
-                />
-                <input type="text" value={entry.category} disabled className={form.input} aria-label="Category" />
-                <input
-                  type="text"
-                  value={fieldSets.find((fs) => fs.id === entry.fieldSetId)?.name || ""}
-                  disabled
-                  className={form.input}
-                  aria-label="Field Set"
-                />
+          {/* Tabella delle configurazioni esistenti */}
+          {itemTypeConfigurations.length > 0 && (
+            <div style={{ marginTop: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
+                Configurazioni Aggiunte
+              </h3>
+              <div style={{ 
+                border: '1px solid #e5e7eb', 
+                borderRadius: '0.5rem', 
+                overflow: 'hidden',
+                backgroundColor: 'white'
+              }}>
+                {/* Header della tabella */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '1fr 1fr 1fr 1fr auto', 
+                  gap: '1rem',
+                  padding: '0.75rem',
+                  backgroundColor: '#f3f4f6',
+                  borderBottom: '1px solid #e5e7eb',
+                  fontWeight: '600',
+                  fontSize: '0.875rem',
+                  color: '#374151'
+                }}>
+                  <div>Item Type</div>
+                  <div>Categoria</div>
+                  <div>Field Set</div>
+                  <div>Workflow</div>
+                  <div style={{ textAlign: 'center' }}>Azioni</div>
+                </div>
 
-                <input
-                  type="text"
-                  value={workflows.find((wf) => wf.id === entry.workflowId)?.name || ""}
-                  disabled
-                  className={form.input}
-                  aria-label="Workflow"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveEntry(index)}
-                  className={buttons.button}
-                  disabled={saving}
-                >
-                  Remove
-                </button>
+                {/* Righe delle configurazioni */}
+                {itemTypeConfigurations.map((entry, index) => {
+                  const itemType = itemTypes.find((it) => it.id === entry.itemTypeId);
+                  return (
+                    <div key={`${entry.itemTypeId}-${index}`} style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr 1fr 1fr auto', 
+                      gap: '1rem',
+                      padding: '0.75rem',
+                      borderBottom: index < itemTypeConfigurations.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      alignItems: 'center'
+                    }}>
+                      <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                        {itemType?.name || "N/A"}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                        {entry.category}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                        {fieldSets.find((fs) => fs.id === entry.fieldSetId)?.name || "N/A"}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                        {workflows.find((wf) => wf.id === entry.workflowId)?.name || "N/A"}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEntry(index)}
+                          className={buttons.button}
+                          disabled={saving}
+                          style={{ 
+                            padding: '0.25rem 0.5rem', 
+                            fontSize: '0.75rem',
+                            backgroundColor: '#dc2626',
+                            color: 'white'
+                          }}
+                          title="Rimuovi configurazione"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          )}
         </fieldset>
         </div>
 

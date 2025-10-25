@@ -138,14 +138,14 @@ export default function EditUserRolesModal({
           <button
             onClick={onClose}
             disabled={saving}
-            className={`${buttons.button} ${buttons.buttonSecondary}`}
+            className={buttons.button}
           >
             Annulla
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !selectedTenantRole}
-            className={`${buttons.button} ${buttons.buttonPrimary}`}
+            className={buttons.button}
           >
             {saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>

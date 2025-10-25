@@ -151,7 +151,8 @@ export default function Roles() {
                     <td>
                       <div className="flex gap-2">
                         <button
-                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonSecondary}`}
+                          className={buttons.button}
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                           onClick={() => navigate(`/tenant/roles/edit/${role.id}`)}
                           title="Modifica Ruolo"
                         >

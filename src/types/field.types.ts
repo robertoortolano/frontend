@@ -52,10 +52,11 @@ export interface FieldOptionDto {
  */
 export interface FieldSetEntryViewDto {
   id: number | null;
-  fieldConfigurationId: number;
-  fieldConfigurationName?: string;
-  fieldConfiguration?: FieldConfigurationViewDto;
+  fieldConfiguration: FieldConfigurationDto;  // Backend returns full object
   orderIndex: number;
+  // Legacy fields for backward compatibility
+  fieldConfigurationId?: number;
+  fieldConfigurationName?: string;
 }
 
 /**
@@ -133,6 +134,15 @@ export interface FieldDetailDto {
 }
 
 /**
+ * Field option create DTO
+ */
+export interface FieldOptionCreateDto {
+  label: string;
+  value: string;
+  orderIndex: number;
+}
+
+/**
  * Field configuration create DTO
  */
 export interface FieldConfigurationCreateDto {
@@ -141,7 +151,18 @@ export interface FieldConfigurationCreateDto {
   fieldId: number | string | null;
   fieldType: string;
   description?: string;
-  options?: FieldOptionDto[];
+  options?: FieldOptionCreateDto[];
+}
+
+/**
+ * Field option update DTO
+ */
+export interface FieldOptionUpdateDto {
+  id: number | null;
+  label: string;
+  value: string;
+  enabled: boolean;
+  orderIndex: number;
 }
 
 /**
@@ -153,7 +174,7 @@ export interface FieldConfigurationUpdateDto {
   description?: string;
   fieldId?: number | null;
   fieldType: string;
-  options?: FieldOptionDto[];
+  options?: FieldOptionUpdateDto[];
 }
 
 /**
@@ -174,14 +195,19 @@ export interface FieldSetCreateDto {
 }
 
 /**
- * Field set update DTO
+ * Field set entry create DTO
  */
-export interface FieldSetUpdateDto {
+export interface FieldSetEntryCreateDto {
+  fieldConfigurationId: number;
+  orderIndex: number;
+}
+
+/**
+ * Field set create/update DTO (same DTO used for both operations)
+ */
+export interface FieldSetCreateDto {
   name: string;
   description?: string;
-  entries: Array<{
-    fieldConfigurationId: number;
-    orderIndex: number;
-  }>;
+  entries: FieldSetEntryCreateDto[];
 }
 

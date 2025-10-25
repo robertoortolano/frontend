@@ -531,14 +531,14 @@ export default function FieldSetCreateUniversal({ scope, projectId }: FieldSetCr
         <div className={layout.buttonRow}>
           <button
             type="submit"
-            className={`${buttons.button} ${buttons.buttonPrimary} ${buttons.buttonLarge}`}
+            className={buttons.button}
             disabled={saving || !name.trim() || !selectedField || selectedConfigurations.length === 0}
           >
             {saving ? "Salvataggio..." : "Crea Field Set"}
           </button>
           <button
             type="button"
-            className={`${buttons.button} ${buttons.buttonSecondary}`}
+            className={buttons.button}
             onClick={() => {
               if (scope === 'tenant') {
                 navigate("/tenant/field-sets");

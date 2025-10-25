@@ -22,7 +22,7 @@ import { useAuth } from "../../context/AuthContext";
 import {
   FieldConfigurationViewDto,
   FieldSetViewDto,
-  FieldSetUpdateDto,
+  FieldSetCreateDto,
 } from "../../types/field.types";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -56,6 +56,7 @@ function SortablePreviewItem({
   saving,
   isLast
 }: SortablePreviewItemProps) {
+  console.log('SortablePreviewItem rendered:', { configId, config: config?.name, index, saving, isLast });
   const {
     attributes,
     listeners,
@@ -76,9 +77,15 @@ function SortablePreviewItem({
       ref={setNodeRef}
       style={style}
       className={`${form.previewItem} ${isDragging ? form.dragging : ''}`}
-      {...attributes}
-      {...listeners}
     >
+      <span 
+        className={form.dragHandle} 
+        title="Trascina per riordinare"
+        {...attributes}
+        {...listeners}
+      >
+        ⋮⋮
+      </span>
       <span className={form.previewOrder}>{index + 1}</span>
       <div className={form.previewContent}>
         <strong>{config.name || "Senza nome"}</strong>
@@ -113,6 +120,7 @@ function SortablePreviewItem({
           type="button"
           className={form.removeButton}
           onClick={(e) => {
+            console.log('Remove button clicked!', { configId, saving });
             e.stopPropagation();
             onRemove();
           }}
@@ -174,7 +182,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         setFieldConfigurations(configsRes.data);
         
         // Set selected configurations from field set
-        const configIds = fieldSetData.fieldSetEntries?.map(entry => entry.fieldConfigurationId) || [];
+        const configIds = fieldSetData.fieldSetEntries?.map(entry => 
+          entry.fieldConfiguration?.id || entry.fieldConfigurationId
+        ) || [];
         setSelectedConfigurations(configIds);
         
         // Set selected field based on the most common field in the configurations
@@ -246,6 +256,16 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
 
+  const removeConfiguration = (configId: number) => {
+    console.log('removeConfiguration called with:', configId);
+    console.log('Current selectedConfigurations:', selectedConfigurations);
+    setSelectedConfigurations(prev => {
+      const newConfigs = prev.filter(id => id !== configId);
+      console.log('New selectedConfigurations:', newConfigs);
+      return newConfigs;
+    });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -277,10 +297,13 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
 
     try {
-      const dto: FieldSetUpdateDto = {
+      const dto: FieldSetCreateDto = {
         name: fieldSet.name.trim(),
         description: fieldSet.description?.trim() || null,
-        fieldConfigurationIds: selectedConfigurations,
+        entries: selectedConfigurations.map((configId, index) => ({
+          fieldConfigurationId: configId,
+          orderIndex: index
+        })),
       };
 
       await api.put(`/field-sets/${id}`, dto, {
@@ -530,9 +553,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
                         index={index}
                         onMoveUp={moveConfigurationUp}
                         onMoveDown={moveConfigurationDown}
-                        onRemove={() => {
-                          setSelectedConfigurations(prev => prev.filter(id => id !== configId));
-                        }}
+                        onRemove={() => removeConfiguration(configId)}
                         saving={saving}
                         isLast={index === selectedConfigurations.length - 1}
                       />
@@ -548,14 +569,14 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         <div className={layout.buttonRow}>
           <button
             type="submit"
-            className={`${buttons.button} ${buttons.buttonPrimary} ${buttons.buttonLarge}`}
+            className={buttons.button}
             disabled={saving || !fieldSet.name?.trim() || selectedConfigurations.length === 0}
           >
             {saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>
           <button
             type="button"
-            className={`${buttons.button} ${buttons.buttonSecondary}`}
+            className={buttons.button}
             onClick={() => {
               if (scope === 'tenant') {
                 navigate("/tenant/field-sets");
