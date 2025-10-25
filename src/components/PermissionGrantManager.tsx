@@ -34,6 +34,21 @@ interface PermissionGrantManagerProps {
   onSave: () => void;
 }
 
+// Mappatura dei nomi delle permissions ai tipi che il backend si aspetta
+const getPermissionType = (permissionName: string): string => {
+  const mapping: { [key: string]: string } = {
+    'Workers': 'WORKERS',
+    'Creators': 'CREATORS', 
+    'Status Owners': 'STATUS_OWNERS',
+    'Executors': 'EXECUTORS',
+    'Field Owners': 'FIELD_OWNERS',
+    'Editors': 'EDITORS',
+    'Viewers': 'VIEWERS'
+  };
+  
+  return mapping[permissionName] || permissionName?.toUpperCase();
+};
+
 export default function PermissionGrantManager({ 
   permission, 
   onClose, 
@@ -81,7 +96,7 @@ export default function PermissionGrantManager({
       }
 
       // Determina il tipo di permission dal nome
-      const permissionType = permission.name?.toUpperCase();
+      const permissionType = getPermissionType(permission.name);
 
       // Gestione ruoli
       const originalRoles: Role[] = permission.assignedRoles || [];

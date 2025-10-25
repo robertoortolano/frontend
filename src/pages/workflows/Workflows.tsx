@@ -7,8 +7,9 @@ import 'reactflow/dist/style.css';
 
 import CustomNode from "./components/CustomNode";
 import { useAuth } from "../../context/AuthContext";
-import { WorkflowSimpleDto, WorkflowViewDto } from "../../types/workflow.types";
+import { WorkflowSimpleDto, WorkflowViewDto, WorkflowDetailDto } from "../../types/workflow.types";
 import { StatusCategory } from "../../types/common.types";
+import UsedInItemTypeSetsPopup from "../../components/shared/UsedInItemTypeSetsPopup";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -25,7 +26,7 @@ export default function Workflows() {
   const token = auth?.token;
   const roles = auth?.roles || [];
 
-  const [workflows, setWorkflows] = useState<WorkflowSimpleDto[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowDetailDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +67,26 @@ export default function Workflows() {
         const response = await api.get("/workflows", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setWorkflows(response.data);
+        
+        // Fetch details for each workflow
+        const workflowsWithDetails = await Promise.all(
+          response.data.map(async (workflow: WorkflowSimpleDto) => {
+            try {
+              const detailResponse = await api.get(`/workflows/${workflow.id}/details`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              return detailResponse.data;
+            } catch (err) {
+              // If details fail, return basic workflow
+              return {
+                ...workflow,
+                usedInItemTypeConfigurations: []
+              };
+            }
+          })
+        );
+        
+        setWorkflows(workflowsWithDetails);
       } catch (err: any) {
         console.error("Errore nel caricamento dei workflow", err);
         setError(err.response?.data?.message || "Errore nel caricamento dei workflow");
@@ -119,6 +139,7 @@ export default function Workflows() {
             <thead>
               <tr>
                 <th>Nome</th>
+                <th>ItemTypeSet</th>
                 <th>Azioni</th>
               </tr>
             </thead>
@@ -126,6 +147,9 @@ export default function Workflows() {
               {workflows.map((wf) => (
                 <tr key={wf.id}>
                   <td>{wf.name}</td>
+                  <td>
+                    <UsedInItemTypeSetsPopup workflow={wf} />
+                  </td>
                   <td>
                     <div className="flex gap-2">
                       <button
@@ -147,8 +171,14 @@ export default function Workflows() {
                       <button
                         className={buttons.button}
                         onClick={() => handleDelete(wf.id)}
-                        disabled={wf.defaultWorkflow}
-                        title={wf.defaultWorkflow ? "Eliminazione disabilitata: workflow di default" : ""}
+                        disabled={wf.defaultWorkflow || (wf.usedInItemTypeConfigurations && wf.usedInItemTypeConfigurations.length > 0)}
+                        title={
+                          wf.usedInItemTypeConfigurations && wf.usedInItemTypeConfigurations.length > 0
+                            ? "Workflow utilizzato in ItemTypeSet: non eliminabile"
+                            : wf.defaultWorkflow
+                              ? "Eliminazione disabilitata: workflow di default"
+                              : ""
+                        }
                         style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                       >
                         Elimina

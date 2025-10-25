@@ -159,3 +159,27 @@ export interface WorkflowSimpleDto {
   defaultWorkflow: boolean;
 }
 
+/**
+ * Workflow detail DTO with usage information
+ */
+export interface WorkflowDetailDto {
+  id: number;
+  name: string;
+  defaultWorkflow: boolean;
+  usedInItemTypeConfigurations: ItemTypeConfigurationViewDto[];
+}
+
+/**
+ * ItemTypeConfiguration DTO for workflow usage
+ */
+export interface ItemTypeConfigurationViewDto {
+  id: number;
+  itemType: any;
+  category: string;
+  defaultItemTypeConfiguration: boolean;
+  scope: string;
+  workers: any[];
+  workflow: any;
+  fieldSet: any;
+}
+

@@ -2,7 +2,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
-import { ItemTypeDto } from "../../types/itemtype.types";
+import { ItemTypeDto, ItemTypeDetailDto } from "../../types/itemtype.types";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -17,7 +17,7 @@ export default function ItemTypes() {
   const roles = auth?.roles || [];
   const isAuthenticated = auth?.isAuthenticated;
 
-  const [itemTypes, setItemTypes] = useState<ItemTypeDto[]>([]);
+  const [itemTypes, setItemTypes] = useState<ItemTypeDetailDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState("");
@@ -40,7 +40,26 @@ export default function ItemTypes() {
         const response = await api.get("/item-types", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setItemTypes(response.data);
+        
+        // Fetch details for each item type
+        const itemTypesWithDetails = await Promise.all(
+          response.data.map(async (itemType: ItemTypeDto) => {
+            try {
+              const detailResponse = await api.get(`/item-types/${itemType.id}/details`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              return detailResponse.data;
+            } catch (err) {
+              // If details fail, return basic item type
+              return {
+                ...itemType,
+                itemTypeConfigurations: []
+              };
+            }
+          })
+        );
+        
+        setItemTypes(itemTypesWithDetails);
       } catch (err: any) {
         console.error("Error loading item types", err);
         setError(err.response?.data?.message || "Error loading item types");
@@ -131,9 +150,15 @@ export default function ItemTypes() {
               <td>
                 {!item.defaultItemType && (
                   <button
-                    className={`${buttons.button} ${buttons.button}`}
+                    className={buttons.button}
                     onClick={() => handleDelete(item.id)}
-                    title="Rimuovi Item Type"
+                    disabled={item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0}
+                    title={
+                      item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0
+                        ? "Item Type utilizzato in ItemTypeSet: non eliminabile"
+                        : "Rimuovi Item Type"
+                    }
+                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                   >
                     Delete
                   </button>

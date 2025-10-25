@@ -450,6 +450,171 @@
   gap: 0.5rem;
 }
 
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f9fafb;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.closeButton:hover {
+  background-color: #e5e7eb;
+}
+
+.modalBody {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modalFooter {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f9fafb;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Info Grid */
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.infoItem {
+  padding: 0.75rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+/* Badge Styles */
+.badgePrimary {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badgeWarning {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: #f59e0b;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badgeInfo {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: #6b7280;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Alert Styles */
+.alertWarning {
+  padding: 1rem;
+  background-color: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+.alertWarning h4 {
+  margin: 0 0 0.5rem 0;
+  color: #92400e;
+  font-size: 1rem;
+}
+
+.alertWarning p {
+  margin: 0;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.alertInfo {
+  padding: 1rem;
+  background-color: #dbeafe;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+.alertInfo h4 {
+  margin: 0 0 0.5rem 0;
+  color: #1e40af;
+  font-size: 1rem;
+}
+
+.alertInfo p {
+  margin: 0;
+  color: #1e40af;
+  font-size: 0.875rem;
+}
+
 .previewActions {
   display: flex;
   gap: 0.25rem;

@@ -24,6 +24,8 @@ import {
   FieldSetViewDto,
   FieldSetCreateDto,
 } from "../../types/field.types";
+import { FieldSetRemovalImpactDto } from "../../types/fieldset-impact.types";
+import { FieldSetImpactReportModal } from "../../components/FieldSetImpactReportModal";
 
 import layout from "../../styles/common/Layout.module.css";
 import form from "../../styles/common/Forms.module.css";
@@ -56,7 +58,6 @@ function SortablePreviewItem({
   saving,
   isLast
 }: SortablePreviewItemProps) {
-  console.log('SortablePreviewItem rendered:', { configId, config: config?.name, index, saving, isLast });
   const {
     attributes,
     listeners,
@@ -120,7 +121,6 @@ function SortablePreviewItem({
           type="button"
           className={form.removeButton}
           onClick={(e) => {
-            console.log('Remove button clicked!', { configId, saving });
             e.stopPropagation();
             onRemove();
           }}
@@ -149,6 +149,12 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Impact report states
+  const [showImpactReport, setShowImpactReport] = useState(false);
+  const [impactReport, setImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
+  const [analyzingImpact, setAnalyzingImpact] = useState(false);
+  const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -185,6 +191,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         const configIds = fieldSetData.fieldSetEntries?.map(entry => 
           entry.fieldConfiguration?.id || entry.fieldConfigurationId
         ) || [];
+        
+        // For existing FieldSets, we might have multiple configurations per field
+        // This is for backward compatibility, but new selections will follow the "one per field" rule
         setSelectedConfigurations(configIds);
         
         // Set selected field based on the most common field in the configurations
@@ -217,13 +226,36 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   }, [id, token, scope, projectId]);
 
   const handleConfigurationSelect = (configId: number) => {
-    // In edit mode, we can have multiple configurations for the same field
-    // Toggle the configuration (add if not present, remove if present)
-    setSelectedConfigurations(prev => 
-      prev.includes(configId) 
-        ? prev.filter(id => id !== configId)
-        : [...prev, configId]
-    );
+    // In edit mode, we should behave like radio buttons: only one configuration per field
+    // First, find which field this configuration belongs to
+    const selectedConfig = fieldConfigurations.find(config => config.id === configId);
+    if (!selectedConfig) return;
+    
+    // Find the position of any existing configuration for the same field
+    const existingConfigIndex = selectedConfigurations.findIndex(id => {
+      const config = fieldConfigurations.find(c => c.id === id);
+      return config && config.fieldId === selectedConfig.fieldId;
+    });
+    
+    // Add the new configuration (or toggle if it's already selected)
+    if (selectedConfigurations.includes(configId)) {
+      // If already selected, remove it
+      const newConfigurations = selectedConfigurations.filter(id => id !== configId);
+      setSelectedConfigurations(newConfigurations);
+    } else {
+      // If not selected, replace the existing config for the same field (if any) or add at the end
+      let newConfigurations = [...selectedConfigurations];
+      
+      if (existingConfigIndex !== -1) {
+        // Replace the existing configuration at the same position
+        newConfigurations[existingConfigIndex] = configId;
+      } else {
+        // No existing configuration for this field, add at the end
+        newConfigurations.push(configId);
+      }
+      
+      setSelectedConfigurations(newConfigurations);
+    }
   };
 
   const handleFieldSelect = (fieldId: number) => {
@@ -257,13 +289,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   };
 
   const removeConfiguration = (configId: number) => {
-    console.log('removeConfiguration called with:', configId);
-    console.log('Current selectedConfigurations:', selectedConfigurations);
-    setSelectedConfigurations(prev => {
-      const newConfigs = prev.filter(id => id !== configId);
-      console.log('New selectedConfigurations:', newConfigs);
-      return newConfigs;
-    });
+    setSelectedConfigurations(prev => prev.filter(id => id !== configId));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -281,20 +307,62 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     e.preventDefault();
     if (!fieldSet) return;
 
-    setSaving(true);
     setError(null);
 
     if (!fieldSet.name.trim()) {
       setError("Il nome del field set è obbligatorio");
-      setSaving(false);
       return;
     }
 
     if (selectedConfigurations.length === 0) {
       setError("Devi selezionare almeno una configurazione");
-      setSaving(false);
       return;
     }
+
+    // Check if any configurations were removed
+    const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
+      entry.fieldConfiguration?.id || entry.fieldConfigurationId
+    ) || [];
+    
+    const removedConfigIds = originalConfigIds.filter(id => 
+      !selectedConfigurations.includes(id)
+    );
+
+    if (removedConfigIds.length > 0) {
+      // Analyze impact before saving
+      await analyzeRemovalImpact(removedConfigIds);
+    } else {
+      // No configurations removed, proceed with normal save
+      await performSave();
+    }
+  };
+
+  const analyzeRemovalImpact = async (removedConfigIds: number[]) => {
+    setAnalyzingImpact(true);
+    setError(null);
+
+    try {
+      const response = await api.post(`/field-sets/${id}/analyze-removal-impact`, removedConfigIds, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setImpactReport(response.data);
+      setShowImpactReport(true);
+      
+      // Store the save function to be called after confirmation
+      setPendingSave(() => performSave);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
+    } finally {
+      setAnalyzingImpact(false);
+    }
+  };
+
+  const performSave = async () => {
+    if (!fieldSet) return;
+
+    setSaving(true);
+    setError(null);
 
     try {
       const dto: FieldSetCreateDto = {
@@ -320,6 +388,54 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       setError(err.response?.data?.message || "Errore nel salvataggio");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleConfirmSave = async () => {
+    setShowImpactReport(false);
+    setImpactReport(null);
+    
+    if (pendingSave) {
+      await pendingSave();
+      setPendingSave(null);
+    }
+  };
+
+  const handleCancelSave = () => {
+    setShowImpactReport(false);
+    setImpactReport(null);
+    setPendingSave(null);
+  };
+
+  const handleExportReport = async () => {
+    if (!impactReport) return;
+
+    try {
+      const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
+        entry.fieldConfiguration?.id || entry.fieldConfigurationId
+      ) || [];
+      
+      const removedConfigIds = originalConfigIds.filter(id => 
+        !selectedConfigurations.includes(id)
+      );
+
+
+      const response = await api.post(`/field-sets/${id}/export-removal-impact-csv`, removedConfigIds, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `fieldset_removal_impact_${id}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Errore durante l'esportazione del report");
     }
   };
 
@@ -484,23 +600,31 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
                 </p>
 
                 <div className={form.radioGrid}>
-                  {getConfigurationsForSelectedField().map((config) => (
-                    <div key={config.id} className={form.radioCard}>
-                      <label className={form.radioLabel}>
-                        <input
-                          type="radio"
-                          name="selectedConfiguration"
-                          checked={selectedConfigurations.includes(config.id)}
-                          onChange={() => handleConfigurationSelect(config.id)}
-                          disabled={saving}
-                        />
-                        <div className={form.radioContent}>
-                          <div className={form.radioHeader}>
-                            <strong>{config.name || "Senza nome"}</strong>
-                            <span className={form.radioStatus}>
-                              {selectedConfigurations.includes(config.id) ? "✓ Selezionata" : "Non selezionata"}
-                            </span>
-                          </div>
+                  {getConfigurationsForSelectedField().map((config) => {
+                    const isSelected = selectedConfigurations.includes(config.id);
+                    const hasOtherSelectedForSameField = selectedConfigurations.some(id => {
+                      const otherConfig = fieldConfigurations.find(c => c.id === id);
+                      return otherConfig && otherConfig.fieldId === config.fieldId && otherConfig.id !== config.id;
+                    });
+                    
+                    return (
+                      <div key={config.id} className={form.radioCard}>
+                        <label className={form.radioLabel}>
+                          <input
+                            type="radio"
+                            name={`selectedConfiguration_${config.fieldId}`}
+                            checked={isSelected}
+                            onChange={() => handleConfigurationSelect(config.id)}
+                            disabled={saving}
+                          />
+                          <div className={form.radioContent}>
+                            <div className={form.radioHeader}>
+                              <strong>{config.name || "Senza nome"}</strong>
+                              <span className={form.radioStatus}>
+                                {isSelected ? "✓ Selezionata" : "Non selezionata"}
+                                {hasOtherSelectedForSameField && !isSelected && " (Altro selezionato)"}
+                              </span>
+                            </div>
                           <div className={form.radioDetails}>
                             <div className={form.detailRow}>
                               <span className={form.detailLabel}>Tipo:</span>
@@ -516,7 +640,8 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
                         </div>
                       </label>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -570,9 +695,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
           <button
             type="submit"
             className={buttons.button}
-            disabled={saving || !fieldSet.name?.trim() || selectedConfigurations.length === 0}
+            disabled={saving || analyzingImpact || !fieldSet.name?.trim() || selectedConfigurations.length === 0}
           >
-            {saving ? "Salvataggio..." : "Salva Modifiche"}
+            {analyzingImpact ? "Analisi impatti..." : saving ? "Salvataggio..." : "Salva Modifiche"}
           </button>
           <button
             type="button"
@@ -590,6 +715,16 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
           </button>
         </div>
       </form>
+
+      {/* Impact Report Modal */}
+      <FieldSetImpactReportModal
+        isOpen={showImpactReport}
+        onClose={handleCancelSave}
+        onConfirm={handleConfirmSave}
+        onExport={handleExportReport}
+        impact={impactReport}
+        loading={analyzingImpact || saving}
+      />
     </div>
   );
 }
