@@ -27,9 +27,7 @@ export default function SelectableEdge({
 
   const onClickDelete = (event: React.MouseEvent) => {
     event.stopPropagation();
-    if (window.confirm("Sei sicuro di voler eliminare questa transizione?")) {
-      onDelete(id);
-    }
+    onDelete(id);
   };
 
   const onLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {

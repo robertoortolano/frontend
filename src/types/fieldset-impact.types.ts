@@ -40,3 +40,6 @@ export interface PermissionImpact {
   hasAssignments: boolean; // true se ha ruoli o grant assegnati
 }
 
+
+
+

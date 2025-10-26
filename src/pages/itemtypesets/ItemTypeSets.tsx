@@ -161,6 +161,11 @@ export default function ItemTypeSets() {
                     } else {
                       setShowRoles(true);
                       setSelectedSetForRoles(set);
+                      // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
+                      setExpandedSets(prev => ({
+                        ...prev,
+                        [set.id]: true
+                      }));
                     }
                   }}
                   title={
@@ -212,6 +217,23 @@ export default function ItemTypeSets() {
                 ) : (
                   <p className={layout.paragraphMuted}>Nessuna configurazione in questo set.</p>
                 )}
+                
+                {/* Panel per gestione permissions - integrato sotto ogni ItemTypeSet */}
+                {showRoles && selectedSetForRoles?.id === set.id && (
+                  <div className="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Gestione Permissions: {selectedSetForRoles.name}
+                      </h3>
+                    </div>
+
+                    <ItemTypeSetRoleManager
+                      itemTypeSetId={selectedSetForRoles.id}
+                      onPermissionGrantClick={setSelectedPermissionForGrants}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </li>
@@ -239,23 +261,6 @@ export default function ItemTypeSets() {
       <div className={layout.section}>
         {content}
       </div>
-
-      {/* Panel per gestione permissions - si espande nella pagina */}
-      {showRoles && selectedSetForRoles && (
-        <div className="mt-6 p-6 bg-white rounded-lg shadow-lg border">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Gestione Permissions: {selectedSetForRoles.name}
-            </h2>
-          </div>
-
-          <ItemTypeSetRoleManager
-            itemTypeSetId={selectedSetForRoles.id}
-            onPermissionGrantClick={setSelectedPermissionForGrants}
-            refreshTrigger={refreshTrigger}
-          />
-        </div>
-      )}
 
       {/* Modal per gestione grants e ruoli */}
       {selectedPermissionForGrants &&
