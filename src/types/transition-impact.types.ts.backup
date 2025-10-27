@@ -38,5 +38,3 @@ export interface PermissionImpact {
   hasAssignments: boolean; // true se ha ruoli assegnati
 }
 
-
-

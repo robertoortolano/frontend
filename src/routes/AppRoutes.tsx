@@ -57,8 +57,7 @@ import StatusEdit from "../pages/statuses/StatusEdit";
 
 // Workflows
 import Workflows from "../pages/workflows/Workflows";
-import WorkflowCreate from "../pages/workflows/WorkflowCreate";
-import WorkflowEdit from "../pages/workflows/WorkflowEdit";
+import WorkflowEditor from "../pages/workflows/WorkflowEditor";
 
 // Roles
 import Roles from "../pages/roles/Roles";
@@ -216,14 +215,14 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <WorkflowCreate />
+            <WorkflowEditor />
           </RoleProtectedRoute>
         } />
         <Route path="workflows/:id" element={
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <WorkflowEdit />
+            <WorkflowEditor />
           </RoleProtectedRoute>
         } />
 

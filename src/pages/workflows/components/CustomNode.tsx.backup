@@ -6,28 +6,21 @@ import { CustomNodeProps } from "../../../types/reactflow.types";
 export default function CustomNode({ data, statusCategories }: CustomNodeProps) {
   return (
     <div className="customNode" style={{ position: "relative", padding: 0, background: "transparent" }}>
-      {/* Handles (top, bottom, left, right, evenly spaced) */}
-      {/* Top handles */}
-      <Handle type="target" position={Position.Top} id="top-left-target" className="handle small-handle" style={{ left: "15%" }} />
+      {/* Handles (top, bottom, left, right, diagonali) */}
       <Handle type="target" position={Position.Top} id="top-target" className="handle small-handle" />
-      <Handle type="target" position={Position.Top} id="top-right-target" className="handle small-handle" style={{ left: "85%" }} />
-      <Handle type="source" position={Position.Top} id="top-left-source" className="handle small-handle" style={{ opacity: 1, left: "15%" }} />
+      <Handle type="target" position={Position.Top} id="top-left-target" className="handle small-handle" style={{ left: 20}} />
+      <Handle type="target" position={Position.Top} id="top-right-target" className="handle small-handle" style={{ left: 80}} />
       <Handle type="source" position={Position.Top} id="top-source" className="handle small-handle" style={{ opacity: 1 }} />
-      <Handle type="source" position={Position.Top} id="top-right-source" className="handle small-handle" style={{ opacity: 1, left: "85%" }} />
-      
-      {/* Right handles */}
+      <Handle type="source" position={Position.Top} id="top-left-source" className="handle small-handle" style={{ left: 20}} />
+      <Handle type="source" position={Position.Top} id="top-right-source" className="handle small-handle" style={{ left: 80}} />
       <Handle type="target" position={Position.Right} id="right-target" className="handle small-handle" />
       <Handle type="source" position={Position.Right} id="right-source" className="handle small-handle" style={{ opacity: 1 }} />
-      
-      {/* Bottom handles */}
-      <Handle type="target" position={Position.Bottom} id="bottom-left-target" className="handle small-handle" style={{ left: "15%" }} />
       <Handle type="target" position={Position.Bottom} id="bottom-target" className="handle small-handle" />
-      <Handle type="target" position={Position.Bottom} id="bottom-right-target" className="handle small-handle" style={{ left: "85%" }} />
-      <Handle type="source" position={Position.Bottom} id="bottom-left-source" className="handle small-handle" style={{ opacity: 1, left: "15%" }} />
+      <Handle type="target" position={Position.Bottom} id="bottom-left-target" className="handle small-handle" style={{ left: 20}} />
+      <Handle type="target" position={Position.Bottom} id="bottom-right-target" className="handle small-handle" style={{ left: 80}} />
       <Handle type="source" position={Position.Bottom} id="bottom-source" className="handle small-handle" style={{ opacity: 1 }} />
-      <Handle type="source" position={Position.Bottom} id="bottom-right-source" className="handle small-handle" style={{ opacity: 1, left: "85%" }} />
-      
-      {/* Left handles */}
+      <Handle type="source" position={Position.Bottom} id="bottom-left-source" className="handle small-handle" style={{ left: 20}} />
+      <Handle type="source" position={Position.Bottom} id="bottom-right-source" className="handle small-handle" style={{ left: 80}} />
       <Handle type="target" position={Position.Left} id="left-target" className="handle small-handle" />
       <Handle type="source" position={Position.Left} id="left-source" className="handle small-handle" style={{ opacity: 1 }} />
 
@@ -44,26 +37,10 @@ export default function CustomNode({ data, statusCategories }: CustomNodeProps) 
           fontWeight: "bold",
           color: "#fff",
           cursor: "pointer",
-          border: data.isInitial ? "3px solid #10b981" : "1px solid rgba(0,0,0,0.1)",
-          boxShadow: data.isInitial ? "0 0 10px rgba(16, 185, 129, 0.4)" : "none",
-          transition: "all 0.2s ease",
-          position: "relative",
+          border: data.isInitial ? "3px" : "1px",
+          boxShadow: data.isInitial ? "0 0 15px #434301" : "none",
         }}
       >
-        {/* Initial State Icon - positioned inside the label */}
-        {data.isInitial && (
-          <span
-            style={{
-              position: "absolute",
-              top: "2px",
-              left: "4px",
-              fontSize: "14px",
-              lineHeight: 1,
-            }}
-          >
-            ▶
-          </span>
-        )}
         <CategoryPopover
           value={data.category}
           onChange={data.onCategoryChange}

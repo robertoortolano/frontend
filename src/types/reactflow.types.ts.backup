@@ -67,7 +67,6 @@ export interface SelectableEdgeProps {
   data?: CustomEdgeData;
   setEdges: React.Dispatch<React.SetStateAction<any[]>>;
   onDelete: (edgeId: string) => void;
-  onUpdateLabel?: (edgeId: string, label: string) => void;
   onEdgeUpdate?: (oldEdge: WorkflowFlowEdge, newConnection: any) => void;
 }
 

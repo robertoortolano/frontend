@@ -89,20 +89,40 @@
   cursor: crosshair;
 }
 
+/* Small handles - very subtle by default, visible on hover */
 .handle.small-handle {
-  width: 5px !important;
-  height: 5px !important;
-  min-width: 5px !important;
-  min-height: 5px !important;
-  border-width: 1.5px !important;
+  width: 2px !important;
+  height: 2px !important;
+  min-width: 2px !important;
+  min-height: 2px !important;
+  border-width: 1px !important;
+  opacity: 0.1 !important;
+  transition: opacity 0.2s ease, transform 0.2s ease, width 0.2s ease, height 0.2s ease !important;
+}
+
+/* Show handles more prominently on hover */
+.handle.small-handle:hover {
+  opacity: 1 !important;
+  width: 6px !important;
+  height: 6px !important;
+  transform: scale(1) !important;
+}
+
+/* Show handles when node is selected/hovered */
+:global(.react-flow__node:hover .react-flow__handle),
+:global(.react-flow__node.selected .react-flow__handle) {
+  opacity: 0.6 !important;
+  width: 4px !important;
+  height: 4px !important;
 }
 
 :global(.react-flow__handle.handle.small-handle) {
-  width: 4px !important;
-  height: 4px !important;
-  min-width: 4px !important;
-  min-height: 4px !important;
-  border-width: 0.5px !important;
+  width: 2px !important;
+  height: 2px !important;
+  min-width: 2px !important;
+  min-height: 2px !important;
+  border-width: 1px !important;
+  opacity: 0.1 !important;
 }
 
 
