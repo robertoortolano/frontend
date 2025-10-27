@@ -2,14 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 
-import ReactFlow, { Background, Controls, MiniMap, MarkerType } from "reactflow";
+import ReactFlow, { Background, Controls, MiniMap, MarkerType, ReactFlowProvider } from "reactflow";
 import 'reactflow/dist/style.css';
 
 import CustomNode from "./components/CustomNode";
+import SelectableEdge from "./components/SelectableEdge";
 import { useAuth } from "../../context/AuthContext";
 import { WorkflowSimpleDto, WorkflowViewDto, WorkflowDetailDto } from "../../types/workflow.types";
 import { StatusCategory } from "../../types/common.types";
 import UsedInItemTypeSetsPopup from "../../components/shared/UsedInItemTypeSetsPopup";
+import { convertToReactFlowNode } from "../../utils/workflow-converters";
+import { getCategoryColor } from "./components/workflowUtils";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -19,6 +22,18 @@ import table from "../../styles/common/Tables.module.css";
 function CustomNodeWrapper(props: any) {
   return <CustomNode {...props} />;
 }
+
+function SelectableEdgeWrapper(props: any) {
+  return <SelectableEdge {...props} onDelete={() => {}} setEdges={() => {}} />;
+}
+
+const nodeTypes = {
+  customNode: CustomNodeWrapper,
+};
+
+const edgeTypes = {
+  selectableEdge: SelectableEdgeWrapper,
+};
 
 export default function Workflows() {
   const navigate = useNavigate();
@@ -206,21 +221,10 @@ export default function Workflows() {
 
   let modalContent;
 
-  const CATEGORY_COLORS: Record<StatusCategory, string> = {
-    BACKLOG: "#6c757d",
-    TODO: "#6c757d",
-    PROGRESS: "#0d6efd",
-    COMPLETED: "#198754",
-  };
-
   if (viewingError) {
     modalContent = <p className={alert.error}>{viewingError}</p>;
   } else if (viewingWorkflow) {
-    const statusIdToNodeId: Record<number, number> = {};
-    (viewingWorkflow.workflowNodes || []).forEach((n) => {
-      statusIdToNodeId[n.statusId] = n.id!;
-    });
-
+    // Convert to ReactFlow nodes and edges using the same converters as edit/create
     const nodes = (viewingWorkflow.workflowNodes || []).map((meta) => {
       const wfStatus = viewingWorkflow.statuses.find(
         (s) => s.status.id === meta.statusId
@@ -228,76 +232,80 @@ export default function Workflows() {
 
       const label = wfStatus?.status?.name ?? `Nodo ${meta.id}`;
       const category = wfStatus?.statusCategory ?? "BACKLOG";
-      const backgroundColor = CATEGORY_COLORS[category] || "#eeeeee";
+      const backgroundColor = getCategoryColor(category);
       const isInitial = Number(wfStatus?.status.id) === Number(viewingWorkflow.initialStatus?.id);
 
       return {
-        id: String(meta.id),
+        id: String(meta.statusId), // Use statusId as ID like in edit/create mode
         type: "customNode",
         position: { x: meta.positionX, y: meta.positionY },
         data: {
+          statusId: meta.statusId,
           label,
           category,
-          displayLabel: label,
-          displayCategory: category,
+          isInitial,
+          statusCategory: category,
+          statusName: label,
+          categories: ["BACKLOG", "TODO", "PROGRESS", "REVIEW", "DONE", "CANCELLED"] as StatusCategory[],
+          onCategoryChange: () => {}, // No-op for view mode
+          onRemove: () => {}, // No-op for view mode
+          onSetInitial: () => {}, // No-op for view mode
         },
         style: {
           background: backgroundColor,
-          borderRadius: isInitial ? 50 : 8,
+          borderRadius: 8,
           opacity: 0.9,
-          color: "#fff",
-          padding: 10,
-          fontWeight: 500,
-          boxShadow: isInitial ? "0 0 15px 3px rgba(255,215,0,0.7)" : "none",
-          border: "2px solid #444",
         },
       };
     });
 
-    const transitionById: Record<number, any> = {};
-    (viewingWorkflow.transitions || []).forEach((t) => {
-      if (t?.id != null) transitionById[t.id] = t;
-    });
-
-    const edges = (viewingWorkflow.workflowEdges || []).map((e, idx) => {
-      const transition = e.transitionId != null ? transitionById[e.transitionId] : null;
+    const edges = (viewingWorkflow.workflowEdges || []).map((e) => {
+      const transition = (viewingWorkflow.transitions || []).find(t => t.id === e.transitionId);
+      const sourceNode = nodes.find(n => n.data.statusId === e.sourceId);
+      const targetNode = nodes.find(n => n.data.statusId === e.targetId);
 
       return {
-        id: String(e.id || `edge-${idx}`),
-        source: String(statusIdToNodeId[e.sourceId]),
-        target: String(statusIdToNodeId[e.targetId]),
-        type: "step",
-        label: transition?.name || "",
-        labelStyle: { fill: "#000", fontWeight: 500, fontSize: 14 },
-        sourceHandle: e.sourcePosition || null,
-        targetHandle: e.targetPosition || null,
-        style: { stroke: "black", strokeWidth: 1 },
+        id: String(e.transitionId || e.id || `edge-${e.sourceId}-${e.targetId}`),
+        type: "selectableEdge",
+        source: sourceNode?.id || String(e.sourceId),
+        target: targetNode?.id || String(e.targetId),
+        sourceHandle: e.sourcePosition || undefined,
+        targetHandle: e.targetPosition || undefined,
+        data: {
+          label: transition?.name || "",
+          transitionId: e.transitionId,
+          transitionTempId: null,
+        },
+        style: {
+          stroke: '#2196f3',
+          strokeWidth: 2,
+        },
         markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 30,
-          height: 30,
-          color: "black",
+          type: 'arrowclosed',
+          color: '#2196f3',
         },
       };
     });
 
     modalContent = (
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        fitView
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={false}
-        zoomOnScroll={false}
-        panOnScroll
-        nodeTypes={nodeTypes}
-        style={{ width: "100%", height: "100%" }}
-      >
-        <MiniMap />
-        <Controls />
-        <Background />
-      </ReactFlow>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          fitView
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
+          zoomOnScroll={false}
+          panOnScroll
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          style={{ width: "100%", height: "100%" }}
+        >
+          <MiniMap />
+          <Controls />
+        </ReactFlow>
+      </ReactFlowProvider>
     );
   } else {
     modalContent = <p>Caricamento...</p>;
