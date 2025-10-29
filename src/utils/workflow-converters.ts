@@ -14,12 +14,10 @@ import {
 } from '../types/workflow-unified.types';
 import { 
   WorkflowViewDto, 
-  WorkflowNodeDto, 
-  WorkflowEdgeDto, 
-  TransitionViewDto,
-  WorkflowStatusViewDto 
+  TransitionViewDto
 } from '../types/workflow.types';
 import { StatusCategory } from '../types/common.types';
+import { getCategoryColor } from '../pages/workflows/components/workflowUtils';
 
 /**
  * Convert WorkflowViewDto to WorkflowNodeData[]
@@ -164,6 +162,7 @@ export function convertToReactFlowEdge(
     target: String(edgeData.targetStatusId),
     sourceHandle: edgeData.sourcePosition || undefined,
     targetHandle: edgeData.targetPosition || undefined,
+    updatable: true, // Enable edge updates (moving between handles - both source and target)
     data: {
       ...edgeData,
       label: edgeData.transitionName || '', // Add label for display
@@ -262,20 +261,6 @@ export function convertToWorkflowUpdateDto(
   }
 }
 
-/**
- * Get category color (moved from workflowUtils)
- */
-function getCategoryColor(category: StatusCategory): string {
-  const colors: Record<StatusCategory, string> = {
-    BACKLOG: '#6b7280',
-    TODO: '#3b82f6',
-    IN_PROGRESS: '#f59e0b',
-    REVIEW: '#8b5cf6',
-    DONE: '#10b981',
-    CANCELLED: '#ef4444',
-  };
-  return colors[category] || '#6b7280';
-}
 
 /**
  * Validate WorkflowNodeData

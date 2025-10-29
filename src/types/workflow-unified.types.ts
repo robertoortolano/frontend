@@ -75,6 +75,7 @@ export interface WorkflowState {
     impactReportType: 'status' | 'transition' | 'fieldset' | null;
     analyzingImpact: boolean;
     saving: boolean;
+    pendingSave: boolean; // True when waiting for summary report confirmation before saving
   };
   
   // Pending changes
@@ -143,9 +144,10 @@ export interface WorkflowEditorActions {
   updateNode: (nodeId: string, updates: Partial<WorkflowNodeData>) => void;
   
   // Edge operations
-  addEdge: (sourceId: string, targetId: string, transitionName?: string) => void;
+  addEdge: (sourceId: string, targetId: string, transitionName?: string, sourceHandle?: string, targetHandle?: string) => void;
   removeEdge: (edgeId: string) => Promise<void>;
   updateEdge: (edgeId: string, updates: Partial<WorkflowEdgeData>) => void;
+  updateEdgeConnection: (oldEdge: any, newConnection: any) => void;
   
   // Workflow operations
   saveWorkflow: () => Promise<void>;
@@ -181,12 +183,16 @@ export interface ReactFlowNode {
  */
 export interface ReactFlowEdge {
   id: string;
+  type?: string; // Edge type (e.g., 'selectableEdge')
   source: string;
   target: string;
   sourceHandle?: string;
   targetHandle?: string;
+  updatable?: boolean;
+  reconnectable?: boolean | 'source' | 'target'; // Enable reconnecting handles
   data: WorkflowEdgeData & {
     // React Flow specific
+    label?: string; // Transition name for display
     onDelete: () => void;
   };
   style?: any;

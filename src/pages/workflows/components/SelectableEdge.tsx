@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BaseEdge, getSmoothStepPath } from "reactflow";
 import { SelectableEdgeProps } from "../../../types/reactflow.types";
 
@@ -29,11 +29,47 @@ export default function SelectableEdge({
 
   // Internal state to prevent input from losing focus
   const [localLabel, setLocalLabel] = useState(data?.label || "");
+  
+  // Track previous selected state to detect deselection
+  const prevSelectedRef = useRef(selected);
 
   // Update local label when data.label changes externally
   useEffect(() => {
     setLocalLabel(data?.label || "");
   }, [data?.label]);
+
+  // Save label when edge is deselected (user clicks on background)
+  // This ensures the label is saved even if onBlur doesn't fire
+  useEffect(() => {
+    // Check if we transitioned from selected to deselected
+    if (prevSelectedRef.current === true && selected === false) {
+      // Edge was just deselected - save the label if it changed
+      if (localLabel !== (data?.label || "")) {
+        setEdges((eds) =>
+          eds.map((e) =>
+            e.id === id
+              ? {
+                  ...e,
+                  data: {
+                    ...e.data,
+                    label: localLabel,
+                    transitionId: e.data?.transitionId ?? null,
+                  },
+                }
+              : e
+          )
+        );
+        
+        // Update unified state if callback is provided
+        if (onUpdateLabel) {
+          onUpdateLabel(id, localLabel);
+        }
+      }
+    }
+    
+    // Update ref for next render
+    prevSelectedRef.current = selected;
+  }, [selected, localLabel, data?.label, id, setEdges, onUpdateLabel]);
 
   const onClickDelete = (event: React.MouseEvent) => {
     event.stopPropagation();

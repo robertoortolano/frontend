@@ -31,8 +31,10 @@ export const WorkflowImpactManager: React.FC<WorkflowImpactManagerProps> = ({
 
   // Convert unified impact report to the format expected by GenericImpactReportModal
   const convertToGenericFormat = (data: ImpactReportData) => {
-    const hasPopulatedPermissions = data.permissions.some(p => 
-      p.items.some(item => item.hasAssignments)
+    // Ensure permissions array exists
+    const permissions = data.permissions || [];
+    const hasPopulatedPermissions = permissions.some(p => 
+      p.items && p.items.some(item => item.hasAssignments)
     );
 
     return {
@@ -62,7 +64,7 @@ export const WorkflowImpactManager: React.FC<WorkflowImpactManagerProps> = ({
           ],
           data: data.affectedItemTypeSets
         },
-        ...data.permissions.map(permission => ({
+        ...permissions.map(permission => ({
           title: `Permission ${permission.type}`,
           icon: '🔐',
           columns: [
@@ -94,6 +96,24 @@ export const WorkflowImpactManager: React.FC<WorkflowImpactManagerProps> = ({
   };
 
   const genericData = convertToGenericFormat(impactReport);
+  
+  // Check if this is a summary report before saving
+  const isSummaryReport = state.ui.pendingSave;
+  
+  // Update title and button text for summary report
+  if (isSummaryReport) {
+    genericData.title = `📊 Report Riepilogativo Impatto Rimozioni (Prima del Salvataggio)`;
+    // If there are both status and transitions, mention both
+    const hasRemovedStatuses = workflowEditor.state.pendingChanges.removedNodes.length > 0;
+    const hasRemovedTransitions = workflowEditor.state.pendingChanges.removedEdges.length > 0;
+    if (hasRemovedStatuses && hasRemovedTransitions) {
+      genericData.title = `📊 Report Riepilogativo Impatto Rimozioni Status e Transizioni (Prima del Salvataggio)`;
+    } else if (hasRemovedStatuses) {
+      genericData.title = `📊 Report Riepilogativo Impatto Rimozioni Status (Prima del Salvataggio)`;
+    } else if (hasRemovedTransitions) {
+      genericData.title = `📊 Report Riepilogativo Impatto Rimozioni Transizioni (Prima del Salvataggio)`;
+    }
+  }
 
   return (
     <GenericImpactReportModal
@@ -104,7 +124,11 @@ export const WorkflowImpactManager: React.FC<WorkflowImpactManagerProps> = ({
       data={genericData}
       loading={state.ui.analyzingImpact || state.ui.saving}
       confirmButtonColor={genericData.hasPopulatedPermissions ? '#dc2626' : '#059669'}
-      confirmButtonText={state.ui.saving ? 'Elaborazione...' : 'Conferma e Rimuovi'}
+      confirmButtonText={
+        isSummaryReport
+          ? (state.ui.saving ? 'Elaborazione...' : 'Conferma e Salva')
+          : (state.ui.saving ? 'Elaborazione...' : 'Conferma e Rimuovi')
+      }
     />
   );
 };

@@ -57,10 +57,18 @@ export const WorkflowEditorControls: React.FC<WorkflowEditorControlsProps> = ({
 
     try {
       await actions.saveWorkflow();
-      navigate('/tenant/workflows');
+      // If saveWorkflow completed successfully, navigate (either directly or via onSave callback)
+      // The navigation will be handled by the onSave callback when the save is truly complete
+      // But if there was no summary report, navigate immediately
+      if (!workflowEditor.state.ui.pendingSave) {
+        navigate('/tenant/workflows');
+      }
     } catch (err: any) {
       console.error('Error saving workflow:', err);
-      // TODO: Show error message to user
+      // If the error is a cancellation, don't navigate - user is still editing
+      if (err.message !== 'Save cancelled by user') {
+        // TODO: Show error message to user
+      }
     }
   };
 

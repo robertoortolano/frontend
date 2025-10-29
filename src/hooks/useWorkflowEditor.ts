@@ -5,7 +5,7 @@
  * Replaces the complex state management in WorkflowEdit.tsx
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNodesState, useEdgesState } from 'reactflow';
 import api from '../api/api';
 import { 
@@ -63,6 +63,7 @@ export function useWorkflowEditor({
       impactReportType: null,
       analyzingImpact: false,
       saving: false,
+      pendingSave: false,
     },
     pendingChanges: {
       removedNodes: [],
@@ -83,6 +84,12 @@ export function useWorkflowEditor({
   // React Flow state
   const [reactFlowNodes, setReactFlowNodes, onNodesChange] = useNodesState([]);
   const [reactFlowEdges, setReactFlowEdges, onEdgesChange] = useEdgesState([]);
+
+  // Promise resolver for saveWorkflow when waiting for summary report confirmation
+  const saveWorkflowResolverRef = useRef<{
+    resolve: () => void;
+    reject: (error: any) => void;
+  } | null>(null);
 
   // ========================
   // DATA LOADING
@@ -323,81 +330,312 @@ export function useWorkflowEditor({
     });
   }, [availableStatuses, statusCategories, handleCategoryChange, handleSetInitial, statusCategories]);
 
-  const handleRemoveNode = useCallback(async (nodeId: string) => {
-    console.log('handleRemoveNode called, nodeId:', nodeId);
-    
-    // Use setState with function to get the latest state
-    setState(prev => {
-      console.log('Current state.nodes.length:', prev.nodes.length);
+  // ========================
+  // IMPACT ANALYSIS (defined early to avoid reference errors)
+  // ========================
+  
+  const analyzeImpact = useCallback(async (operations: RemovalOperation[], tempState?: WorkflowState): Promise<ImpactReportData> => {
+    setState(prev => ({
+      ...prev,
+      ui: {
+        ...prev.ui,
+        analyzingImpact: true,
+      },
+    }));
+
+    try {
+      // Use temporary state if provided, otherwise use current state
+      const currentState = tempState || state;
       
-      if (prev.nodes.length === 0) {
-        console.error('Cannot remove node: no nodes in state');
-        return prev; // Return unchanged state
+      // Determine impact type based on operations
+      const hasNodeRemovals = operations.some(op => op.type === 'node');
+      const hasEdgeRemovals = operations.some(op => op.type === 'edge');
+      
+      let impactType: 'status' | 'transition' | 'fieldset' = 'status';
+      if (hasNodeRemovals) impactType = 'status';
+      else if (hasEdgeRemovals) impactType = 'transition';
+
+      // Call appropriate impact analysis endpoint
+      let endpoint = '';
+      let payload: any;
+      
+      if (impactType === 'status') {
+        // For status removal, send the full workflow DTO
+        endpoint = `/workflows/${currentState.workflow?.id}/analyze-status-removal-impact`;
+        payload = convertToWorkflowUpdateDto(currentState, mode);
+      } else if (impactType === 'transition') {
+        // For transition removal, send only the array of transition IDs
+        endpoint = `/workflows/${state.workflow?.id}/analyze-transition-removal-impact`;
+        // Extract transition IDs from operations (only existing transitions have IDs)
+        const transitionIds = operations
+          .filter(op => op.type === 'edge')
+          .map(op => op.data)
+          .filter(edge => edge.transitionId !== null && edge.transitionId !== undefined)
+          .map(edge => Number(edge.transitionId));
+        
+        payload = transitionIds;
       }
 
-      const node = prev.nodes.find(n => n.statusId === Number(nodeId));
-      if (!node) {
-        console.error('Node not found:', nodeId);
-        return prev; // Return unchanged state
-      }
-
-      // If it's a new node, remove directly
-      if (node.isNew) {
-        console.log('Removing new node. Before:', prev.nodes.length);
-        const filtered = prev.nodes.filter(n => n.statusId !== Number(nodeId));
-        console.log('After filtering:', filtered.length);
-        
-        // If we're removing the initial node and there are still nodes, make the first remaining one initial
-        const wasInitial = node.isInitial;
-        let updatedFiltered = filtered;
-        let newInitialStatusId = prev.workflow?.initialStatusId;
-        
-        if (wasInitial && filtered.length > 0) {
-          updatedFiltered = filtered.map((n, index) => 
-            index === 0 ? { ...n, isInitial: true } : { ...n, isInitial: false }
-          );
-          newInitialStatusId = updatedFiltered[0].statusId;
-          console.log('Made first remaining node initial:', updatedFiltered[0].statusName);
-        }
-        
-        return {
-          ...prev,
-          nodes: updatedFiltered,
-          workflow: prev.workflow ? {
-            ...prev.workflow,
-            initialStatusId: newInitialStatusId,
-          } : null,
-          pendingChanges: {
-            ...prev.pendingChanges,
-            addedNodes: prev.pendingChanges.addedNodes.filter(n => n.statusId !== Number(nodeId)),
+      const response = await api.post(endpoint, payload);
+      let impactData: ImpactReportData;
+      
+      // Convert backend DTOs to unified ImpactReportData format
+      if (impactType === 'transition') {
+        // Backend returns TransitionRemovalImpactDto - convert to ImpactReportData
+        const transitionDto = response.data;
+        impactData = {
+          type: 'transition',
+          workflowId: transitionDto.workflowId,
+          workflowName: transitionDto.workflowName,
+          removedItems: {
+            ids: transitionDto.removedTransitionIds || [],
+            names: transitionDto.removedTransitionNames || [],
+          },
+          affectedItemTypeSets: (transitionDto.affectedItemTypeSets || []).map((its: any) => ({
+            id: its.itemTypeSetId,
+            name: its.itemTypeSetName,
+            projectName: its.projectName || null,
+          })),
+          permissions: [
+            {
+              type: 'executor',
+              items: (transitionDto.executorPermissions || []).map((perm: any) => ({
+                itemTypeSetId: perm.itemTypeSetId,
+                itemTypeSetName: perm.itemTypeSetName,
+                itemName: perm.transitionName,
+                itemCategory: '', // Not available in transition permissions
+                assignedRoles: perm.assignedRoles || [],
+                hasAssignments: perm.hasAssignments || false,
+              })),
+            },
+          ],
+          totals: {
+            affectedItemTypeSets: transitionDto.totalAffectedItemTypeSets || 0,
+            totalPermissions: transitionDto.totalExecutorPermissions || 0,
+            totalRoleAssignments: transitionDto.totalRoleAssignments || 0,
+          },
+        };
+      } else {
+        // Status impact - Backend returns StatusRemovalImpactDto - convert to ImpactReportData
+        const statusDto = response.data;
+        impactData = {
+          type: 'status',
+          workflowId: statusDto.workflowId,
+          workflowName: statusDto.workflowName,
+          removedItems: {
+            ids: statusDto.removedStatusIds || [],
+            names: statusDto.removedStatusNames || [],
+          },
+          affectedItemTypeSets: (statusDto.affectedItemTypeSets || []).map((its: any) => ({
+            id: its.itemTypeSetId,
+            name: its.itemTypeSetName,
+            projectName: its.projectName || null,
+          })),
+          permissions: [
+            {
+              type: 'statusOwner',
+              items: (statusDto.statusOwnerPermissions || []).map((perm: any) => ({
+                itemTypeSetId: perm.itemTypeSetId,
+                itemTypeSetName: perm.itemTypeSetName,
+                itemName: perm.statusName || perm.workflowStatusName,
+                itemCategory: perm.statusCategory || '',
+                assignedRoles: perm.assignedRoles || [],
+                hasAssignments: perm.hasAssignments || false,
+              })),
+            },
+          ],
+          totals: {
+            affectedItemTypeSets: statusDto.totalAffectedItemTypeSets || 0,
+            totalPermissions: statusDto.totalStatusOwnerPermissions || 0,
+            totalRoleAssignments: statusDto.totalRoleAssignments || 0,
           },
         };
       }
 
-      // For existing nodes, analyze impact
-      // TODO: Implement impact analysis for existing nodes
-      console.warn('Removing existing node requires impact analysis - not yet implemented');
-      return prev;
-    });
+      setImpactReport(impactData);
+      setState(prev => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          showImpactReport: true,
+          impactReportType: impactType,
+        },
+      }));
+
+      return impactData;
+    } catch (err: any) {
+      console.error('Error analyzing impact:', err);
+      throw err;
+    } finally {
+      setState(prev => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          analyzingImpact: false,
+        },
+      }));
+    }
+  }, [state, mode]);
+
+  const handleRemoveNode = useCallback(async (nodeId: string) => {
+    console.log('handleRemoveNode called, nodeId:', nodeId);
     
-    // Update React Flow after state update
-    setReactFlowNodes(prev => {
-      const filtered = prev.filter(n => n.id !== nodeId);
+    const node = state.nodes.find(n => n.statusId === Number(nodeId));
+    if (!node) {
+      console.error('Node not found:', nodeId);
+      return;
+    }
+
+    // If it's a new node, remove directly
+    if (node.isNew) {
+      console.log('Removing new node. Before:', state.nodes.length);
       
-      // If we removed the initial node, update the new initial node in React Flow
-      const wasInitial = state.nodes.find(n => String(n.statusId) === nodeId)?.isInitial;
+      // If we're removing the initial node and there are still nodes, make the first remaining one initial
+      const wasInitial = node.isInitial;
+      const filtered = state.nodes.filter(n => n.statusId !== Number(nodeId));
+      let updatedFiltered = filtered;
+      let newInitialStatusId = state.workflow?.initialStatusId;
+      
       if (wasInitial && filtered.length > 0) {
-        return filtered.map(n => 
-          n.id === String(filtered[0].statusId) 
-            ? { ...n, data: { ...n.data, isInitial: true } }
-            : { ...n, data: { ...n.data, isInitial: false } }
+        updatedFiltered = filtered.map((n, index) => 
+          index === 0 ? { ...n, isInitial: true } : { ...n, isInitial: false }
         );
+        newInitialStatusId = updatedFiltered[0].statusId;
+        console.log('Made first remaining node initial:', updatedFiltered[0].statusName);
       }
       
-      return filtered;
-    });
-    setReactFlowEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
-  }, [state.nodes]);
+      setState(prev => ({
+        ...prev,
+        nodes: updatedFiltered,
+        workflow: prev.workflow ? {
+          ...prev.workflow,
+          initialStatusId: newInitialStatusId,
+        } : null,
+        pendingChanges: {
+          ...prev.pendingChanges,
+          addedNodes: prev.pendingChanges.addedNodes.filter(n => n.statusId !== Number(nodeId)),
+        },
+      }));
+      
+      // Update React Flow
+      setReactFlowNodes(prev => {
+        const filtered = prev.filter(n => n.id !== nodeId);
+        if (wasInitial && filtered.length > 0) {
+          return filtered.map(n => 
+            n.id === String(updatedFiltered[0].statusId) 
+              ? { ...n, data: { ...n.data, isInitial: true } }
+              : { ...n, data: { ...n.data, isInitial: false } }
+          );
+        }
+        return filtered;
+      });
+      setReactFlowEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
+      return;
+    }
+
+    // For existing nodes, we need to temporarily remove from state.nodes to build correct DTO
+    // then analyze impact to check if there are role assignments
+    const wasInitial = node.isInitial;
+    const filteredNodes = state.nodes.filter(n => n.statusId !== Number(nodeId));
+    
+    // Temporarily update state to build correct DTO for impact analysis
+    // We'll restore it after analysis if needed
+    const tempState = {
+      ...state,
+      nodes: filteredNodes,
+    };
+    
+    const operation: RemovalOperation = {
+      type: 'node',
+      id: nodeId,
+      data: node,
+      impactReport: null,
+      confirmed: false,
+    };
+
+    // Analyze impact with temporary state (node already removed from nodes list)
+    // This way the DTO will not include the node, and backend will identify it as removed
+    const tempStateForAnalysis: WorkflowState = {
+      ...state,
+      nodes: filteredNodes,
+    };
+    
+    let impactData: ImpactReportData;
+    try {
+      impactData = await analyzeImpact([operation], tempStateForAnalysis);
+    } catch (err: any) {
+      console.error('Error analyzing node removal impact:', err);
+      throw err;
+    }
+    
+    // Check if there are any permissions with role assignments
+    const hasRoleAssignments = impactData.permissions?.some(perm => 
+      perm.items?.some(item => item.hasAssignments)
+    ) || impactData.totals?.totalRoleAssignments > 0;
+
+    // Only show impact report if there are role assignments
+    // Otherwise, remove directly without showing the modal
+    if (!hasRoleAssignments) {
+      // No role assignments - confirm removal directly
+      let updatedFiltered = filteredNodes;
+      let newInitialStatusId = state.workflow?.initialStatusId;
+      
+      if (wasInitial && filteredNodes.length > 0) {
+        updatedFiltered = filteredNodes.map((n, index) => 
+          index === 0 ? { ...n, isInitial: true } : { ...n, isInitial: false }
+        );
+        newInitialStatusId = updatedFiltered[0].statusId;
+      }
+      
+      setState(prev => ({
+        ...prev,
+        nodes: updatedFiltered,
+        workflow: prev.workflow ? {
+          ...prev.workflow,
+          initialStatusId: newInitialStatusId,
+        } : null,
+        pendingChanges: {
+          ...prev.pendingChanges,
+          removedNodes: [...prev.pendingChanges.removedNodes, node],
+        },
+        ui: {
+          ...prev.ui,
+          showImpactReport: false,
+          impactReportType: null,
+        },
+      }));
+      
+      // Remove from React Flow
+      setReactFlowNodes(prev => {
+        const filtered = prev.filter(n => n.id !== nodeId);
+        if (wasInitial && filtered.length > 0) {
+          return filtered.map(n => 
+            n.id === String(updatedFiltered[0].statusId) 
+              ? { ...n, data: { ...n.data, isInitial: true } }
+              : { ...n, data: { ...n.data, isInitial: false } }
+          );
+        }
+        return filtered;
+      });
+      setReactFlowEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
+      
+      // Clear the impact report that was set
+      setImpactReport(null);
+      
+      return;
+    }
+
+    // There are role assignments - restore node to state and add to pendingChanges.removedNodes for the modal
+    setState(prev => ({
+      ...prev,
+      nodes: state.nodes, // Keep the node (it wasn't removed from state yet)
+      pendingChanges: {
+        ...prev.pendingChanges,
+        removedNodes: [...prev.pendingChanges.removedNodes, node],
+      },
+    }));
+    // The impact report modal will be shown (already set by analyzeImpact)
+  }, [state, analyzeImpact]);
 
   // ========================
   // EDGE OPERATIONS
@@ -458,7 +696,7 @@ export function useWorkflowEditor({
       return;
     }
 
-    // For existing edges, analyze impact
+    // For existing edges, analyze impact first to check if there are role assignments
     const operation: RemovalOperation = {
       type: 'edge',
       id: edgeId,
@@ -467,69 +705,138 @@ export function useWorkflowEditor({
       confirmed: false,
     };
 
-    await analyzeImpact([operation]);
-  }, [state.edges]);
+    // Analyze impact to check if there are permissions with role assignments
+    const impactData = await analyzeImpact([operation]);
+    
+    // Check if there are any permissions with role assignments
+    const hasRoleAssignments = impactData.permissions?.some(perm => 
+      perm.items?.some(item => item.hasAssignments)
+    ) || impactData.totals?.totalRoleAssignments > 0;
 
-  // ========================
-  // IMPACT ANALYSIS
-  // ========================
-  
-  const analyzeImpact = useCallback(async (operations: RemovalOperation[]): Promise<ImpactReportData> => {
+    // Only show impact report if there are role assignments
+    // Otherwise, remove directly without showing the modal
+    if (!hasRoleAssignments) {
+      // No role assignments - remove directly without showing modal
+      setState(prev => ({
+        ...prev,
+        edges: prev.edges.filter(e => e !== edge),
+        pendingChanges: {
+          ...prev.pendingChanges,
+          removedEdges: [...prev.pendingChanges.removedEdges, edge],
+        },
+        ui: {
+          ...prev.ui,
+          showImpactReport: false,
+          impactReportType: null,
+        },
+      }));
+      
+      // Remove from React Flow
+      setReactFlowEdges(prev => prev.filter(e => e.id !== edgeId));
+      
+      // Clear the impact report that was set
+      setImpactReport(null);
+      
+      return;
+    }
+
+    // There are role assignments - add to pendingChanges.removedEdges for the modal
     setState(prev => ({
       ...prev,
-      ui: {
-        ...prev.ui,
-        analyzingImpact: true,
+      pendingChanges: {
+        ...prev.pendingChanges,
+        removedEdges: [...prev.pendingChanges.removedEdges, edge],
+      },
+    }));
+    // The impact report modal will be shown (already set by analyzeImpact)
+  }, [state.edges]);
+
+  const handleUpdateEdgeConnection = useCallback((oldEdge: any, newConnection: any) => {
+    // Find the edge in unified state by its React Flow ID
+    const edgeId = oldEdge.id;
+    const edge = state.edges.find(e => 
+      e.transitionId === Number(edgeId) || e.transitionTempId === edgeId ||
+      String(e.transitionId) === edgeId || e.transitionTempId === edgeId
+    );
+
+    if (!edge) {
+      console.error('Edge not found for update:', edgeId);
+      return;
+    }
+
+    // Extract new connection data
+    const newSourceStatusId = Number(newConnection.source);
+    const newTargetStatusId = Number(newConnection.target);
+    const newSourceHandle = newConnection.sourceHandle || null;
+    const newTargetHandle = newConnection.targetHandle || null;
+
+    // Check if anything actually changed
+    const sourceChanged = edge.sourceStatusId !== newSourceStatusId;
+    const targetChanged = edge.targetStatusId !== newTargetStatusId;
+    const sourceHandleChanged = edge.sourcePosition !== newSourceHandle;
+    const targetHandleChanged = edge.targetPosition !== newTargetHandle;
+
+    if (!sourceChanged && !targetChanged && !sourceHandleChanged && !targetHandleChanged) {
+      // No changes, skip update
+      return;
+    }
+
+    // Update unified state
+    setState(prev => ({
+      ...prev,
+      edges: prev.edges.map(e => 
+        (e.transitionId === edge.transitionId && e.transitionTempId === edge.transitionTempId) ||
+        (e.transitionId === Number(edgeId) || e.transitionTempId === edgeId)
+          ? {
+              ...e,
+              sourceStatusId: newSourceStatusId,
+              targetStatusId: newTargetStatusId,
+              sourcePosition: newSourceHandle,
+              targetPosition: newTargetHandle,
+            }
+          : e
+      ),
+      pendingChanges: {
+        ...prev.pendingChanges,
+        modifiedEdges: prev.pendingChanges.modifiedEdges.some(e => 
+          (e.transitionId === edge.transitionId && e.transitionTempId === edge.transitionTempId) ||
+          (e.transitionId === Number(edgeId) || e.transitionTempId === edgeId)
+        )
+          ? prev.pendingChanges.modifiedEdges.map(e =>
+              (e.transitionId === edge.transitionId && e.transitionTempId === edge.transitionTempId) ||
+              (e.transitionId === Number(edgeId) || e.transitionTempId === edgeId)
+                ? {
+                    ...e,
+                    sourceStatusId: newSourceStatusId,
+                    targetStatusId: newTargetStatusId,
+                    sourcePosition: newSourceHandle,
+                    targetPosition: newTargetHandle,
+                  }
+                : e
+            )
+          : [...prev.pendingChanges.modifiedEdges, {
+              ...edge,
+              sourceStatusId: newSourceStatusId,
+              targetStatusId: newTargetStatusId,
+              sourcePosition: newSourceHandle,
+              targetPosition: newTargetHandle,
+            }],
       },
     }));
 
-    try {
-      // Determine impact type based on operations
-      const hasNodeRemovals = operations.some(op => op.type === 'node');
-      const hasEdgeRemovals = operations.some(op => op.type === 'edge');
-      
-      let impactType: 'status' | 'transition' | 'fieldset' = 'status';
-      if (hasNodeRemovals) impactType = 'status';
-      else if (hasEdgeRemovals) impactType = 'transition';
-
-      // Build DTO for impact analysis
-      const dto = convertToWorkflowUpdateDto(state, mode);
-      
-      // Call appropriate impact analysis endpoint
-      let endpoint = '';
-      if (impactType === 'status') {
-        endpoint = `/workflows/${state.workflow?.id}/analyze-status-removal-impact`;
-      } else if (impactType === 'transition') {
-        endpoint = `/workflows/${state.workflow?.id}/analyze-transition-removal-impact`;
-      }
-
-      const response = await api.post(endpoint, dto);
-      const impactData: ImpactReportData = response.data;
-
-      setImpactReport(impactData);
-      setState(prev => ({
-        ...prev,
-        ui: {
-          ...prev.ui,
-          showImpactReport: true,
-          impactReportType: impactType,
-        },
-      }));
-
-      return impactData;
-    } catch (err: any) {
-      console.error('Error analyzing impact:', err);
-      throw err;
-    } finally {
-      setState(prev => ({
-        ...prev,
-        ui: {
-          ...prev.ui,
-          analyzingImpact: false,
-        },
-      }));
-    }
-  }, [state, mode]);
+    // Update React Flow edges
+    setReactFlowEdges(prev => prev.map(e => 
+      e.id === edgeId
+        ? {
+            ...e,
+            source: newConnection.source,
+            target: newConnection.target,
+            sourceHandle: newSourceHandle || undefined,
+            targetHandle: newTargetHandle || undefined,
+          }
+        : e
+    ));
+  }, [state.edges, analyzeImpact]);
 
   // ========================
   // WORKFLOW OPERATIONS
@@ -551,16 +858,133 @@ export function useWorkflowEditor({
     }));
   }, []);
   
-  const saveWorkflow = useCallback(async () => {
+  const saveWorkflow = useCallback(async (skipImpactAnalysis: boolean = false) => {
     if (!state.workflow) {
       throw new Error('No workflow data to save');
     }
 
+    // Check if there are any pending removals that need to be analyzed
+    const hasRemovedTransitions = state.pendingChanges.removedEdges.length > 0;
+    const hasRemovedStatuses = state.pendingChanges.removedNodes.length > 0;
+
+    // If there are pending removals, analyze the combined impact before saving
+    // Skip analysis if already confirmed (skipImpactAnalysis = true)
+    if ((hasRemovedStatuses || hasRemovedTransitions) && mode === 'edit' && !skipImpactAnalysis) {
+      // Build temporary state with all removed items restored for impact analysis
+      // This way the DTO will include everything, and backend will identify what's removed
+      const tempStateForAnalysis: WorkflowState = {
+        ...state,
+        nodes: [...state.nodes, ...state.pendingChanges.removedNodes],
+        edges: [...state.edges, ...state.pendingChanges.removedEdges],
+      };
+
+      // Analyze status removal impact if there are removed statuses
+      let statusImpact: ImpactReportData | null = null;
+      if (hasRemovedStatuses) {
+        const statusOperations: RemovalOperation[] = state.pendingChanges.removedNodes.map(node => ({
+          type: 'node' as const,
+          id: String(node.statusId),
+          data: node,
+          impactReport: null,
+          confirmed: false,
+        }));
+        statusImpact = await analyzeImpact(statusOperations, tempStateForAnalysis);
+      }
+
+      // Analyze transition removal impact if there are removed transitions
+      let transitionImpact: ImpactReportData | null = null;
+      if (hasRemovedTransitions) {
+        const transitionOperations: RemovalOperation[] = state.pendingChanges.removedEdges
+          .filter(edge => edge.transitionId !== null && edge.transitionId !== undefined)
+          .map(edge => ({
+            type: 'edge' as const,
+            id: String(edge.transitionId),
+            data: edge,
+            impactReport: null,
+            confirmed: false,
+          }));
+        if (transitionOperations.length > 0) {
+          transitionImpact = await analyzeImpact(transitionOperations, tempStateForAnalysis);
+        }
+      }
+
+      // Combine impacts if both exist, or use the single one
+      let combinedImpact: ImpactReportData | null = null;
+      if (statusImpact && transitionImpact) {
+        // Merge both impacts into a combined report
+        combinedImpact = {
+          type: 'status', // Use status as primary type
+          workflowId: statusImpact.workflowId,
+          workflowName: statusImpact.workflowName,
+          removedItems: {
+            ids: [...(statusImpact.removedItems?.ids || []), ...(transitionImpact.removedItems?.ids || [])],
+            names: [...(statusImpact.removedItems?.names || []), ...(transitionImpact.removedItems?.names || [])],
+          },
+          affectedItemTypeSets: [
+            ...(statusImpact.affectedItemTypeSets || []),
+            ...(transitionImpact.affectedItemTypeSets || []),
+          ].filter((its, index, self) => 
+            index === self.findIndex(t => t.id === its.id)
+          ), // Remove duplicates
+          permissions: [
+            ...(statusImpact.permissions || []),
+            ...(transitionImpact.permissions || []),
+          ],
+          totals: {
+            affectedItemTypeSets: new Set([
+              ...(statusImpact.affectedItemTypeSets || []).map(its => its.id),
+              ...(transitionImpact.affectedItemTypeSets || []).map(its => its.id),
+            ]).size,
+            totalPermissions: (statusImpact.totals?.totalPermissions || 0) + (transitionImpact.totals?.totalPermissions || 0),
+            totalRoleAssignments: (statusImpact.totals?.totalRoleAssignments || 0) + (transitionImpact.totals?.totalRoleAssignments || 0),
+          },
+        };
+      } else {
+        combinedImpact = statusImpact || transitionImpact;
+      }
+
+      // Check if there are any permissions with role assignments
+      const hasRoleAssignments = combinedImpact?.permissions?.some(perm => 
+        perm.items?.some(item => item.hasAssignments)
+      ) || combinedImpact?.totals?.totalRoleAssignments > 0;
+
+      // If there are role assignments, show summary report and wait for confirmation
+      if (hasRoleAssignments && combinedImpact) {
+        setImpactReport(combinedImpact);
+        setState(prev => ({
+          ...prev,
+          ui: {
+            ...prev.ui,
+            showImpactReport: true,
+            impactReportType: combinedImpact.type,
+            pendingSave: true, // Flag to indicate we're waiting for confirmation before saving
+          },
+        }));
+        
+        // Create a Promise that will be resolved when user confirms or rejects
+        return new Promise<void>((resolve, reject) => {
+          saveWorkflowResolverRef.current = { resolve, reject };
+        });
+      }
+      // If no role assignments, clear the report and proceed with save
+      setState(prev => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          showImpactReport: false,
+          impactReportType: null,
+        },
+      }));
+      setImpactReport(null);
+    }
+
+    // Proceed with actual save
     setState(prev => ({
       ...prev,
       ui: {
         ...prev.ui,
         saving: true,
+        pendingSave: false,
       },
     }));
 
@@ -572,7 +996,36 @@ export function useWorkflowEditor({
       if (mode === 'create') {
         response = await api.post('/workflows', dto);
       } else {
-        response = await api.put(`/workflows/${state.workflow.id}`, dto);
+        // APPROACH 1: If there are removed edges (transitions) or nodes (statuses) that were confirmed for removal,
+        // use the appropriate confirm endpoint to properly handle permission removal
+        // Otherwise use normal PUT and handle IMPACT errors if they occur
+        try {
+          if (hasRemovedStatuses && hasRemovedTransitions) {
+            // Both statuses and transitions removed - prioritize status removal endpoint
+            // (it handles both, or we might need a combined endpoint)
+            response = await api.post(`/workflows/${state.workflow.id}/confirm-status-removal`, dto);
+          } else if (hasRemovedStatuses) {
+            // Only statuses removed - use confirm-status-removal endpoint
+            response = await api.post(`/workflows/${state.workflow.id}/confirm-status-removal`, dto);
+          } else if (hasRemovedTransitions) {
+            // Only transitions removed - use confirm-transition-removal endpoint
+            response = await api.post(`/workflows/${state.workflow.id}/confirm-transition-removal`, dto);
+          } else {
+            // Normal save - backend might still detect removed items and require confirmation
+            response = await api.put(`/workflows/${state.workflow.id}`, dto);
+          }
+        } catch (err: any) {
+          // Handle case where backend detects removed items with permissions and requires confirmation
+          if (err.response?.data?.message?.includes('TRANSITION_REMOVAL_IMPACT')) {
+            // Backend detected removed transitions - use confirm endpoint
+            response = await api.post(`/workflows/${state.workflow.id}/confirm-transition-removal`, dto);
+          } else if (err.response?.data?.message?.includes('STATUS_REMOVAL_IMPACT')) {
+            // Backend detected removed statuses - use confirm endpoint
+            response = await api.post(`/workflows/${state.workflow.id}/confirm-status-removal`, dto);
+          } else {
+            throw err;
+          }
+        }
       }
 
       // Update state with saved data
@@ -591,7 +1044,15 @@ export function useWorkflowEditor({
           modifiedNodes: [],
           modifiedEdges: [],
         },
+        ui: {
+          ...prev.ui,
+          showImpactReport: false,
+          impactReportType: null,
+        },
       }));
+
+      // Clear impact report
+      setImpactReport(null);
 
       onSave?.(state.workflow);
     } catch (err: any) {
@@ -603,10 +1064,11 @@ export function useWorkflowEditor({
         ui: {
           ...prev.ui,
           saving: false,
+          pendingSave: false,
         },
       }));
     }
-  }, [state, mode, onSave]);
+  }, [state, mode, onSave, analyzeImpact]);
 
   const cancelChanges = useCallback(() => {
     onCancel?.();
@@ -618,19 +1080,78 @@ export function useWorkflowEditor({
   
   const confirmRemoval = useCallback(async (operations: RemovalOperation[]) => {
     try {
-      // Call confirmation endpoint
-      const dto = convertToWorkflowUpdateDto(state, mode);
+      // Check if this is a confirmation from a summary report before saving
+      const isPendingSave = state.ui.pendingSave;
       
-      let endpoint = '';
-      if (operations[0]?.type === 'node') {
-        endpoint = `/workflows/${state.workflow?.id}/confirm-status-removal`;
-      } else if (operations[0]?.type === 'edge') {
-        endpoint = `/workflows/${state.workflow?.id}/confirm-transition-removal`;
+      // If this is a confirmation from summary report before saving, 
+      // the items are already removed from state and are in pendingChanges
+      // Just close the modal and proceed with actual save
+      if (isPendingSave) {
+        // Resolve the pending saveWorkflow promise FIRST
+        if (saveWorkflowResolverRef.current) {
+          const resolver = saveWorkflowResolverRef.current;
+          saveWorkflowResolverRef.current = null;
+          
+          // Close the modal and clear impact report IMMEDIATELY
+          setState(prev => ({
+            ...prev,
+            ui: {
+              ...prev.ui,
+              showImpactReport: false,
+              impactReportType: null,
+              pendingSave: false,
+            },
+          }));
+          
+          // Clear impact report immediately to prevent it from showing again
+          setImpactReport(null);
+          
+          // Call saveWorkflow with skipImpactAnalysis=true to skip re-analyzing impact
+          // since the user has already confirmed the summary report
+          setTimeout(async () => {
+            try {
+              await saveWorkflow(true); // Skip impact analysis - already confirmed
+              resolver.resolve();
+            } catch (err: any) {
+              resolver.reject(err);
+            }
+          }, 0);
+        } else {
+          // Fallback if resolver is missing - try to save anyway
+          setState(prev => ({
+            ...prev,
+            ui: {
+              ...prev.ui,
+              showImpactReport: false,
+              impactReportType: null,
+              pendingSave: false,
+            },
+          }));
+          setImpactReport(null);
+          
+          setTimeout(async () => {
+            await saveWorkflow(true); // Skip impact analysis
+          }, 0);
+        }
+        return;
       }
 
-      await api.post(endpoint, dto);
-
-      // Remove from state
+      // Otherwise, this is a confirmation from an individual removal report
+      // APPROACH 1: Remove only from frontend state, don't touch database yet
+      // The removal will be persisted only when the workflow is saved
+      // This allows users to cancel changes if they don't save
+      
+      // Check what type of operations we're handling
+      const hasNodeRemovals = operations.some(op => op.type === 'node');
+      const hasEdgeRemovals = operations.some(op => op.type === 'edge');
+      
+      // APPROACH 1: For both status and transition removal - NO backend call, only remove from state
+      // The backend will handle removal when the workflow is saved
+      // This allows users to cancel changes if they don't save
+      
+      // Remove from state (both status and transitions)
+      // APPROACH 1: Keep removedEdges in pendingChanges so they can be restored if user cancels
+      // They will be cleared only when workflow is saved
       setState(prev => ({
         ...prev,
         nodes: prev.nodes.filter(node => 
@@ -643,6 +1164,13 @@ export function useWorkflowEditor({
           ...prev.ui,
           showImpactReport: false,
           impactReportType: null,
+          pendingSave: false,
+        },
+        pendingChanges: {
+          ...prev.pendingChanges,
+          // Keep removedEdges and removedNodes until save - they contain the data needed for restoration
+          removedNodes: hasNodeRemovals ? prev.pendingChanges.removedNodes : [],
+          removedEdges: hasEdgeRemovals ? prev.pendingChanges.removedEdges : [],
         },
       }));
 
@@ -659,19 +1187,95 @@ export function useWorkflowEditor({
       console.error('Error confirming removal:', err);
       throw err;
     }
-  }, [state, mode, updateReactFlow]);
+  }, [state, mode, updateReactFlow, saveWorkflow]);
 
   const cancelRemoval = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      ui: {
-        ...prev.ui,
-        showImpactReport: false,
-        impactReportType: null,
-      },
-    }));
+    const isPendingSave = state.ui.pendingSave;
+    
+    setState(prev => {
+      // If this is cancellation of summary report before saving, don't restore removed items
+      // Just clear the report and pendingSave flag - removals stay as they are
+      if (isPendingSave) {
+        // Reject the pending saveWorkflow promise since user cancelled
+        if (saveWorkflowResolverRef.current) {
+          const resolver = saveWorkflowResolverRef.current;
+          saveWorkflowResolverRef.current = null;
+          resolver.reject(new Error('Save cancelled by user'));
+        }
+        
+        return {
+          ...prev,
+          ui: {
+            ...prev.ui,
+            showImpactReport: false,
+            impactReportType: null,
+            pendingSave: false, // Clear pending save flag - user cancelled the save
+          },
+        };
+      }
+
+      // Otherwise, this is cancellation of an individual removal - restore the item
+      // APPROACH 1: Restore removed edges from pendingChanges.removedEdges
+      // These edges were removed from state.edges but not yet saved
+      const edgesToRestore = prev.pendingChanges.removedEdges || [];
+      const nodesToRestore = prev.pendingChanges.removedNodes || [];
+      
+      // Restore edges to state
+      const restoredEdges = [...prev.edges, ...edgesToRestore];
+      
+      // Restore nodes to state (if any)
+      const restoredNodes = [...prev.nodes, ...nodesToRestore];
+      
+      // Restore React Flow edges (for visual display)
+      if (edgesToRestore.length > 0) {
+        const reactEdgesToRestore = edgesToRestore.map(edge => 
+          convertToReactFlowEdge(edge, handleRemoveEdge)
+        );
+        setReactFlowEdges(prev => {
+          // Filter out any duplicates and add restored edges
+          const existingIds = new Set(prev.map(e => e.id));
+          const newEdges = reactEdgesToRestore.filter(e => !existingIds.has(e.id));
+          return [...prev, ...newEdges];
+        });
+      }
+      
+      // Restore React Flow nodes (if any)
+      if (nodesToRestore.length > 0) {
+        const reactNodesToRestore = nodesToRestore.map(node => 
+          convertToReactFlowNode(
+            node,
+            handleCategoryChange,
+            handleRemoveNode,
+            handleSetInitial,
+            statusCategories
+          )
+        );
+        setReactFlowNodes(prev => {
+          const existingIds = new Set(prev.map(n => n.id));
+          const newNodes = reactNodesToRestore.filter(n => !existingIds.has(n.id));
+          return [...prev, ...newNodes];
+        });
+      }
+
+      return {
+        ...prev,
+        edges: restoredEdges,
+        nodes: restoredNodes,
+        ui: {
+          ...prev.ui,
+          showImpactReport: false,
+          impactReportType: null,
+          pendingSave: false,
+        },
+        pendingChanges: {
+          ...prev.pendingChanges,
+          removedNodes: [],
+          removedEdges: [],
+        },
+      };
+    });
     setImpactReport(null);
-  }, []);
+  }, [state.ui.pendingSave, handleRemoveEdge, handleCategoryChange, handleRemoveNode, handleSetInitial, statusCategories]);
 
   // ========================
   // REACT FLOW SYNC - Define with all dependencies
@@ -773,7 +1377,27 @@ export function useWorkflowEditor({
             : edge
         ),
       }));
+      
+      // Also update reactFlowEdges to keep them in sync
+      // This ensures the label is preserved when switching between edges
+      setReactFlowEdges(prev => prev.map(e => {
+        const edgeIdMatch = e.id === edgeId || 
+                           String(e.data?.transitionId) === edgeId || 
+                           e.data?.transitionTempId === edgeId;
+        
+        if (edgeIdMatch && updates.transitionName !== undefined) {
+          return {
+            ...e,
+            data: {
+              ...e.data,
+              label: updates.transitionName,
+            },
+          };
+        }
+        return e;
+      }));
     },
+    updateEdgeConnection: handleUpdateEdgeConnection,
     updateWorkflowName,
     saveWorkflow,
     cancelChanges,
@@ -785,6 +1409,7 @@ export function useWorkflowEditor({
     handleRemoveNode,
     addEdge,
     handleRemoveEdge,
+    handleUpdateEdgeConnection,
     updateWorkflowName,
     saveWorkflow,
     cancelChanges,

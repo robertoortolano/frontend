@@ -116,12 +116,7 @@ export default function CategoryPopover({
             type="button"
             onClick={() => {
               if (onRemove) {
-                const confirmed = window.confirm(
-                  "Sei sicuro di voler eliminare questo stato? Verranno rimosse anche le transizioni collegate."
-                );
-                if (confirmed) {
-                  onRemove();
-                }
+                onRemove();
               }
               setOpen(false);
             }}
