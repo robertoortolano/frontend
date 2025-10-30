@@ -1,7 +1,6 @@
 import React from 'react';
 import { FieldSetRemovalImpactDto } from '../types/fieldset-impact.types';
 import { GenericImpactReportModal, ImpactReportData } from './GenericImpactReportModal';
-import form from '../styles/common/Forms.module.css';
 
 interface FieldSetImpactReportModalProps {
   isOpen: boolean;
@@ -10,6 +9,7 @@ interface FieldSetImpactReportModalProps {
   onExport: () => void;
   impact: FieldSetRemovalImpactDto | null;
   loading?: boolean;
+  isProvisional?: boolean; // True for provisional report, false for summary report before save
 }
 
 export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps> = ({
@@ -18,141 +18,188 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
   onConfirm,
   onExport,
   impact,
-  loading = false
+  loading = false,
+  isProvisional = false
 }) => {
   if (!impact) return null;
 
+  // Check if there are any permissions with role or grant assignments
   const hasPopulatedPermissions = impact.fieldOwnerPermissions.some(p => p.hasAssignments) ||
                                  impact.fieldStatusPermissions.some(p => p.hasAssignments) ||
                                  impact.itemTypeSetRoles.some(p => p.hasAssignments);
 
-  // Prepara i dati per le tabelle
-  const itemTypeSetData = impact.affectedItemTypeSets.map(its => ({
-    name: its.itemTypeSetName,
-    project: its.projectName || 'N/A',
-    id: its.itemTypeSetId
-  }));
-
-  const fieldOwnerPermissionsData = impact.fieldOwnerPermissions.map(perm => ({
-    itemTypeSet: perm.itemTypeSetName,
-    fieldConfiguration: perm.fieldConfigurationName,
-    roles: perm.assignedRoles.join(', ') || 'Nessuno',
-    populated: perm.hasAssignments ? 'Sì' : 'No'
-  }));
-
-  const fieldStatusPermissionsData = impact.fieldStatusPermissions.map(perm => ({
-    type: perm.permissionType,
-    itemTypeSet: perm.itemTypeSetName,
-    fieldConfiguration: perm.fieldConfigurationName,
-    workflowStatus: perm.workflowStatusName,
-    roles: perm.assignedRoles.join(', ') || 'Nessuno',
-    populated: perm.hasAssignments ? 'Sì' : 'No'
-  }));
-
-  const itemTypeSetRolesData = impact.itemTypeSetRoles.map(role => ({
-    itemTypeSet: role.itemTypeSetName,
-    project: role.projectName || 'N/A',
-    role: role.roleName,
-    grants: role.assignedGrants.join(', ') || 'Nessuno',
-    populated: role.hasAssignments ? 'Sì' : 'No'
-  }));
-
+  // Only show permissions sections, following the same pattern as workflow reports
   const data: ImpactReportData = {
-    title: '📊 Report Impatto Rimozione FieldConfiguration',
-    summaryItems: [
-      { label: 'Field Set', value: impact.fieldSetName },
-      { label: 'FieldConfiguration Rimosse', value: impact.removedFieldConfigurationNames.join(', ') },
-      { label: 'ItemTypeSet Coinvolti', value: impact.totalAffectedItemTypeSets },
-      { label: 'Permissions Totali', value: impact.totalFieldOwnerPermissions + impact.totalFieldStatusPermissions + impact.totalItemTypeSetRoles },
-      { label: 'Assignments Totali', value: impact.totalRoleAssignments + impact.totalGrantAssignments }
-    ],
+    title: isProvisional 
+      ? '📊 Permission interessate dalla rimozione (Report Provvisorio)'
+      : '📊 Permission interessate dalla rimozione',
+    // Remove summary items, removed items, and affected ItemTypeSets sections - keep only permissions
+    summaryItems: [],
     tableSections: [
-      {
-        title: 'ItemTypeSet Coinvolti',
-        icon: '🎯',
-        columns: [
-          { header: 'Nome', key: 'name' },
-          { header: 'Progetto', key: 'project' }
-        ],
-        data: itemTypeSetData,
-        showIfEmpty: false
-      },
-      {
-        title: 'Field Owner Permissions',
+      // Field Owner Permissions section
+      ...(impact.fieldOwnerPermissions.length > 0 ? [{
+        title: 'Permission Field Owner',
         icon: '👑',
         columns: [
-          { header: 'ItemTypeSet', key: 'itemTypeSet' },
-          { header: 'FieldConfiguration', key: 'fieldConfiguration' },
-          { header: 'Ruoli Assegnati', key: 'roles' },
           { 
-            header: 'Popolata', 
-            key: 'populated',
+            header: 'ItemTypeSet', 
+            key: 'itemTypeSetName',
             render: (value) => (
-              <span className={value === 'Sì' ? form.badgeWarning : form.badgeInfo}>
-                {value}
-                          </span>
+              <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
             )
-          }
+          },
+          { 
+            header: 'Field', 
+            key: 'fieldConfigurationName',
+            render: (value) => (
+              <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
+            )
+          },
+          { 
+            header: 'Ruoli', 
+            key: 'assignedRoles',
+            tdStyle: { whiteSpace: 'normal' },
+            render: (value) => {
+              const roles = Array.isArray(value) ? value : [];
+              return roles.length > 0 
+                ? <span>{roles.join(', ')}</span>
+                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
+            }
+          },
         ],
-        data: fieldOwnerPermissionsData,
+        data: [...impact.fieldOwnerPermissions]
+          .sort((a, b) => {
+            const itsA = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
+            if (itsA !== 0) return itsA;
+            return (a.fieldConfigurationName || '').localeCompare(b.fieldConfigurationName || '');
+          })
+          .map(perm => ({
+            itemTypeSetName: perm.itemTypeSetName,
+            fieldConfigurationName: perm.fieldConfigurationName,
+            assignedRoles: perm.assignedRoles || [],
+          })),
         showIfEmpty: false
-      },
-      {
-        title: 'Field Status Permissions',
+      }] : []),
+      // Field Status Permissions section
+      ...(impact.fieldStatusPermissions.length > 0 ? [{
+        title: 'Permission Field Status',
         icon: '🔐',
         columns: [
           { 
-            header: 'Tipo', 
-            key: 'type',
+            header: 'ItemTypeSet', 
+            key: 'itemTypeSetName',
             render: (value) => (
-                          <span className={form.badgePrimary}>
+              <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
+            )
+          },
+          { 
+            header: 'Field', 
+            key: 'fieldConfigurationName',
+            render: (value) => (
+              <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
+            )
+          },
+          { 
+            header: 'WorkflowStatus', 
+            key: 'workflowStatusName',
+            render: (value) => value || '—'
+          },
+          { 
+            header: 'Tipo', 
+            key: 'permissionType',
+            render: (value) => (
+              <span style={{ 
+                display: 'inline-block',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '0.85em',
+                backgroundColor: '#e0e7ff',
+                color: '#3730a3'
+              }}>
                 {value}
               </span>
             )
           },
-          { header: 'ItemTypeSet', key: 'itemTypeSet' },
-          { header: 'FieldConfiguration', key: 'fieldConfiguration' },
-          { header: 'WorkflowStatus', key: 'workflowStatus' },
-          { header: 'Ruoli Assegnati', key: 'roles' },
           { 
-            header: 'Popolata', 
-            key: 'populated',
-            render: (value) => (
-              <span className={value === 'Sì' ? form.badgeWarning : form.badgeInfo}>
-                {value}
-                          </span>
-            )
-          }
+            header: 'Ruoli', 
+            key: 'assignedRoles',
+            tdStyle: { whiteSpace: 'normal' },
+            render: (value) => {
+              const roles = Array.isArray(value) ? value : [];
+              return roles.length > 0 
+                ? <span>{roles.join(', ')}</span>
+                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
+            }
+          },
         ],
-        data: fieldStatusPermissionsData,
+        data: [...impact.fieldStatusPermissions]
+          .sort((a, b) => {
+            const itsA = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
+            if (itsA !== 0) return itsA;
+            const fieldA = (a.fieldConfigurationName || '').localeCompare(b.fieldConfigurationName || '');
+            if (fieldA !== 0) return fieldA;
+            return (a.workflowStatusName || '').localeCompare(b.workflowStatusName || '');
+          })
+          .map(perm => ({
+            itemTypeSetName: perm.itemTypeSetName,
+            fieldConfigurationName: perm.fieldConfigurationName,
+            workflowStatusName: perm.workflowStatusName,
+            permissionType: perm.permissionType,
+            assignedRoles: perm.assignedRoles || [],
+          })),
         showIfEmpty: false
-      },
-      {
-        title: 'ItemTypeSet Roles',
+      }] : []),
+      // ItemTypeSet Roles section
+      ...(impact.itemTypeSetRoles.length > 0 ? [{
+        title: 'Permission ItemTypeSet Roles',
         icon: '👥',
         columns: [
-          { header: 'ItemTypeSet', key: 'itemTypeSet' },
-          { header: 'Progetto', key: 'project' },
-          { header: 'Ruolo', key: 'role' },
-          { header: 'Grants Assegnati', key: 'grants' },
           { 
-            header: 'Popolata', 
-            key: 'populated',
+            header: 'ItemTypeSet', 
+            key: 'itemTypeSetName',
             render: (value) => (
-              <span className={value === 'Sì' ? form.badgeWarning : form.badgeInfo}>
-                {value}
-                          </span>
+              <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
             )
-          }
+          },
+          { 
+            header: 'Ruolo', 
+            key: 'roleName',
+            render: (value) => value || '—'
+          },
+          { 
+            header: 'Grants', 
+            key: 'assignedGrants',
+            tdStyle: { whiteSpace: 'normal' },
+            render: (value) => {
+              const grants = Array.isArray(value) ? value : [];
+              return grants.length > 0 
+                ? <span>{grants.join(', ')}</span>
+                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
+            }
+          },
         ],
-        data: itemTypeSetRolesData,
+        data: [...impact.itemTypeSetRoles]
+          .sort((a, b) => {
+            const itsA = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
+            if (itsA !== 0) return itsA;
+            return (a.roleName || '').localeCompare(b.roleName || '');
+          })
+          .map(role => ({
+            itemTypeSetName: role.itemTypeSetName,
+            roleName: role.roleName,
+            assignedGrants: role.assignedGrants || [],
+          })),
         showIfEmpty: false
-      }
+      }] : []),
     ],
     hasPopulatedPermissions,
-    warningMessage: hasPopulatedPermissions 
-      ? 'La rimozione di queste FieldConfiguration comporterà la cancellazione di permission con ruoli assegnati. Assicurati di aver esportato il report prima di procedere.'
-      : undefined
+    warningMessage: isProvisional
+      ? (hasPopulatedPermissions 
+          ? 'Confermando la rimozione, le permission elencate verranno cancellate al salvataggio del FieldSet. Se successivamente inserisci una FieldConfiguration sullo stesso Field, la permission verrà mantenuta con i ruoli associati.'
+          : 'Nota: Se successivamente inserisci una FieldConfiguration sullo stesso Field, la permission verrà mantenuta con i ruoli associati.')
+      : (hasPopulatedPermissions 
+          ? 'Confermando e salvando, le permission elencate verranno cancellate.'
+          : undefined)
   };
 
   return (
@@ -163,6 +210,14 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
       onExport={onExport}
       data={data}
       loading={loading}
+      confirmButtonColor={isProvisional 
+        ? (hasPopulatedPermissions ? '#dc2626' : '#059669')
+        : (hasPopulatedPermissions ? '#dc2626' : '#059669')}
+      confirmButtonText={loading 
+        ? 'Elaborazione...' 
+        : isProvisional 
+          ? '✅ Conferma Rimozione'
+          : 'Conferma e Salva'}
     />
   );
 };

@@ -683,3 +683,29 @@
 }
 
 
+/* === Tables inside GenericImpactReportModal === */
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* ensure full-width distribution */
+}
+
+.table thead th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* white-space: nowrap; removed to allow column-specific control via tdStyle */
+}
+

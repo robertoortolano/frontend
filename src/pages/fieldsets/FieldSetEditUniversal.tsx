@@ -155,6 +155,12 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const [impactReport, setImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
   const [analyzingImpact, setAnalyzingImpact] = useState(false);
   const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
+  
+  // Provisional removal states (for immediate removal confirmation)
+  const [showProvisionalReport, setShowProvisionalReport] = useState(false);
+  const [provisionalImpactReport, setProvisionalImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
+  const [pendingRemovedConfigurations, setPendingRemovedConfigurations] = useState<number[]>([]);
+  const [removalToConfirm, setRemovalToConfirm] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -288,8 +294,98 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
 
-  const removeConfiguration = (configId: number) => {
-    setSelectedConfigurations(prev => prev.filter(id => id !== configId));
+  const removeConfiguration = async (configId: number) => {
+    // Check if this configuration was in the original FieldSet (for impact analysis)
+    const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
+      entry.fieldConfiguration?.id || entry.fieldConfigurationId
+    ) || [];
+    
+    const wasInOriginal = originalConfigIds.includes(configId);
+    
+    if (wasInOriginal) {
+      // This is an existing configuration being removed - analyze impact
+      setRemovalToConfirm(configId);
+      await analyzeProvisionalRemovalImpact([configId]);
+    } else {
+      // This is a newly added configuration - remove directly without impact analysis
+      setSelectedConfigurations(prev => prev.filter(id => id !== configId));
+    }
+  };
+  
+  const analyzeProvisionalRemovalImpact = async (removedConfigIds: number[]) => {
+    setAnalyzingImpact(true);
+    setError(null);
+
+    try {
+      // Calcola anche le configurazioni che verranno AGGIUNTE (nuove configurazioni non presenti nel FieldSet originale)
+      const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
+        entry.fieldConfiguration?.id || entry.fieldConfigurationId
+      ) || [];
+      
+      const addedConfigIds = selectedConfigurations.filter(id => 
+        !originalConfigIds.includes(id)
+      );
+
+      const request = {
+        removedFieldConfigIds: removedConfigIds,
+        addedFieldConfigIds: addedConfigIds,
+      };
+
+      const response = await api.post(`/field-sets/${id}/analyze-removal-impact`, request, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const impact: FieldSetRemovalImpactDto = response.data;
+      
+      // Verifica se ci sono permission da mostrare nel report
+      const hasPermissions = 
+        (impact.fieldOwnerPermissions && impact.fieldOwnerPermissions.length > 0) ||
+        (impact.fieldStatusPermissions && impact.fieldStatusPermissions.length > 0) ||
+        (impact.itemTypeSetRoles && impact.itemTypeSetRoles.length > 0);
+      
+      // Mostra sempre il report provvisorio se ci sono permission, anche se vuote
+      // L'utente deve comunque essere informato dell'impatto
+      if (hasPermissions) {
+        setProvisionalImpactReport(impact);
+        setShowProvisionalReport(true);
+      } else {
+        // Nessuna permission da mostrare - rimuovi direttamente
+        confirmProvisionalRemoval(removedConfigIds);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
+      setRemovalToConfirm(null);
+    } finally {
+      setAnalyzingImpact(false);
+    }
+  };
+  
+  const confirmProvisionalRemoval = (configIds: number[]) => {
+    // Rimuovi dalla lista delle configurazioni selezionate
+    setSelectedConfigurations(prev => prev.filter(id => !configIds.includes(id)));
+    
+    // Aggiungi alle rimozioni provvisorie (per il report riepilogativo al salvataggio)
+    setPendingRemovedConfigurations(prev => [...prev, ...configIds]);
+    
+    // Chiudi il report provvisorio
+    setShowProvisionalReport(false);
+    setProvisionalImpactReport(null);
+    setRemovalToConfirm(null);
+  };
+  
+  const cancelProvisionalRemoval = () => {
+    // Ripristina la configurazione rimossa (annulla la rimozione)
+    setSelectedConfigurations(prev => {
+      if (removalToConfirm !== null && !prev.includes(removalToConfirm)) {
+        return [...prev, removalToConfirm];
+      }
+      return prev;
+    });
+    
+    // Chiudi il report provvisorio
+    setShowProvisionalReport(false);
+    setProvisionalImpactReport(null);
+    setRemovalToConfirm(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -319,18 +415,20 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       return;
     }
 
-    // Check if any configurations were removed
+    // Check if any configurations were removed (including provisional removals)
     const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
       entry.fieldConfiguration?.id || entry.fieldConfigurationId
     ) || [];
     
-    const removedConfigIds = originalConfigIds.filter(id => 
-      !selectedConfigurations.includes(id)
-    );
+    // Include both explicitly removed configs and pending removals
+    const allRemovedConfigIds = [
+      ...originalConfigIds.filter(id => !selectedConfigurations.includes(id)),
+      ...pendingRemovedConfigurations
+    ].filter((id, index, self) => self.indexOf(id) === index); // Remove duplicates
 
-    if (removedConfigIds.length > 0) {
-      // Analyze impact before saving
-      await analyzeRemovalImpact(removedConfigIds);
+    if (allRemovedConfigIds.length > 0) {
+      // Analyze impact before saving (summary report)
+      await analyzeRemovalImpact(allRemovedConfigIds);
     } else {
       // No configurations removed, proceed with normal save
       await performSave();
@@ -342,15 +440,48 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     setError(null);
 
     try {
-      const response = await api.post(`/field-sets/${id}/analyze-removal-impact`, removedConfigIds, {
+      // Calcola anche le configurazioni che verranno AGGIUNTE (nuove configurazioni non presenti nel FieldSet originale)
+      const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
+        entry.fieldConfiguration?.id || entry.fieldConfigurationId
+      ) || [];
+      
+      const addedConfigIds = selectedConfigurations.filter(id => 
+        !originalConfigIds.includes(id)
+      );
+
+      const request = {
+        removedFieldConfigIds: removedConfigIds,
+        addedFieldConfigIds: addedConfigIds,
+      };
+
+      const response = await api.post(`/field-sets/${id}/analyze-removal-impact`, request, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setImpactReport(response.data);
-      setShowImpactReport(true);
+      const impact: FieldSetRemovalImpactDto = response.data;
       
-      // Store the save function to be called after confirmation
-      setPendingSave(() => performSave);
+      // Verifica se ci sono permission da mostrare nel report
+      const hasPermissions = 
+        (impact.fieldOwnerPermissions && impact.fieldOwnerPermissions.length > 0) ||
+        (impact.fieldStatusPermissions && impact.fieldStatusPermissions.length > 0) ||
+        (impact.itemTypeSetRoles && impact.itemTypeSetRoles.length > 0);
+      
+      // Mostra il report solo se ci sono permission da mostrare
+      if (hasPermissions) {
+        setImpactReport(impact);
+        setShowImpactReport(true);
+        // Store the save function to be called after confirmation
+        setPendingSave(() => performSave);
+      } else {
+        // Nessuna permission da mostrare = nessun Field completamente rimosso
+        // IMPORTANTE: Non chiamare removeOrphanedPermissions qui perché:
+        // 1. Se il report è vuoto, significa che non ci sono Field completamente rimossi
+        // 2. Se cambi solo FieldConfiguration per lo stesso Field, il Field non è rimosso
+        // 3. Le permission devono essere mantenute intatte quando si cambia FieldConfiguration
+        
+        // Procedi direttamente con il salvataggio
+        await performSave();
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
     } finally {
@@ -378,6 +509,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         headers: { Authorization: `Bearer ${token}` },
       });
       
+      // Clear pending removals after successful save
+      setPendingRemovedConfigurations([]);
+      
       // Navigate back to the appropriate list
       if (scope === 'tenant') {
         navigate("/tenant/field-sets");
@@ -392,12 +526,61 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   };
 
   const handleConfirmSave = async () => {
-    setShowImpactReport(false);
-    setImpactReport(null);
+    if (!fieldSet || !impactReport) return;
     
-    if (pendingSave) {
-      await pendingSave();
-      setPendingSave(null);
+    setSaving(true);
+    setError(null);
+    
+    try {
+      // 1. Calcola le FieldConfiguration rimosse
+      const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
+        entry.fieldConfiguration?.id || entry.fieldConfigurationId
+      ) || [];
+      
+      const removedConfigIds = originalConfigIds.filter(id => 
+        !selectedConfigurations.includes(id)
+      );
+
+      // 2. Se ci sono permission da rimuovere, chiama l'endpoint per rimuoverle
+      const hasPermissions = 
+        (impactReport.fieldOwnerPermissions && impactReport.fieldOwnerPermissions.length > 0) ||
+        (impactReport.fieldStatusPermissions && impactReport.fieldStatusPermissions.length > 0) ||
+        (impactReport.itemTypeSetRoles && impactReport.itemTypeSetRoles.length > 0);
+      
+      if (hasPermissions && removedConfigIds.length > 0) {
+        // Calcola anche le configurazioni che verranno AGGIUNTE (nuove configurazioni non presenti nel FieldSet originale)
+        const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
+          entry.fieldConfiguration?.id || entry.fieldConfigurationId
+        ) || [];
+        
+        const addedConfigIds = selectedConfigurations.filter(id => 
+          !originalConfigIds.includes(id)
+        );
+
+        const request = {
+          removedFieldConfigIds: removedConfigIds,
+          addedFieldConfigIds: addedConfigIds,
+        };
+
+        await api.post(`/field-sets/${id}/remove-orphaned-permissions`, request, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      // 3. Chiudi il modal
+      setShowImpactReport(false);
+      setImpactReport(null);
+
+      // 4. Procedi con il salvataggio normale del FieldSet
+      if (pendingSave) {
+        await pendingSave();
+        setPendingSave(null);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Errore durante la rimozione delle permission");
+      console.error('Error removing orphaned permissions:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -716,7 +899,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         </div>
       </form>
 
-      {/* Impact Report Modal */}
+      {/* Summary Impact Report Modal (before saving) */}
       <FieldSetImpactReportModal
         isOpen={showImpactReport}
         onClose={handleCancelSave}
@@ -724,6 +907,43 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         onExport={handleExportReport}
         impact={impactReport}
         loading={analyzingImpact || saving}
+        isProvisional={false}
+      />
+      
+      {/* Provisional Impact Report Modal (immediate removal confirmation) */}
+      <FieldSetImpactReportModal
+        isOpen={showProvisionalReport}
+        onClose={cancelProvisionalRemoval}
+        onConfirm={() => {
+          if (removalToConfirm !== null) {
+            confirmProvisionalRemoval([removalToConfirm]);
+          }
+        }}
+        onExport={async () => {
+          if (removalToConfirm !== null && provisionalImpactReport) {
+            // Export provisional report
+            try {
+              const response = await api.post(`/field-sets/${id}/export-removal-impact-csv`, [removalToConfirm], {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'blob'
+              });
+
+              const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', `fieldset_provisional_removal_impact_${id}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              window.URL.revokeObjectURL(url);
+            } catch (err: any) {
+              setError(err.response?.data?.message || "Errore durante l'esportazione del report");
+            }
+          }
+        }}
+        impact={provisionalImpactReport}
+        loading={analyzingImpact}
+        isProvisional={true}
       />
     </div>
   );

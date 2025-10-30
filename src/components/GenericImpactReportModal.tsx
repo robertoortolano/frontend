@@ -12,6 +12,7 @@ export interface ImpactReportTableColumn {
   header: string;
   key: string;
   render?: (value: any, row: any) => React.ReactNode;
+  tdStyle?: React.CSSProperties;
 }
 
 export interface ImpactReportTableSection {
@@ -37,6 +38,8 @@ interface GenericImpactReportModalProps {
   onExport: () => void;
   data: ImpactReportData | null;
   loading?: boolean;
+  confirmButtonColor?: string;
+  confirmButtonText?: string;
 }
 
 export const GenericImpactReportModal: React.FC<GenericImpactReportModalProps> = ({
@@ -45,7 +48,9 @@ export const GenericImpactReportModal: React.FC<GenericImpactReportModalProps> =
   onConfirm,
   onExport,
   data,
-  loading = false
+  loading = false,
+  confirmButtonColor = '#059669',
+  confirmButtonText = '✅ Conferma Rimozione'
 }) => {
   if (!isOpen || !data) return null;
 
@@ -70,7 +75,7 @@ export const GenericImpactReportModal: React.FC<GenericImpactReportModalProps> =
               {section.data.map((row, index) => (
                 <tr key={index}>
                   {section.columns.map((column) => (
-                    <td key={column.key}>
+                    <td key={column.key} style={column.tdStyle}>
                       {column.render ? column.render(row[column.key], row) : row[column.key]}
                     </td>
                   ))}
@@ -101,17 +106,19 @@ export const GenericImpactReportModal: React.FC<GenericImpactReportModalProps> =
         </div>
 
         <div className={form.modalBody}>
-          {/* Summary Section */}
-          <div className={layout.section}>
-            <h3 className={layout.sectionTitle}>📋 Riepilogo</h3>
-            <div className={form.infoGrid}>
-              {data.summaryItems.map((item, index) => (
-                <div key={index} className={form.infoItem}>
-                  <strong>{item.label}:</strong> {item.value}
-                </div>
-              ))}
+          {/* Summary Section (render only if not empty) */}
+          {data.summaryItems && data.summaryItems.length > 0 && (
+            <div className={layout.section}>
+              <h3 className={layout.sectionTitle}>📋 Riepilogo</h3>
+              <div className={form.infoGrid}>
+                {data.summaryItems.map((item, index) => (
+                  <div key={index} className={form.infoItem}>
+                    <strong>{item.label}:</strong> {item.value}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Table Sections */}
           {data.tableSections.map(renderTableSection)}
@@ -146,8 +153,9 @@ export const GenericImpactReportModal: React.FC<GenericImpactReportModalProps> =
             className={`${buttons.button} ${buttons.buttonPrimary}`}
             onClick={onConfirm}
             disabled={loading}
+            style={{ backgroundColor: confirmButtonColor }}
           >
-            ✅ Conferma Rimozione
+            {confirmButtonText}
           </button>
         </div>
       </div>

@@ -361,11 +361,13 @@ export function useWorkflowEditor({
       
       if (impactType === 'status') {
         // For status removal, send the full workflow DTO
+        // The DTO should NOT include the removed status, so backend detects it as removed
         endpoint = `/workflows/${currentState.workflow?.id}/analyze-status-removal-impact`;
         payload = convertToWorkflowUpdateDto(currentState, mode);
       } else if (impactType === 'transition') {
         // For transition removal, send only the array of transition IDs
-        endpoint = `/workflows/${state.workflow?.id}/analyze-transition-removal-impact`;
+        // Backend will analyze impact of these specific transitions
+        endpoint = `/workflows/${currentState.workflow?.id || state.workflow?.id}/analyze-transition-removal-impact`;
         // Extract transition IDs from operations (only existing transitions have IDs)
         const transitionIds = operations
           .filter(op => op.type === 'edge')
@@ -406,6 +408,9 @@ export function useWorkflowEditor({
                 itemCategory: '', // Not available in transition permissions
                 assignedRoles: perm.assignedRoles || [],
                 hasAssignments: perm.hasAssignments || false,
+                // Include source/target status names if available from backend
+                sourceStatusName: perm.sourceStatusName || perm.sourceStatus || perm.fromStatusName,
+                targetStatusName: perm.targetStatusName || perm.targetStatus || perm.toStatusName,
               })),
             },
           ],
@@ -452,15 +457,26 @@ export function useWorkflowEditor({
         };
       }
 
-      setImpactReport(impactData);
-      setState(prev => ({
-        ...prev,
-        ui: {
-          ...prev.ui,
-          showImpactReport: true,
-          impactReportType: impactType,
-        },
-      }));
+      // IMPORTANT: Don't set impact report here if we're analyzing as part of a combined analysis
+      // The caller will handle setting the combined report
+      // Only set it if this is a standalone analysis (e.g., when removing a single item)
+      // We can detect this by checking if there's only one operation type
+      const isCombinedAnalysis = operations.some(op => op.type === 'node') && 
+                                  operations.some(op => op.type === 'edge');
+      
+      if (!isCombinedAnalysis) {
+        // Standalone analysis - set the report immediately
+        setImpactReport(impactData);
+        setState(prev => ({
+          ...prev,
+          ui: {
+            ...prev.ui,
+            showImpactReport: true,
+            impactReportType: impactType,
+          },
+        }));
+      }
+      // If it's a combined analysis, the caller will merge the results and set the report
 
       return impactData;
     } catch (err: any) {
@@ -538,31 +554,141 @@ export function useWorkflowEditor({
     const wasInitial = node.isInitial;
     const filteredNodes = state.nodes.filter(n => n.statusId !== Number(nodeId));
     
-    // Temporarily update state to build correct DTO for impact analysis
-    // We'll restore it after analysis if needed
-    const tempState = {
-      ...state,
-      nodes: filteredNodes,
-    };
+    // Identify all transitions (edges) connected to this node (incoming and outgoing)
+    const nodeStatusId = Number(nodeId);
+    const connectedEdges = state.edges.filter(edge => 
+      edge.sourceStatusId === nodeStatusId || edge.targetStatusId === nodeStatusId
+    );
     
-    const operation: RemovalOperation = {
-      type: 'node',
-      id: nodeId,
-      data: node,
-      impactReport: null,
-      confirmed: false,
-    };
+    // Create operations for both the node and connected edges
+    const operations: RemovalOperation[] = [
+      {
+        type: 'node',
+        id: nodeId,
+        data: node,
+        impactReport: null,
+        confirmed: false,
+      },
+      // Add operations for all connected edges (transitions)
+      ...connectedEdges.map(edge => ({
+        type: 'edge' as const,
+        id: String(edge.transitionId || edge.transitionTempId || `edge-${edge.sourceStatusId}-${edge.targetStatusId}`),
+        data: edge,
+        impactReport: null,
+        confirmed: false,
+      })),
+    ];
 
     // Analyze impact with temporary state (node already removed from nodes list)
     // This way the DTO will not include the node, and backend will identify it as removed
-    const tempStateForAnalysis: WorkflowState = {
+    // For transition analysis, we also need to remove the connected edges from the state
+    // so the backend correctly identifies them as removed
+    const tempStateForStatusAnalysis: WorkflowState = {
       ...state,
       nodes: filteredNodes,
+      // Keep edges for status analysis - backend will detect them as removed because
+      // they reference a removed status
+    };
+    
+    const tempStateForTransitionAnalysis: WorkflowState = {
+      ...state,
+      nodes: filteredNodes,
+      // Remove connected edges for transition analysis - backend needs to see them as removed
+      edges: state.edges.filter(e => 
+        e.sourceStatusId !== nodeStatusId && e.targetStatusId !== nodeStatusId
+      ),
     };
     
     let impactData: ImpactReportData;
     try {
-      impactData = await analyzeImpact([operation], tempStateForAnalysis);
+      // Analyze impact for both the status and its connected transitions
+      // Split operations into node and edge operations for proper backend analysis
+      const nodeOperations = operations.filter(op => op.type === 'node');
+      const edgeOperations = operations.filter(op => op.type === 'edge');
+      
+      // Analyze status impact - use state with nodes removed but edges still present
+      // Backend will detect edges as removed because they reference a removed status
+      let statusImpact: ImpactReportData | null = null;
+      if (nodeOperations.length > 0) {
+        statusImpact = await analyzeImpact(nodeOperations, tempStateForStatusAnalysis);
+      }
+      
+      // Analyze transition impact - use state with both nodes AND edges removed
+      // Backend needs to see edges as removed to analyze their impact correctly
+      let transitionImpact: ImpactReportData | null = null;
+      if (edgeOperations.length > 0) {
+        // For transition analysis, we need to filter edges to only those that exist in current state
+        // and have transitionId (existing transitions)
+        const existingEdgeOperations = edgeOperations.filter(op => {
+          const edge = op.data as WorkflowEdgeData;
+          return edge.transitionId !== null && edge.transitionId !== undefined;
+        });
+        
+        if (existingEdgeOperations.length > 0) {
+          transitionImpact = await analyzeImpact(existingEdgeOperations, tempStateForTransitionAnalysis);
+        }
+      }
+      
+      // Combine impacts - always merge permissions from both, even if one is null
+      const allPermissions = [
+        ...(statusImpact?.permissions || []),
+        ...(transitionImpact?.permissions || []),
+      ];
+      
+      if (statusImpact || transitionImpact) {
+        const primaryImpact = statusImpact || transitionImpact!;
+        impactData = {
+          type: statusImpact ? 'status' : 'transition', // Use status as primary type if exists
+          workflowId: primaryImpact.workflowId,
+          workflowName: primaryImpact.workflowName,
+          removedItems: {
+            ids: [
+              ...(statusImpact?.removedItems?.ids || []), 
+              ...(transitionImpact?.removedItems?.ids || [])
+            ],
+            names: [
+              ...(statusImpact?.removedItems?.names || []), 
+              ...(transitionImpact?.removedItems?.names || [])
+            ],
+          },
+          affectedItemTypeSets: [
+            ...(statusImpact?.affectedItemTypeSets || []),
+            ...(transitionImpact?.affectedItemTypeSets || []),
+          ].filter((its, index, self) => 
+            index === self.findIndex(t => t.id === its.id)
+          ), // Remove duplicates
+          permissions: allPermissions, // Always merge all permissions from both impacts
+          totals: {
+            affectedItemTypeSets: new Set([
+              ...(statusImpact?.affectedItemTypeSets || []).map(its => its.id),
+              ...(transitionImpact?.affectedItemTypeSets || []).map(its => its.id),
+            ]).size,
+            totalPermissions: (statusImpact?.totals?.totalPermissions || 0) + (transitionImpact?.totals?.totalPermissions || 0),
+            totalRoleAssignments: (statusImpact?.totals?.totalRoleAssignments || 0) + (transitionImpact?.totals?.totalRoleAssignments || 0),
+          },
+        };
+      } else {
+        impactData = {
+          type: 'status',
+          workflowId: state.workflow?.id || 0,
+          workflowName: state.workflow?.name || '',
+          removedItems: { ids: [], names: [] },
+          affectedItemTypeSets: [],
+          permissions: [],
+          totals: { affectedItemTypeSets: 0, totalPermissions: 0, totalRoleAssignments: 0 },
+        };
+      }
+      
+      // Set the combined impact report (overrides any individual reports set by analyzeImpact)
+      setImpactReport(impactData);
+      setState(prev => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          showImpactReport: true,
+          impactReportType: impactData.type,
+        },
+      }));
     } catch (err: any) {
       console.error('Error analyzing node removal impact:', err);
       throw err;
@@ -587,9 +713,15 @@ export function useWorkflowEditor({
         newInitialStatusId = updatedFiltered[0].statusId;
       }
       
+      // Also remove connected edges from state and add them to pendingChanges
+      const filteredEdges = state.edges.filter(e => 
+        e.sourceStatusId !== nodeStatusId && e.targetStatusId !== nodeStatusId
+      );
+      
       setState(prev => ({
         ...prev,
         nodes: updatedFiltered,
+        edges: filteredEdges, // Remove connected edges from state
         workflow: prev.workflow ? {
           ...prev.workflow,
           initialStatusId: newInitialStatusId,
@@ -597,6 +729,7 @@ export function useWorkflowEditor({
         pendingChanges: {
           ...prev.pendingChanges,
           removedNodes: [...prev.pendingChanges.removedNodes, node],
+          removedEdges: [...prev.pendingChanges.removedEdges, ...connectedEdges],
         },
         ui: {
           ...prev.ui,
@@ -617,7 +750,10 @@ export function useWorkflowEditor({
         }
         return filtered;
       });
-      setReactFlowEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
+      // Remove connected edges from React Flow
+      setReactFlowEdges(prev => prev.filter(e => 
+        e.source !== nodeId && e.target !== nodeId
+      ));
       
       // Clear the impact report that was set
       setImpactReport(null);
@@ -626,12 +762,23 @@ export function useWorkflowEditor({
     }
 
     // There are role assignments - restore node to state and add to pendingChanges.removedNodes for the modal
+    // Also add connected edges to pendingChanges.removedEdges
     setState(prev => ({
       ...prev,
       nodes: state.nodes, // Keep the node (it wasn't removed from state yet)
       pendingChanges: {
         ...prev.pendingChanges,
         removedNodes: [...prev.pendingChanges.removedNodes, node],
+        // Add connected edges to pendingChanges if they're not already there
+        removedEdges: [
+          ...prev.pendingChanges.removedEdges,
+          ...connectedEdges.filter(edge => 
+            !prev.pendingChanges.removedEdges.some(existing => 
+              existing.transitionId === edge.transitionId || 
+              (edge.transitionTempId && existing.transitionTempId === edge.transitionTempId)
+            )
+          ),
+        ],
       },
     }));
     // The impact report modal will be shown (already set by analyzeImpact)
@@ -870,15 +1017,13 @@ export function useWorkflowEditor({
     // If there are pending removals, analyze the combined impact before saving
     // Skip analysis if already confirmed (skipImpactAnalysis = true)
     if ((hasRemovedStatuses || hasRemovedTransitions) && mode === 'edit' && !skipImpactAnalysis) {
-      // Build temporary state with all removed items restored for impact analysis
-      // This way the DTO will include everything, and backend will identify what's removed
-      const tempStateForAnalysis: WorkflowState = {
-        ...state,
-        nodes: [...state.nodes, ...state.pendingChanges.removedNodes],
-        edges: [...state.edges, ...state.pendingChanges.removedEdges],
-      };
+      // IMPORTANT: For status analysis, we must analyze against the CURRENT state (already without removed nodes),
+      // not with removed nodes restored; otherwise the backend won't detect removals.
+      // For transition analysis, we pass explicit transition IDs, so temp state is not required.
 
       // Analyze status removal impact if there are removed statuses
+      // IMPORTANT: When a status is removed, its connected transitions are also removed automatically
+      // So we need to identify all transitions connected to removed statuses
       let statusImpact: ImpactReportData | null = null;
       if (hasRemovedStatuses) {
         const statusOperations: RemovalOperation[] = state.pendingChanges.removedNodes.map(node => ({
@@ -888,59 +1033,236 @@ export function useWorkflowEditor({
           impactReport: null,
           confirmed: false,
         }));
-        statusImpact = await analyzeImpact(statusOperations, tempStateForAnalysis);
-      }
-
-      // Analyze transition removal impact if there are removed transitions
-      let transitionImpact: ImpactReportData | null = null;
-      if (hasRemovedTransitions) {
-        const transitionOperations: RemovalOperation[] = state.pendingChanges.removedEdges
-          .filter(edge => edge.transitionId !== null && edge.transitionId !== undefined)
-          .map(edge => ({
-            type: 'edge' as const,
-            id: String(edge.transitionId),
-            data: edge,
-            impactReport: null,
-            confirmed: false,
-          }));
-        if (transitionOperations.length > 0) {
-          transitionImpact = await analyzeImpact(transitionOperations, tempStateForAnalysis);
+        
+        // Identify all transitions connected to removed statuses
+        // IMPORTANT: We need to check BOTH state.edges (current edges) AND pendingChanges.removedEdges
+        // because when a status is removed, its connected transitions are automatically removed from state.edges
+        // and added to pendingChanges.removedEdges, but we still need to analyze their impact
+        const removedStatusIds = new Set(state.pendingChanges.removedNodes.map(n => n.statusId));
+        
+        // Get all edges that were connected to removed statuses
+        // They might be in state.edges (if not yet removed from UI) or in pendingChanges.removedEdges
+        // (if already removed when the status was removed)
+        const allEdges = [...state.edges, ...state.pendingChanges.removedEdges];
+        const connectedTransitions = allEdges.filter(edge => {
+          const isConnectedToRemovedStatus = removedStatusIds.has(edge.sourceStatusId) || 
+                                             removedStatusIds.has(edge.targetStatusId);
+          return isConnectedToRemovedStatus;
+        }).filter((edge, index, self) => 
+          // Remove duplicates based on transitionId or transitionTempId
+          index === self.findIndex(e => 
+            (e.transitionId && e.transitionId === edge.transitionId) ||
+            (e.transitionTempId && e.transitionTempId === edge.transitionTempId) ||
+            (!e.transitionId && !e.transitionTempId && 
+             !edge.transitionId && !edge.transitionTempId &&
+             e.sourceStatusId === edge.sourceStatusId && 
+             e.targetStatusId === edge.targetStatusId)
+          )
+        );
+        
+        console.log('Identified connected transitions for summary report:', {
+          removedStatusIds: Array.from(removedStatusIds),
+          allEdgesCount: allEdges.length,
+          stateEdgesCount: state.edges.length,
+          pendingRemovedEdgesCount: state.pendingChanges.removedEdges.length,
+          connectedTransitionsCount: connectedTransitions.length,
+          connectedTransitionIds: connectedTransitions.map(ct => ct.transitionId || ct.transitionTempId || 'no-id'),
+        });
+        
+        // Analyze using CURRENT state (nodes already removed)
+        statusImpact = await analyzeImpact(statusOperations, state);
+        
+        // If there are connected transitions, analyze their impact too
+        if (connectedTransitions.length > 0) {
+          const existingConnectedTransitions = connectedTransitions.filter(e => 
+            e.transitionId !== null && e.transitionId !== undefined
+          );
+          
+          if (existingConnectedTransitions.length > 0) {
+            const connectedTransitionOperations: RemovalOperation[] = existingConnectedTransitions.map(edge => ({
+              type: 'edge' as const,
+              id: String(edge.transitionId),
+              data: edge,
+              impactReport: null,
+              confirmed: false,
+            }));
+            
+            // For transition impact analysis, remove the transitions from the state
+            // so backend correctly identifies them as removed
+            // IMPORTANT: The transitions might already be in pendingChanges.removedEdges,
+            // so we need to ensure they're not in the edges array we pass to the backend
+            const transitionIdsToExclude = new Set(
+              existingConnectedTransitions
+                .map(ct => ct.transitionId)
+                .filter(id => id !== null && id !== undefined)
+            );
+            const transitionTempIdsToExclude = new Set(
+              existingConnectedTransitions
+                .map(ct => ct.transitionTempId)
+                .filter(id => id !== null && id !== undefined)
+            );
+            
+            const stateWithoutTransitions: WorkflowState = {
+              ...state,
+              edges: state.edges.filter(e => {
+                // Exclude transitions that are being analyzed
+                if (e.transitionId !== null && e.transitionId !== undefined) {
+                  return !transitionIdsToExclude.has(e.transitionId);
+                }
+                if (e.transitionTempId) {
+                  return !transitionTempIdsToExclude.has(e.transitionTempId);
+                }
+                return true; // Keep edges without IDs (shouldn't happen for existing transitions)
+              }),
+            };
+            
+            console.log('Analyzing connected transitions impact:', {
+              connectedTransitionsCount: connectedTransitions.length,
+              existingConnectedTransitionsCount: existingConnectedTransitions.length,
+              transitionIdsToExclude: Array.from(transitionIdsToExclude),
+              stateEdgesCount: state.edges.length,
+              stateWithoutTransitionsEdgesCount: stateWithoutTransitions.edges.length,
+            });
+            
+            const connectedTransitionImpact = await analyzeImpact(connectedTransitionOperations, stateWithoutTransitions);
+            
+            console.log('Connected transition impact received:', {
+              hasImpact: !!connectedTransitionImpact,
+              permissionsCount: connectedTransitionImpact?.permissions?.length || 0,
+              permissions: connectedTransitionImpact?.permissions?.map(p => ({
+                type: p.type,
+                itemsCount: p.items?.length || 0,
+              })),
+            });
+            
+            // Merge connected transition impact into status impact
+            // Always merge, even if statusImpact is null (should not happen, but be safe)
+            if (connectedTransitionImpact) {
+              console.log('Merging connected transition impact into status impact:', {
+                statusImpactPermissions: statusImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
+                transitionImpactPermissions: connectedTransitionImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
+              });
+              
+              if (statusImpact) {
+                statusImpact = {
+                  ...statusImpact,
+                  removedItems: {
+                    ids: [...(statusImpact.removedItems?.ids || []), ...(connectedTransitionImpact.removedItems?.ids || [])],
+                    names: [...(statusImpact.removedItems?.names || []), ...(connectedTransitionImpact.removedItems?.names || [])],
+                  },
+                  affectedItemTypeSets: [
+                    ...(statusImpact.affectedItemTypeSets || []),
+                    ...(connectedTransitionImpact.affectedItemTypeSets || []),
+                  ].filter((its, index, self) => 
+                    index === self.findIndex(t => t.id === its.id)
+                  ),
+                  permissions: [
+                    ...(statusImpact.permissions || []),
+                    ...(connectedTransitionImpact.permissions || []),
+                  ], // Merge permissions arrays - this should include both statusOwner and executor permissions
+                  totals: {
+                    affectedItemTypeSets: new Set([
+                      ...(statusImpact.affectedItemTypeSets || []).map(its => its.id),
+                      ...(connectedTransitionImpact.affectedItemTypeSets || []).map(its => its.id),
+                    ]).size,
+                    totalPermissions: (statusImpact.totals?.totalPermissions || 0) + (connectedTransitionImpact.totals?.totalPermissions || 0),
+                    totalRoleAssignments: (statusImpact.totals?.totalRoleAssignments || 0) + (connectedTransitionImpact.totals?.totalRoleAssignments || 0),
+                  },
+                };
+                
+                console.log('Merged status impact:', {
+                  permissionsCount: statusImpact.permissions?.length || 0,
+                  permissions: statusImpact.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
+                });
+              } else {
+                // If statusImpact is null, use connectedTransitionImpact as base
+                statusImpact = connectedTransitionImpact;
+              }
+            }
+          }
         }
       }
 
-      // Combine impacts if both exist, or use the single one
+      // Analyze transition removal impact if there are removed transitions
+      // (excluding those already accounted for in status removal)
+      let transitionImpact: ImpactReportData | null = null;
+      if (hasRemovedTransitions) {
+        // Filter out transitions that are connected to removed statuses (already analyzed above)
+        const removedStatusIds = new Set(state.pendingChanges.removedNodes.map(n => n.statusId));
+        const independentRemovedEdges = state.pendingChanges.removedEdges.filter(edge => {
+          const isConnectedToRemovedStatus = removedStatusIds.has(edge.sourceStatusId) || 
+                                             removedStatusIds.has(edge.targetStatusId);
+          return !isConnectedToRemovedStatus; // Only analyze transitions not connected to removed statuses
+        });
+        
+        if (independentRemovedEdges.length > 0) {
+          const transitionOperations: RemovalOperation[] = independentRemovedEdges
+            .filter(edge => edge.transitionId !== null && edge.transitionId !== undefined)
+            .map(edge => ({
+              type: 'edge' as const,
+              id: String(edge.transitionId),
+              data: edge,
+              impactReport: null,
+              confirmed: false,
+            }));
+          if (transitionOperations.length > 0) {
+            transitionImpact = await analyzeImpact(transitionOperations, state);
+          }
+        }
+      }
+
+      // Combine impacts - always merge permissions from both, even if one is null
+      // IMPORTANT: statusImpact already includes connected transition permissions from above merge
+      // So we need to merge statusImpact.permissions with transitionImpact.permissions
+      // (which only contains independent transitions, not connected ones)
+      console.log('Combining summary impacts:', {
+        statusImpactPermissions: statusImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
+        transitionImpactPermissions: transitionImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
+      });
+      
+      const allSummaryPermissions = [
+        ...(statusImpact?.permissions || []),
+        ...(transitionImpact?.permissions || []),
+      ];
+      
+      console.log('Combined summary permissions:', {
+        totalPermissionsCount: allSummaryPermissions.length,
+        permissions: allSummaryPermissions.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
+      });
+      
       let combinedImpact: ImpactReportData | null = null;
-      if (statusImpact && transitionImpact) {
-        // Merge both impacts into a combined report
+      if (statusImpact || transitionImpact) {
+        const primaryImpact = statusImpact || transitionImpact!;
         combinedImpact = {
-          type: 'status', // Use status as primary type
-          workflowId: statusImpact.workflowId,
-          workflowName: statusImpact.workflowName,
+          type: statusImpact ? 'status' : 'transition', // Use status as primary type if exists
+          workflowId: primaryImpact.workflowId,
+          workflowName: primaryImpact.workflowName,
           removedItems: {
-            ids: [...(statusImpact.removedItems?.ids || []), ...(transitionImpact.removedItems?.ids || [])],
-            names: [...(statusImpact.removedItems?.names || []), ...(transitionImpact.removedItems?.names || [])],
+            ids: [
+              ...(statusImpact?.removedItems?.ids || []), 
+              ...(transitionImpact?.removedItems?.ids || [])
+            ],
+            names: [
+              ...(statusImpact?.removedItems?.names || []), 
+              ...(transitionImpact?.removedItems?.names || [])
+            ],
           },
           affectedItemTypeSets: [
-            ...(statusImpact.affectedItemTypeSets || []),
-            ...(transitionImpact.affectedItemTypeSets || []),
+            ...(statusImpact?.affectedItemTypeSets || []),
+            ...(transitionImpact?.affectedItemTypeSets || []),
           ].filter((its, index, self) => 
             index === self.findIndex(t => t.id === its.id)
           ), // Remove duplicates
-          permissions: [
-            ...(statusImpact.permissions || []),
-            ...(transitionImpact.permissions || []),
-          ],
+          permissions: allSummaryPermissions, // Always merge all permissions from both impacts
           totals: {
             affectedItemTypeSets: new Set([
-              ...(statusImpact.affectedItemTypeSets || []).map(its => its.id),
-              ...(transitionImpact.affectedItemTypeSets || []).map(its => its.id),
+              ...(statusImpact?.affectedItemTypeSets || []).map(its => its.id),
+              ...(transitionImpact?.affectedItemTypeSets || []).map(its => its.id),
             ]).size,
-            totalPermissions: (statusImpact.totals?.totalPermissions || 0) + (transitionImpact.totals?.totalPermissions || 0),
-            totalRoleAssignments: (statusImpact.totals?.totalRoleAssignments || 0) + (transitionImpact.totals?.totalRoleAssignments || 0),
+            totalPermissions: (statusImpact?.totals?.totalPermissions || 0) + (transitionImpact?.totals?.totalPermissions || 0),
+            totalRoleAssignments: (statusImpact?.totals?.totalRoleAssignments || 0) + (transitionImpact?.totals?.totalRoleAssignments || 0),
           },
         };
-      } else {
-        combinedImpact = statusImpact || transitionImpact;
       }
 
       // Check if there are any permissions with role assignments

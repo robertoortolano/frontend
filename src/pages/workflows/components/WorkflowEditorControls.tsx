@@ -7,33 +7,28 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UseWorkflowEditorReturn } from '../../types/workflow-unified.types';
-import { StatusViewDto } from '../../types/workflow.types';
-import { StatusCategory } from '../../types/common.types';
+import { UseWorkflowEditorReturn } from '../../../types/workflow-unified.types';
+import { StatusViewDto } from '../../../types/workflow.types';
 import form from '../../../styles/common/Forms.module.css';
 import buttons from '../../../styles/common/Buttons.module.css';
 import alert from '../../../styles/common/Alerts.module.css';
 
 interface WorkflowEditorControlsProps {
-  mode: 'create' | 'edit';
   workflowEditor: UseWorkflowEditorReturn;
   availableStatuses: StatusViewDto[];
-  statusCategories: StatusCategory[];
   onAddNode: (statusId: number, position: { x: number; y: number }) => void;
 }
 
 export const WorkflowEditorControls: React.FC<WorkflowEditorControlsProps> = ({
-  mode,
   workflowEditor,
   availableStatuses,
-  statusCategories,
   onAddNode,
 }) => {
   const navigate = useNavigate();
   const { state, actions } = workflowEditor;
 
   // Filter out statuses that are already in the workflow
-  const alreadyAddedStatusIds = new Set(state.nodes.map(n => n.statusId));
+  const alreadyAddedStatusIds = new Set(state.nodes.map((n: { statusId: number }) => n.statusId));
   const availableStatusesToAdd = availableStatuses.filter(
     status => !alreadyAddedStatusIds.has(status.id)
   );
@@ -172,7 +167,7 @@ export const WorkflowEditorControls: React.FC<WorkflowEditorControlsProps> = ({
             {state.workflow.initialStatusId && (
               <p style={{ margin: 0, fontSize: '0.875rem' }}>
                 <strong>Stato Iniziale:</strong> {
-                  state.nodes.find(n => n.statusId === state.workflow?.initialStatusId)?.statusName || 'Non definito'
+                  state.nodes.find((n: { statusId: number; statusName: string }) => n.statusId === state.workflow?.initialStatusId)?.statusName || 'Non definito'
                 }
               </p>
             )}

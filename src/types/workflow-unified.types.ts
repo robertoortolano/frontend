@@ -150,6 +150,7 @@ export interface WorkflowEditorActions {
   updateEdgeConnection: (oldEdge: any, newConnection: any) => void;
   
   // Workflow operations
+  updateWorkflowName: (name: string) => void;
   saveWorkflow: () => Promise<void>;
   cancelChanges: () => void;
   
