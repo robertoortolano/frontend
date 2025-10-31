@@ -1,0 +1,348 @@
+/* === Field Set Tree View Styles (Approccio Alternativo) === */
+
+/* Container principale per il tree view */
+.treeViewContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Card Field principale */
+.treeViewFieldCard {
+  position: relative;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: white;
+  transition: all 0.3s ease;
+  overflow: visible;
+}
+
+.treeViewFieldCard:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Stato selezionato */
+.treeViewFieldCard.selected {
+  border-color: #2563eb;
+  border-width: 2px;
+  background-color: #eff6ff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+/* Header del Field */
+.treeViewFieldHeader {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background-color: inherit;
+  border-radius: 0.75rem 0.75rem 0 0;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.treeViewFieldCard.selected .treeViewFieldHeader {
+  background-color: #dbeafe;
+}
+
+.treeViewFieldHeader:hover {
+  background-color: #f9fafb;
+}
+
+.treeViewFieldCard.selected .treeViewFieldHeader:hover {
+  background-color: #bfdbfe;
+}
+
+/* Contenuto del Field header */
+.treeViewFieldHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+/* Icona/indicatore del Field */
+.treeViewFieldIcon {
+  font-size: 1.25rem;
+  color: #3b82f6;
+}
+
+.treeViewFieldCard.selected .treeViewFieldIcon {
+  color: #1d4ed8;
+}
+
+/* Nome del Field */
+.treeViewFieldName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.treeViewFieldCard.selected .treeViewFieldName {
+  color: #1e40af;
+}
+
+/* Badge conteggio configurazioni */
+.treeViewFieldBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.treeViewFieldCard.selected .treeViewFieldBadge {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* Radio button per selezione Field */
+.treeViewFieldRadio {
+  margin-left: auto;
+  transform: scale(1.2);
+  accent-color: #2563eb;
+}
+
+/* Area configurazioni (sotto il Field) */
+.treeViewConfigurationsArea {
+  padding: 0;
+  background-color: transparent;
+  position: relative;
+  display: none;
+}
+
+.treeViewFieldCard.selected .treeViewConfigurationsArea {
+  display: block;
+  padding: 1.5rem 1.25rem;
+  padding-top: 0;
+  animation: treeSlideDown 0.3s ease;
+}
+
+@keyframes treeSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Connettore verticale principale (linea centrale) */
+.treeViewMainConnector {
+  position: absolute;
+  left: 2rem;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, #93c5fd, #60a5fa, #3b82f6);
+  border-radius: 2px;
+  z-index: 0;
+}
+
+/* Lista configurazioni con indentazione tree */
+.treeViewConfigurationsList {
+  position: relative;
+  padding-left: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Connettore orizzontale + verticale per ogni configurazione */
+.treeViewConfigItem {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+/* Linea orizzontale prima della configurazione */
+.treeViewConfigItem::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 50%;
+  width: 1.5rem;
+  height: 2px;
+  background: linear-gradient(to right, #93c5fd, #60a5fa);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* Punto di connessione */
+.treeViewConfigItem::after {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: #2563eb;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px #60a5fa;
+}
+
+/* Card Configurazione */
+.treeViewConfigurationCard {
+  position: relative;
+  padding: 1rem 1.25rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #60a5fa;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.treeViewConfigurationCard:hover {
+  border-left-color: #2563eb;
+  border-left-width: 5px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+  transform: translateX(4px);
+}
+
+.treeViewConfigurationCard.selected {
+  border-left-color: #16a34a;
+  border-left-width: 5px;
+  background-color: #f0fdf4;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15);
+}
+
+/* Radio button per configurazione */
+.treeViewConfigurationRadio {
+  position: absolute;
+  left: -2rem;
+  top: 50%;
+  transform: translateY(-50%) scale(1.1);
+  accent-color: #2563eb;
+  z-index: 3;
+}
+
+/* Contenuto configurazione */
+.treeViewConfigurationContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.treeViewConfigurationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.treeViewConfigurationName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+}
+
+.treeViewConfigurationStatus {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.treeViewConfigurationCard.selected .treeViewConfigurationStatus {
+  background-color: #dcfce7;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+/* Dettagli configurazione */
+.treeViewConfigurationDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.treeViewConfigurationDetailRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.treeViewConfigurationDetailLabel {
+  font-weight: 500;
+  min-width: 70px;
+}
+
+/* Messaggio quando nessuna configurazione */
+.treeViewEmpty {
+  padding: 1.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* Info text migliorato */
+.treeViewInfo {
+  margin-bottom: 1rem;
+  padding: 0.875rem;
+  background: linear-gradient(to right, #f0f9ff, #e0f2fe);
+  border-left: 4px solid #3b82f6;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+  position: relative;
+  overflow: hidden;
+}
+
+.treeViewInfo::before {
+  content: '🌳';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  opacity: 0.3;
+}
+
+.treeViewInfo strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .treeViewConfigurationsList {
+    padding-left: 2rem;
+  }
+  
+  .treeViewMainConnector {
+    left: 1.5rem;
+  }
+  
+  .treeViewConfigItem {
+    padding-left: 1rem;
+  }
+  
+  .treeViewConfigItem::before {
+    left: -1rem;
+    width: 1rem;
+  }
+  
+  .treeViewConfigItem::after {
+    left: -1rem;
+  }
+  
+  .treeViewConfigurationRadio {
+    left: -1.5rem;
+  }
+}
+
+

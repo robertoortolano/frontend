@@ -107,6 +107,40 @@ export default function NavTenant() {
         {/* Separatore */}
         <li className="nav-separator"></li>
 
+        {/* Test UI Hierarchy (solo per sviluppo) */}
+        {isAdmin && (
+          <>
+            <li>
+              <NavLink to="/tenant/test-fieldset-hierarchy" className="nav-link" end>
+                🎨 Test UI 1
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/test-fieldset-treeview" className="nav-link" end>
+                🌳 Test UI 2
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/test-fieldset-splitview" className="nav-link" end>
+                📊 Test UI 3
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/test-fieldset-vertical" className="nav-link" end>
+                📋 Test UI 4
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/tenant/test-fieldset-sidebar" className="nav-link" end>
+                📌 Test UI 5
+              </NavLink>
+            </li>
+          </>
+        )}
+
+        {/* Separatore */}
+        <li className="nav-separator"></li>
+
         {/* Progetti */}
         <li>
           <NavLink to="/projects" className="nav-link" end>

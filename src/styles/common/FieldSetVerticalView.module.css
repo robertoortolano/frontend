@@ -1,0 +1,339 @@
+/* === Field Set Vertical View (Selezionate in alto) === */
+
+/* Container principale */
+.verticalViewContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Sezione selezionate (in alto, sempre visibile) */
+.selectedSection {
+  position: sticky;
+  top: 1rem;
+  z-index: 100;
+  background-color: white;
+  border: 2px solid #10b981;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.selectedSectionHeader {
+  padding: 1.25rem;
+  background: linear-gradient(to right, #10b981, #059669);
+  color: white;
+  border-radius: 0.75rem 0.75rem 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selectedSectionHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.selectedSectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.selectedSectionCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.selectedSectionBody {
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.selectedSectionBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+.selectedSectionBody::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.selectedSectionBody::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 4px;
+}
+
+/* Grid delle configurazioni selezionate */
+.selectedGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+/* Card configurazione selezionata */
+.selectedConfigCard {
+  padding: 0.875rem;
+  border: 1px solid #86efac;
+  border-left: 4px solid #10b981;
+  border-radius: 0.5rem;
+  background: linear-gradient(to right, #f0fdf4, white);
+  position: relative;
+  animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selectedConfigFieldLabel {
+  font-size: 0.6875rem;
+  color: #059669;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.375rem;
+}
+
+.selectedConfigName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  margin-bottom: 0.25rem;
+}
+
+.selectedConfigDetails {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.selectedConfigRemove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selectedConfigRemove:hover {
+  background-color: #fee2e2;
+  transform: scale(1.1);
+}
+
+/* Sezione Fields (sotto) */
+.fieldsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.fieldsSectionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+/* Card Field */
+.verticalFieldCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: white;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.verticalFieldCard:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.verticalFieldHeader {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.verticalFieldHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.verticalFieldIcon {
+  font-size: 1.5rem;
+}
+
+.verticalFieldName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1.125rem;
+}
+
+.verticalFieldBadge {
+  margin-left: 0.75rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  background-color: #dbeafe;
+  color: #2563eb;
+  border-radius: 0.75rem;
+  font-weight: 500;
+}
+
+/* Area configurazioni nel Field */
+.verticalConfigurationsArea {
+  padding: 1.25rem;
+}
+
+.verticalConfigurationsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.75rem;
+}
+
+.verticalConfigCard {
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: white;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.verticalConfigCard:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.verticalConfigCard.selected {
+  border-color: #10b981;
+  background: linear-gradient(to right, #f0fdf4, white);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+.verticalConfigCard.selected::before {
+  content: '✓';
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: #10b981;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: bold;
+}
+
+.verticalConfigName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  margin-bottom: 0.375rem;
+  padding-right: 2rem;
+}
+
+.verticalConfigDetails {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.verticalConfigCheckbox {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  transform: scale(1.2);
+  accent-color: #10b981;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.verticalConfigCard.selected .verticalConfigCheckbox {
+  opacity: 1;
+}
+
+/* Messaggio vuoto */
+.emptyMessage {
+  padding: 3rem;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.emptyMessageIcon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+/* Info box */
+.verticalInfo {
+  padding: 1rem;
+  background-color: #f0f9ff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+  margin-bottom: 1.5rem;
+}
+
+.verticalInfo strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .selectedGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .verticalConfigurationsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+

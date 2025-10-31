@@ -31,33 +31,32 @@ import layout from "../../styles/common/Layout.module.css";
 import form from "../../styles/common/Forms.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
 import alert from "../../styles/common/Alerts.module.css";
+import sidebarStyles from "../../styles/common/FieldSetSidebar.module.css";
 
 interface FieldSetEditUniversalProps {
   scope: 'tenant' | 'project';
   projectId?: string;
 }
 
-interface SortablePreviewItemProps {
-  configId: number;
-  config: FieldConfigurationViewDto;
-  index: number;
-  onMoveUp: (index: number) => void;
-  onMoveDown: (index: number) => void;
-  onRemove: () => void;
-  saving: boolean;
-  isLast: boolean;
+interface Field {
+  id: number;
+  name: string;
+  defaultField?: boolean;
 }
 
-function SortablePreviewItem({
+interface SortableSidebarConfigProps {
+  configId: number;
+  config: FieldConfigurationViewDto;
+  field: Field | undefined;
+  onRemove: () => void;
+}
+
+function SortableSidebarConfig({
   configId,
   config,
-  index,
-  onMoveUp,
-  onMoveDown,
-  onRemove,
-  saving,
-  isLast
-}: SortablePreviewItemProps) {
+  field,
+  onRemove
+}: SortableSidebarConfigProps) {
   const {
     attributes,
     listeners,
@@ -77,59 +76,37 @@ function SortablePreviewItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`${form.previewItem} ${isDragging ? form.dragging : ''}`}
+      className={`${sidebarStyles.sidebarConfigCard} ${isDragging ? sidebarStyles.dragging : ''}`}
     >
-      <span 
-        className={form.dragHandle} 
+      <div 
+        className={sidebarStyles.sidebarConfigDragHandle}
         title="Trascina per riordinare"
         {...attributes}
         {...listeners}
       >
         ⋮⋮
-      </span>
-      <span className={form.previewOrder}>{index + 1}</span>
-      <div className={form.previewContent}>
-        <strong>{config.name || "Senza nome"}</strong>
-        <span className={form.previewField}>{config.fieldName}</span>
       </div>
-      <div className={form.previewActions}>
-        <button
-          type="button"
-          className={form.moveButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveUp(index);
-          }}
-          disabled={index === 0 || saving}
-          title="Sposta su"
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          className={form.moveButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveDown(index);
-          }}
-          disabled={isLast || saving}
-          title="Sposta giù"
-        >
-          ↓
-        </button>
-        <button
-          type="button"
-          className={form.removeButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          disabled={saving}
-          title="Rimuovi"
-        >
-          ✕
-        </button>
+      <div className={sidebarStyles.sidebarConfigFieldLabel}>
+        {field?.name || 'Field sconosciuto'}
       </div>
+      <div className={sidebarStyles.sidebarConfigName}>
+        {config.name || "Senza nome"}
+      </div>
+      <div className={sidebarStyles.sidebarConfigDetails}>
+        Tipo: {config.fieldType?.displayName || "Sconosciuto"}
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        className={sidebarStyles.sidebarConfigRemove}
+        title="Rimuovi"
+      >
+        ✕
+      </button>
     </div>
   );
 }
@@ -142,10 +119,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const isAuthenticated = auth?.isAuthenticated;
 
   const [fieldSet, setFieldSet] = useState<FieldSetViewDto | null>(null);
-  const [fields, setFields] = useState<any[]>([]);
+  const [fields, setFields] = useState<Field[]>([]);
   const [fieldConfigurations, setFieldConfigurations] = useState<FieldConfigurationViewDto[]>([]);
   const [selectedConfigurations, setSelectedConfigurations] = useState<number[]>([]);
-  const [selectedField, setSelectedField] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -198,29 +174,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
           entry.fieldConfiguration?.id || entry.fieldConfigurationId
         ) || [];
         
-        // For existing FieldSets, we might have multiple configurations per field
-        // This is for backward compatibility, but new selections will follow the "one per field" rule
         setSelectedConfigurations(configIds);
-        
-        // Set selected field based on the most common field in the configurations
-        if (configIds.length > 0) {
-          // Find the field that appears most frequently in the selected configurations
-          const fieldCounts = configIds.reduce((acc, configId) => {
-            const config = configsRes.data.find(c => c.id === configId);
-            if (config) {
-              acc[config.fieldId] = (acc[config.fieldId] || 0) + 1;
-            }
-            return acc;
-          }, {} as Record<number, number>);
-          
-          // Get the field with the most configurations
-          const mostCommonFieldId = Object.entries(fieldCounts)
-            .sort(([,a], [,b]) => b - a)[0]?.[0];
-          
-          if (mostCommonFieldId) {
-            setSelectedField(parseInt(mostCommonFieldId));
-          }
-        }
       } catch (err: any) {
         setError(err.response?.data?.message || "Errore nel caricamento dei dati");
       } finally {
@@ -232,8 +186,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   }, [id, token, scope, projectId]);
 
   const handleConfigurationSelect = (configId: number) => {
-    // In edit mode, we should behave like radio buttons: only one configuration per field
-    // First, find which field this configuration belongs to
+    // Radio button behavior: only one configuration per field
     const selectedConfig = fieldConfigurations.find(config => config.id === configId);
     if (!selectedConfig) return;
     
@@ -243,13 +196,12 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       return config && config.fieldId === selectedConfig.fieldId;
     });
     
-    // Add the new configuration (or toggle if it's already selected)
     if (selectedConfigurations.includes(configId)) {
       // If already selected, remove it
       const newConfigurations = selectedConfigurations.filter(id => id !== configId);
       setSelectedConfigurations(newConfigurations);
     } else {
-      // If not selected, replace the existing config for the same field (if any) or add at the end
+      // If not selected, replace the existing config for the same field (if any) at the same position, or add at the end
       let newConfigurations = [...selectedConfigurations];
       
       if (existingConfigIndex !== -1) {
@@ -264,33 +216,16 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
 
-  const handleFieldSelect = (fieldId: number) => {
-    setSelectedField(fieldId);
-    // In edit mode, don't reset configurations when changing field
-    // This allows viewing configurations from different fields
-  };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-  const getConfigurationsForSelectedField = () => {
-    if (!selectedField) return [];
-    return fieldConfigurations.filter(config => config.fieldId === selectedField);
-  };
+    if (over && active.id !== over.id) {
+      const oldIndex = selectedConfigurations.indexOf(active.id as number);
+      const newIndex = selectedConfigurations.indexOf(over.id as number);
 
-  const moveConfiguration = (fromIndex: number, toIndex: number) => {
-    const newConfigurations = [...selectedConfigurations];
-    const [movedItem] = newConfigurations.splice(fromIndex, 1);
-    newConfigurations.splice(toIndex, 0, movedItem);
-    setSelectedConfigurations(newConfigurations);
-  };
-
-  const moveConfigurationUp = (index: number) => {
-    if (index > 0) {
-      moveConfiguration(index, index - 1);
-    }
-  };
-
-  const moveConfigurationDown = (index: number) => {
-    if (index < selectedConfigurations.length - 1) {
-      moveConfiguration(index, index + 1);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        setSelectedConfigurations(arrayMove(selectedConfigurations, oldIndex, newIndex));
+      }
     }
   };
 
@@ -317,7 +252,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     setError(null);
 
     try {
-      // Calcola anche le configurazioni che verranno AGGIUNTE (nuove configurazioni non presenti nel FieldSet originale)
       const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
         entry.fieldConfiguration?.id || entry.fieldConfigurationId
       ) || [];
@@ -337,19 +271,15 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
 
       const impact: FieldSetRemovalImpactDto = response.data;
       
-      // Verifica se ci sono permission da mostrare nel report
       const hasPermissions = 
         (impact.fieldOwnerPermissions && impact.fieldOwnerPermissions.length > 0) ||
         (impact.fieldStatusPermissions && impact.fieldStatusPermissions.length > 0) ||
         (impact.itemTypeSetRoles && impact.itemTypeSetRoles.length > 0);
       
-      // Mostra sempre il report provvisorio se ci sono permission, anche se vuote
-      // L'utente deve comunque essere informato dell'impatto
       if (hasPermissions) {
         setProvisionalImpactReport(impact);
         setShowProvisionalReport(true);
       } else {
-        // Nessuna permission da mostrare - rimuovi direttamente
         confirmProvisionalRemoval(removedConfigIds);
       }
     } catch (err: any) {
@@ -361,20 +291,14 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   };
   
   const confirmProvisionalRemoval = (configIds: number[]) => {
-    // Rimuovi dalla lista delle configurazioni selezionate
     setSelectedConfigurations(prev => prev.filter(id => !configIds.includes(id)));
-    
-    // Aggiungi alle rimozioni provvisorie (per il report riepilogativo al salvataggio)
     setPendingRemovedConfigurations(prev => [...prev, ...configIds]);
-    
-    // Chiudi il report provvisorio
     setShowProvisionalReport(false);
     setProvisionalImpactReport(null);
     setRemovalToConfirm(null);
   };
   
   const cancelProvisionalRemoval = () => {
-    // Ripristina la configurazione rimossa (annulla la rimozione)
     setSelectedConfigurations(prev => {
       if (removalToConfirm !== null && !prev.includes(removalToConfirm)) {
         return [...prev, removalToConfirm];
@@ -382,21 +306,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       return prev;
     });
     
-    // Chiudi il report provvisorio
     setShowProvisionalReport(false);
     setProvisionalImpactReport(null);
     setRemovalToConfirm(null);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = selectedConfigurations.indexOf(active.id as number);
-      const newIndex = selectedConfigurations.indexOf(over.id as number);
-
-      setSelectedConfigurations(arrayMove(selectedConfigurations, oldIndex, newIndex));
-    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -415,22 +327,18 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       return;
     }
 
-    // Check if any configurations were removed (including provisional removals)
     const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
       entry.fieldConfiguration?.id || entry.fieldConfigurationId
     ) || [];
     
-    // Include both explicitly removed configs and pending removals
     const allRemovedConfigIds = [
       ...originalConfigIds.filter(id => !selectedConfigurations.includes(id)),
       ...pendingRemovedConfigurations
-    ].filter((id, index, self) => self.indexOf(id) === index); // Remove duplicates
+    ].filter((id, index, self) => self.indexOf(id) === index);
 
     if (allRemovedConfigIds.length > 0) {
-      // Analyze impact before saving (summary report)
       await analyzeRemovalImpact(allRemovedConfigIds);
     } else {
-      // No configurations removed, proceed with normal save
       await performSave();
     }
   };
@@ -440,7 +348,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     setError(null);
 
     try {
-      // Calcola anche le configurazioni che verranno AGGIUNTE (nuove configurazioni non presenti nel FieldSet originale)
       const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
         entry.fieldConfiguration?.id || entry.fieldConfigurationId
       ) || [];
@@ -460,26 +367,16 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
 
       const impact: FieldSetRemovalImpactDto = response.data;
       
-      // Verifica se ci sono permission da mostrare nel report
       const hasPermissions = 
         (impact.fieldOwnerPermissions && impact.fieldOwnerPermissions.length > 0) ||
         (impact.fieldStatusPermissions && impact.fieldStatusPermissions.length > 0) ||
         (impact.itemTypeSetRoles && impact.itemTypeSetRoles.length > 0);
       
-      // Mostra il report solo se ci sono permission da mostrare
       if (hasPermissions) {
         setImpactReport(impact);
         setShowImpactReport(true);
-        // Store the save function to be called after confirmation
         setPendingSave(() => performSave);
       } else {
-        // Nessuna permission da mostrare = nessun Field completamente rimosso
-        // IMPORTANTE: Non chiamare removeOrphanedPermissions qui perché:
-        // 1. Se il report è vuoto, significa che non ci sono Field completamente rimossi
-        // 2. Se cambi solo FieldConfiguration per lo stesso Field, il Field non è rimosso
-        // 3. Le permission devono essere mantenute intatte quando si cambia FieldConfiguration
-        
-        // Procedi direttamente con il salvataggio
         await performSave();
       }
     } catch (err: any) {
@@ -509,10 +406,8 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      // Clear pending removals after successful save
       setPendingRemovedConfigurations([]);
       
-      // Navigate back to the appropriate list
       if (scope === 'tenant') {
         navigate("/tenant/field-sets");
       } else if (scope === 'project' && projectId) {
@@ -532,7 +427,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     setError(null);
     
     try {
-      // 1. Calcola le FieldConfiguration rimosse
       const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
         entry.fieldConfiguration?.id || entry.fieldConfigurationId
       ) || [];
@@ -541,14 +435,12 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         !selectedConfigurations.includes(id)
       );
 
-      // 2. Se ci sono permission da rimuovere, chiama l'endpoint per rimuoverle
       const hasPermissions = 
         (impactReport.fieldOwnerPermissions && impactReport.fieldOwnerPermissions.length > 0) ||
         (impactReport.fieldStatusPermissions && impactReport.fieldStatusPermissions.length > 0) ||
         (impactReport.itemTypeSetRoles && impactReport.itemTypeSetRoles.length > 0);
       
       if (hasPermissions && removedConfigIds.length > 0) {
-        // Calcola anche le configurazioni che verranno AGGIUNTE (nuove configurazioni non presenti nel FieldSet originale)
         const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
           entry.fieldConfiguration?.id || entry.fieldConfigurationId
         ) || [];
@@ -567,11 +459,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         });
       }
 
-      // 3. Chiudi il modal
       setShowImpactReport(false);
       setImpactReport(null);
 
-      // 4. Procedi con il salvataggio normale del FieldSet
       if (pendingSave) {
         await pendingSave();
         setPendingSave(null);
@@ -602,13 +492,11 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         !selectedConfigurations.includes(id)
       );
 
-
       const response = await api.post(`/field-sets/${id}/export-removal-impact-csv`, removedConfigIds, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
 
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
       const link = document.createElement('a');
       link.href = url;
@@ -655,8 +543,14 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       : "Modifica un field set specifico per questo progetto.";
   };
 
+  // Organizza le configurazioni per field
+  const configurationsByField = fields.map(field => ({
+    field,
+    configurations: fieldConfigurations.filter(config => config.fieldId === field.id)
+  }));
+
   return (
-    <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div className={layout.container} style={{ maxWidth: '1600px', margin: '0 auto' }}>
       {/* Header Section */}
       <div className={layout.headerSection}>
         <h1 className={layout.title}>{getTitle()}</h1>
@@ -711,170 +605,136 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
           </div>
         </div>
 
-        {/* Field Selection Section */}
-        <div className={layout.section}>
-          <h2 className={layout.sectionTitle}>
-            Selezione Campo
-          </h2>
-
-          {fields.length === 0 ? (
-            <div className={alert.infoContainer}>
-              <p className={alert.info}>
-                <strong>Nessun campo disponibile</strong><br />
-                Crea prima dei campi per poter modificare un field set.
-              </p>
-            </div>
-          ) : (
-            <>
-              <p className={form.infoText}>
-                Seleziona il campo per cui vuoi modificare la configurazione.
-              </p>
-
-              <div className={form.fieldGrid}>
-                {fields.map((field) => (
-                  <div key={field.id} className={form.fieldCard}>
-                    <label className={form.fieldLabel}>
-                      <input
-                        type="radio"
-                        name="selectedField"
-                        checked={selectedField === field.id}
-                        onChange={() => handleFieldSelect(field.id)}
-                        disabled={saving}
-                      />
-                      <div className={form.fieldContent}>
-                        <div className={form.fieldHeader}>
-                          <strong>{field.name}</strong>
-                          <span className={form.fieldStatus}>
-                            {selectedField === field.id ? "✓ Selezionato" : "Non selezionato"}
-                          </span>
-                        </div>
-                        {field.defaultField && (
-                          <div className={form.fieldBadge}>
-                            Campo di default
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  </div>
-                ))}
+        {/* Sidebar Layout */}
+        <div className={sidebarStyles.fieldSetSidebarContainer}>
+          {/* Sidebar: Configurazioni Selezionate */}
+          <div className={sidebarStyles.selectedSidebar}>
+            <div className={sidebarStyles.selectedSidebarHeader}>
+              <div className={sidebarStyles.selectedSidebarTitle}>
+                <span>✅</span>
+                <span>Configurazioni Selezionate</span>
               </div>
-            </>
-          )}
-        </div>
+              <div className={sidebarStyles.selectedSidebarCount}>
+                <span className={sidebarStyles.selectedSidebarCountBadge}>
+                  {selectedConfigurations.length}
+                </span>
+                <span>{selectedConfigurations.length === 1 ? 'configurazione' : 'configurazioni'}</span>
+              </div>
+            </div>
 
-        {/* Field Configurations Section */}
-        {selectedField && (
-          <div className={layout.section}>
-            <h2 className={layout.sectionTitle}>
-              Configurazioni per {fields.find(f => f.id === selectedField)?.name}
-            </h2>
+            <div className={sidebarStyles.selectedSidebarBody}>
+              {selectedConfigurations.length === 0 ? (
+                <div className={sidebarStyles.sidebarEmpty}>
+                  <div className={sidebarStyles.sidebarEmptyIcon}>📝</div>
+                  <div style={{ fontSize: '0.8125rem' }}>Nessuna configurazione selezionata</div>
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={selectedConfigurations}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {selectedConfigurations.map((configId) => {
+                      const config = fieldConfigurations.find(c => c.id === configId);
+                      const field = config ? fields.find(f => f.id === config.fieldId) : undefined;
+                      return config ? (
+                        <SortableSidebarConfig
+                          key={configId}
+                          configId={configId}
+                          config={config}
+                          field={field}
+                          onRemove={() => removeConfiguration(configId)}
+                        />
+                      ) : null;
+                    })}
+                  </SortableContext>
+                </DndContext>
+              )}
+            </div>
+          </div>
 
-            {getConfigurationsForSelectedField().length === 0 ? (
+          {/* Main Content: Field con Configurazioni */}
+          <div className={sidebarStyles.mainContentArea}>
+            <div className={sidebarStyles.sidebarInfo}>
+              <strong>💡 Come funziona:</strong>
+              <div>
+                Seleziona una configurazione per ogni Field. Se selezioni una nuova configurazione per un Field 
+                già presente, quella precedente verrà sostituita automaticamente. 
+                Puoi riordinare le configurazioni selezionate trascinandole nella sidebar.
+              </div>
+            </div>
+
+            {fields.length === 0 ? (
               <div className={alert.infoContainer}>
                 <p className={alert.info}>
-                  <strong>Nessuna configurazione disponibile per questo campo</strong><br />
-                  Crea prima delle configurazioni per il campo selezionato.
+                  <strong>Nessun campo disponibile</strong><br />
+                  Crea prima dei campi per poter modificare un field set.
                 </p>
               </div>
             ) : (
-              <>
-                <p className={form.infoText}>
-                  Seleziona la configurazione da includere in questo field set.
-                </p>
-
-                <div className={form.radioGrid}>
-                  {getConfigurationsForSelectedField().map((config) => {
-                    const isSelected = selectedConfigurations.includes(config.id);
-                    const hasOtherSelectedForSameField = selectedConfigurations.some(id => {
-                      const otherConfig = fieldConfigurations.find(c => c.id === id);
-                      return otherConfig && otherConfig.fieldId === config.fieldId && otherConfig.id !== config.id;
-                    });
-                    
-                    return (
-                      <div key={config.id} className={form.radioCard}>
-                        <label className={form.radioLabel}>
-                          <input
-                            type="radio"
-                            name={`selectedConfiguration_${config.fieldId}`}
-                            checked={isSelected}
-                            onChange={() => handleConfigurationSelect(config.id)}
-                            disabled={saving}
-                          />
-                          <div className={form.radioContent}>
-                            <div className={form.radioHeader}>
-                              <strong>{config.name || "Senza nome"}</strong>
-                              <span className={form.radioStatus}>
-                                {isSelected ? "✓ Selezionata" : "Non selezionata"}
-                                {hasOtherSelectedForSameField && !isSelected && " (Altro selezionato)"}
-                              </span>
-                            </div>
-                          <div className={form.radioDetails}>
-                            <div className={form.detailRow}>
-                              <span className={form.detailLabel}>Tipo:</span>
-                              <span className={form.detailValue}>{config.fieldType?.displayName || "Sconosciuto"}</span>
-                            </div>
-                            {config.description && (
-                              <div className={form.detailRow}>
-                                <span className={form.detailLabel}>Descrizione:</span>
-                                <span className={form.detailValue}>{config.description}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </label>
+              configurationsByField.map(({ field, configurations }) => (
+                <div key={field.id} className={sidebarStyles.sidebarFieldCard}>
+                  {/* Header del Field */}
+                  <div className={sidebarStyles.sidebarFieldHeader}>
+                    <div className={sidebarStyles.sidebarFieldHeaderContent}>
+                      <span className={sidebarStyles.sidebarFieldIcon}>📋</span>
+                      <span className={sidebarStyles.sidebarFieldName}>{field.name}</span>
+                      <span className={sidebarStyles.sidebarFieldBadge}>
+                        {configurations.length} disponibili
+                      </span>
                     </div>
-                    );
-                  })}
+                  </div>
+
+                  {/* Configurazioni */}
+                  <div className={sidebarStyles.sidebarConfigurationsArea}>
+                    {configurations.length === 0 ? (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+                        Nessuna configurazione disponibile
+                      </div>
+                    ) : (
+                      <div className={sidebarStyles.sidebarConfigurationsList}>
+                        {configurations.map((config) => {
+                          const isSelected = selectedConfigurations.includes(config.id);
+                          return (
+                            <label
+                              key={config.id}
+                              className={`${sidebarStyles.sidebarConfigItem} ${isSelected ? sidebarStyles.selected : ''}`}
+                            >
+                              <div className={sidebarStyles.sidebarConfigItemContent}>
+                                <div className={sidebarStyles.sidebarConfigItemName}>
+                                  {config.name || "Senza nome"}
+                                </div>
+                                <div className={sidebarStyles.sidebarConfigItemDetails}>
+                                  Tipo: {config.fieldType?.displayName || "Sconosciuto"}
+                                  {config.description && ` • ${config.description}`}
+                                </div>
+                              </div>
+                              <input
+                                type="radio"
+                                name={`selectedConfiguration_${field.id}`}
+                                checked={isSelected}
+                                onChange={() => handleConfigurationSelect(config.id)}
+                                disabled={saving}
+                                className={sidebarStyles.sidebarConfigItemCheckbox}
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </>
+              ))
             )}
           </div>
-        )}
-
-        {/* Selected Configurations Preview */}
-        {selectedConfigurations.length > 0 && (
-          <div className={layout.section}>
-            <h2 className={layout.sectionTitle}>
-              Configurazioni Selezionate ({selectedConfigurations.length})
-            </h2>
-            <p className={form.infoText}>
-              Ecco tutte le configurazioni attualmente selezionate per questo field set. 
-              Puoi riordinarle trascinandole o usando i pulsanti freccia.
-            </p>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={selectedConfigurations}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className={form.previewList}>
-                  {selectedConfigurations.map((configId, index) => {
-                    const config = fieldConfigurations.find(c => c.id === configId);
-                    return config ? (
-                      <SortablePreviewItem
-                        key={configId}
-                        configId={configId}
-                        config={config}
-                        index={index}
-                        onMoveUp={moveConfigurationUp}
-                        onMoveDown={moveConfigurationDown}
-                        onRemove={() => removeConfiguration(configId)}
-                        saving={saving}
-                        isLast={index === selectedConfigurations.length - 1}
-                      />
-                    ) : null;
-                  })}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </div>
-        )}
+        </div>
 
         {/* Action Buttons */}
-        <div className={layout.buttonRow}>
+        <div className={layout.buttonRow} style={{ marginTop: '2rem' }}>
           <button
             type="submit"
             className={buttons.button}
@@ -921,7 +781,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         }}
         onExport={async () => {
           if (removalToConfirm !== null && provisionalImpactReport) {
-            // Export provisional report
             try {
               const response = await api.post(`/field-sets/${id}/export-removal-impact-csv`, [removalToConfirm], {
                 headers: { Authorization: `Bearer ${token}` },

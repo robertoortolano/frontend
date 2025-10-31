@@ -1,0 +1,317 @@
+/* === Field Set Sidebar View (Sidebar laterale) === */
+
+/* Container principale */
+.sidebarViewContainer {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  min-height: calc(100vh - 200px);
+}
+
+@media (max-width: 1024px) {
+  .sidebarViewContainer {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebarViewContainer .selectedSidebar {
+    position: static;
+    max-height: 500px;
+    margin-top: 1.5rem;
+  }
+}
+
+/* Sidebar selezionate (sinistra) */
+.selectedSidebar {
+  position: sticky;
+  top: 1rem;
+  height: fit-content;
+  max-height: calc(100vh - 150px);
+  background-color: white;
+  border: 2px solid #f3f4f6;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.selectedSidebarHeader {
+  padding: 1.125rem;
+  background: linear-gradient(to bottom, #6366f1, #4f46e5);
+  color: white;
+  border-bottom: 2px solid #4338ca;
+}
+
+.selectedSidebarTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectedSidebarCount {
+  font-size: 0.8125rem;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.selectedSidebarCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.selectedSidebarBody {
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.selectedSidebarBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.selectedSidebarBody::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.selectedSidebarBody::-webkit-scrollbar-thumb {
+  background: #a5b4fc;
+  border-radius: 3px;
+}
+
+.selectedSidebarBody::-webkit-scrollbar-thumb:hover {
+  background: #818cf8;
+}
+
+/* Card configurazione nella sidebar */
+.sidebarConfigCard {
+  padding: 1rem;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #6366f1;
+  border-radius: 0.5rem;
+  background: linear-gradient(to right, #eef2ff, white);
+  position: relative;
+  animation: slideInLeft 0.3s ease;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebarConfigFieldLabel {
+  font-size: 0.6875rem;
+  color: #4f46e5;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.sidebarConfigName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  margin-bottom: 0.375rem;
+  padding-right: 1.5rem;
+  word-break: break-word;
+}
+
+.sidebarConfigDetails {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.sidebarConfigRemove {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: all 0.2s;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebarConfigRemove:hover {
+  background-color: #fee2e2;
+  transform: scale(1.15);
+}
+
+/* Messaggio vuoto sidebar */
+.sidebarEmpty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.sidebarEmptyIcon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.4;
+}
+
+/* Area principale (destra) */
+.mainContentArea {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+/* Card Field */
+.sidebarFieldCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: white;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.sidebarFieldCard:hover {
+  border-color: #a5b4fc;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+}
+
+.sidebarFieldHeader {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sidebarFieldHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.sidebarFieldIcon {
+  font-size: 1.375rem;
+  color: #6366f1;
+}
+
+.sidebarFieldName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1.125rem;
+}
+
+.sidebarFieldBadge {
+  margin-left: 0.75rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  background-color: #eef2ff;
+  color: #6366f1;
+  border-radius: 0.75rem;
+  font-weight: 500;
+}
+
+/* Area configurazioni */
+.sidebarConfigurationsArea {
+  padding: 1.25rem;
+}
+
+.sidebarConfigurationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebarConfigItem {
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: white;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebarConfigItem:hover {
+  border-color: #a5b4fc;
+  transform: translateX(4px);
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.15);
+}
+
+.sidebarConfigItem.selected {
+  border-color: #6366f1;
+  background: linear-gradient(to right, #eef2ff, white);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.sidebarConfigItemContent {
+  flex: 1;
+}
+
+.sidebarConfigItemName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  margin-bottom: 0.25rem;
+}
+
+.sidebarConfigItemDetails {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.sidebarConfigItemCheckbox {
+  margin-left: 1rem;
+  transform: scale(1.2);
+  accent-color: #6366f1;
+}
+
+/* Info box */
+.sidebarInfo {
+  padding: 1rem;
+  background-color: #eef2ff;
+  border-left: 4px solid #6366f1;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #4338ca;
+  margin-bottom: 1rem;
+}
+
+.sidebarInfo strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+

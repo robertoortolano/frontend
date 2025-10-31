@@ -1,0 +1,322 @@
+/* === Field Set Split View (Configurazioni sempre visibili) === */
+
+/* Container principale a due colonne */
+.splitViewContainer {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 1.5rem;
+  height: calc(100vh - 200px);
+  min-height: 600px;
+}
+
+@media (max-width: 1024px) {
+  .splitViewContainer {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: auto;
+  }
+}
+
+/* Colonna sinistra: Selezione Field */
+.selectionColumn {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.selectionColumn::-webkit-scrollbar {
+  width: 8px;
+}
+
+.selectionColumn::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.selectionColumn::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.selectionColumn::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Colonna destra: Configurazioni selezionate (sticky) */
+.selectedColumn {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 1rem;
+  height: fit-content;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  background-color: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.selectedColumn::-webkit-scrollbar {
+  width: 8px;
+}
+
+.selectedColumn::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.selectedColumn::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+/* Header della colonna selezionate */
+.selectedHeader {
+  padding: 1.25rem;
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+  color: white;
+  border-radius: 0.75rem 0.75rem 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.selectedHeaderTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.selectedHeaderCount {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+/* Corpo della colonna selezionate */
+.selectedBody {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Card Field nella colonna selezione */
+.splitViewFieldCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: white;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.splitViewFieldCard:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.splitViewFieldHeader {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.splitViewFieldHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.splitViewFieldIcon {
+  font-size: 1.125rem;
+  color: #3b82f6;
+}
+
+.splitViewFieldName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.splitViewFieldBadge {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  background-color: #eff6ff;
+  color: #2563eb;
+  border-radius: 0.75rem;
+  font-weight: 500;
+}
+
+/* Area configurazioni (sempre visibile) */
+.splitViewConfigurationsArea {
+  padding: 1rem;
+  padding-top: 0;
+}
+
+.splitViewConfigurationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.splitViewConfigurationCard {
+  padding: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #93c5fd;
+  border-radius: 0.375rem;
+  background-color: white;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.splitViewConfigurationCard:hover {
+  border-left-color: #2563eb;
+  background-color: #f9fafb;
+  transform: translateX(2px);
+}
+
+.splitViewConfigurationCard.selected {
+  border-left-color: #10b981;
+  background-color: #f0fdf4;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+}
+
+.splitViewConfigurationContent {
+  flex: 1;
+}
+
+.splitViewConfigurationName {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  margin-bottom: 0.25rem;
+}
+
+.splitViewConfigurationDetails {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.splitViewConfigurationCheckbox {
+  margin-left: 0.75rem;
+  transform: scale(1.1);
+  accent-color: #10b981;
+}
+
+/* Card nella colonna selezionate */
+.selectedConfigurationCard {
+  padding: 1rem;
+  border: 2px solid #10b981;
+  border-left: 4px solid #10b981;
+  border-radius: 0.5rem;
+  background: linear-gradient(to right, #f0fdf4, white);
+  position: relative;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.selectedConfigurationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.selectedConfigurationFieldName {
+  font-size: 0.75rem;
+  color: #059669;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.selectedConfigurationRemove {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 1.125rem;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.selectedConfigurationRemove:hover {
+  background-color: #fee2e2;
+  transform: scale(1.1);
+}
+
+.selectedConfigurationName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.selectedConfigurationDetails {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Messaggio vuoto */
+.emptySelected {
+  padding: 2rem;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.emptySelectedIcon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+/* Info box */
+.splitViewInfo {
+  padding: 1rem;
+  background-color: #f0f9ff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 0.375rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+}
+
+.splitViewInfo strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .selectedColumn {
+    position: static;
+    max-height: 500px;
+    margin-top: 1.5rem;
+  }
+}
+

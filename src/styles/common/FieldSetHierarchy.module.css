@@ -1,0 +1,276 @@
+/* === Field Set Hierarchy Styles === */
+
+/* Container principale per la gerarchia Field → FieldConfiguration */
+.fieldHierarchyContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Card Field principale */
+.fieldHierarchyCard {
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: white;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.fieldHierarchyCard:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Stato selezionato */
+.fieldHierarchyCard.selected {
+  border-color: #2563eb;
+  border-width: 2px;
+  background-color: #eff6ff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+/* Header del Field */
+.fieldHierarchyHeader {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background-color: inherit;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s;
+}
+
+.fieldHierarchyCard.selected .fieldHierarchyHeader {
+  background-color: #dbeafe;
+  border-bottom-color: #93c5fd;
+}
+
+.fieldHierarchyHeader:hover {
+  background-color: #f9fafb;
+}
+
+.fieldHierarchyCard.selected .fieldHierarchyHeader:hover {
+  background-color: #bfdbfe;
+}
+
+/* Contenuto del Field header */
+.fieldHierarchyHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+/* Icona/indicatore del Field */
+.fieldHierarchyIcon {
+  font-size: 1.25rem;
+  color: #3b82f6;
+}
+
+.fieldHierarchyCard.selected .fieldHierarchyIcon {
+  color: #1d4ed8;
+}
+
+/* Nome del Field */
+.fieldHierarchyName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.fieldHierarchyCard.selected .fieldHierarchyName {
+  color: #1e40af;
+}
+
+/* Badge conteggio configurazioni */
+.fieldHierarchyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.fieldHierarchyCard.selected .fieldHierarchyBadge {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* Radio button per selezione Field */
+.fieldHierarchyRadio {
+  margin-left: auto;
+  transform: scale(1.2);
+  accent-color: #2563eb;
+}
+
+/* Area configurazioni (nidificata) */
+.fieldHierarchyConfigurations {
+  padding: 0;
+  background-color: #fafafa;
+  border-top: 1px solid #e5e7eb;
+  display: none; /* Hidden by default */
+  animation: slideDown 0.3s ease;
+}
+
+.fieldHierarchyCard.selected .fieldHierarchyConfigurations {
+  display: block;
+  padding: 1rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+/* Indicatore visivo di relazione (linea verticale) */
+.fieldHierarchyConnector {
+  position: relative;
+  padding-left: 2.5rem;
+}
+
+.fieldHierarchyConnector::before {
+  content: '';
+  position: absolute;
+  left: 1.25rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, #93c5fd, #60a5fa);
+  border-radius: 1px;
+}
+
+/* Card Configurazione nidificata */
+.fieldConfigurationNested {
+  position: relative;
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  padding-left: 3rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #60a5fa;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.fieldConfigurationNested:hover {
+  border-left-color: #2563eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateX(4px);
+}
+
+.fieldConfigurationNested:last-child {
+  margin-bottom: 0;
+}
+
+/* Radio button per configurazione */
+.fieldConfigurationRadio {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%) scale(1.1);
+  accent-color: #2563eb;
+}
+
+/* Contenuto configurazione */
+.fieldConfigurationContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fieldConfigurationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fieldConfigurationName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+}
+
+.fieldConfigurationStatus {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.fieldConfigurationNested.selected .fieldConfigurationStatus {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+/* Dettagli configurazione */
+.fieldConfigurationDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.fieldConfigurationDetailRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fieldConfigurationDetailLabel {
+  font-weight: 500;
+  min-width: 70px;
+}
+
+/* Messaggio quando nessuna configurazione */
+.fieldHierarchyEmpty {
+  padding: 1.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+/* Info text migliorato */
+.fieldHierarchyInfo {
+  margin-bottom: 1rem;
+  padding: 0.875rem;
+  background-color: #f0f9ff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+}
+
+.fieldHierarchyInfo strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .fieldHierarchyConnector {
+    padding-left: 2rem;
+  }
+  
+  .fieldHierarchyConnector::before {
+    left: 1rem;
+  }
+  
+  .fieldConfigurationNested {
+    padding-left: 2.5rem;
+  }
+}
+
+

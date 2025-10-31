@@ -1,0 +1,376 @@
+/* === Field Set Sidebar View (Colori Standard) === */
+
+/* Container principale */
+.fieldSetSidebarContainer {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  min-height: calc(100vh - 200px);
+}
+
+@media (max-width: 1024px) {
+  .fieldSetSidebarContainer {
+    grid-template-columns: 1fr;
+  }
+  
+  .fieldSetSidebarContainer .selectedSidebar {
+    position: static;
+    max-height: 500px;
+    margin-top: 1.5rem;
+  }
+}
+
+/* Sidebar selezionate (sinistra) */
+.selectedSidebar {
+  position: sticky;
+  top: 1rem;
+  height: fit-content;
+  max-height: calc(100vh - 150px);
+  background-color: #ffffff;
+  border: 5px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.selectedSidebarHeader {
+  padding: 1.125rem;
+  background-color: transparent;
+  color: #1e3a8a;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.3s ease;
+}
+
+.selectedSidebarHeader:hover {
+  background-color: #00ddd4;
+  color: white;
+}
+
+.selectedSidebarTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectedSidebarCount {
+  font-size: 0.8125rem;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.selectedSidebarCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.selectedSidebarBody {
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.selectedSidebarBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.selectedSidebarBody::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.selectedSidebarBody::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.selectedSidebarBody::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Card configurazione nella sidebar (draggable) */
+.sidebarConfigCard {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  position: relative;
+  cursor: grab;
+  transition: all 0.2s ease;
+  animation: slideInLeft 0.3s ease;
+}
+
+.sidebarConfigCard:hover {
+  border-color: #e2e8f0;
+  background-color: #f0f0f0;
+  transform: translateX(2px);
+}
+
+.sidebarConfigCard:active {
+  cursor: grabbing;
+}
+
+.sidebarConfigCard.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebarConfigFieldLabel {
+  font-size: 0.6875rem;
+  color: #1e3a8a;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.sidebarConfigName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  margin-bottom: 0.375rem;
+  padding-right: 1.5rem;
+  word-break: break-word;
+}
+
+.sidebarConfigDetails {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+/* Handle per drag nella sidebar */
+.sidebarConfigDragHandle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: #1e3a8a;
+  font-size: 1.125rem;
+  cursor: grab;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.sidebarConfigDragHandle:hover {
+  background-color: #00ddd4;
+  color: white;
+}
+
+.sidebarConfigDragHandle:active {
+  cursor: grabbing;
+}
+
+.sidebarConfigRemove {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: all 0.2s;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebarConfigRemove:hover {
+  background-color: #fee2e2;
+  transform: scale(1.15);
+}
+
+/* Messaggio vuoto sidebar */
+.sidebarEmpty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.sidebarEmptyIcon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.4;
+}
+
+/* Area principale (destra) */
+.mainContentArea {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+/* Card Field */
+.sidebarFieldCard {
+  border: 5px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.sidebarFieldCard:hover {
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sidebarFieldHeader {
+  padding: 0.4rem 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: transparent;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.3s ease;
+  cursor: pointer;
+}
+
+.sidebarFieldHeader:hover {
+  background-color: #00ddd4;
+  color: white;
+}
+
+.sidebarFieldHeader:hover .sidebarFieldIcon,
+.sidebarFieldHeader:hover .sidebarFieldName,
+.sidebarFieldHeader:hover .sidebarFieldBadge {
+  color: white;
+}
+
+.sidebarFieldHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.sidebarFieldIcon {
+  font-size: 1.375rem;
+  color: #1e3a8a;
+}
+
+.sidebarFieldName {
+  font-weight: 600;
+  color: #1e3a8a;
+  font-size: 1.125rem;
+}
+
+.sidebarFieldBadge {
+  margin-left: 0.75rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  background-color: transparent;
+  color: #1e3a8a;
+  border-radius: 0.75rem;
+  font-weight: 500;
+}
+
+/* Area configurazioni */
+.sidebarConfigurationsArea {
+  padding: 1.25rem;
+}
+
+.sidebarConfigurationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebarConfigItem {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebarConfigItem:hover {
+  border-color: #e2e8f0;
+  background-color: #f0f0f0;
+  transform: translateX(4px);
+}
+
+.sidebarConfigItem.selected {
+  border-color: #e2e8f0;
+  background-color: #f0f0f0;
+  border-left: 4px solid #00ddd4;
+}
+
+.sidebarConfigItemContent {
+  flex: 1;
+}
+
+.sidebarConfigItemName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  margin-bottom: 0.25rem;
+}
+
+.sidebarConfigItemDetails {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.sidebarConfigItemCheckbox {
+  margin-left: 1rem;
+  transform: scale(1.2);
+  accent-color: #00ddd4;
+}
+
+/* Info box */
+.sidebarInfo {
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+}
+
+.sidebarInfo strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
