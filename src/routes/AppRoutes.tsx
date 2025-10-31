@@ -70,12 +70,6 @@ import Groups from "../pages/groups/Groups";
 // Tenant User Management
 import TenantUserManagement from "../pages/tenantusers/TenantUserManagement";
 
-// Field Set Hierarchy Test
-import FieldSetHierarchyTest from "../pages/fieldsets/FieldSetHierarchyTest";
-import FieldSetTreeViewTest from "../pages/fieldsets/FieldSetTreeViewTest";
-import FieldSetSplitViewTest from "../pages/fieldsets/FieldSetSplitViewTest";
-import FieldSetVerticalViewTest from "../pages/fieldsets/FieldSetVerticalViewTest";
-import FieldSetSidebarViewTest from "../pages/fieldsets/FieldSetSidebarViewTest";
 
 export default function AppRoutes() {
   return (
@@ -271,42 +265,6 @@ export default function AppRoutes() {
           </RoleProtectedRoute>
         } />
         
-        {/* Test UI Hierarchy (solo per sviluppo) */}
-        <Route path="test-fieldset-hierarchy" element={
-          <RoleProtectedRoute requiredRoles={[
-            { name: "ADMIN", scope: "TENANT" }
-          ]}>
-            <FieldSetHierarchyTest />
-          </RoleProtectedRoute>
-        } />
-        <Route path="test-fieldset-treeview" element={
-          <RoleProtectedRoute requiredRoles={[
-            { name: "ADMIN", scope: "TENANT" }
-          ]}>
-            <FieldSetTreeViewTest />
-          </RoleProtectedRoute>
-        } />
-        <Route path="test-fieldset-splitview" element={
-          <RoleProtectedRoute requiredRoles={[
-            { name: "ADMIN", scope: "TENANT" }
-          ]}>
-            <FieldSetSplitViewTest />
-          </RoleProtectedRoute>
-        } />
-        <Route path="test-fieldset-vertical" element={
-          <RoleProtectedRoute requiredRoles={[
-            { name: "ADMIN", scope: "TENANT" }
-          ]}>
-            <FieldSetVerticalViewTest />
-          </RoleProtectedRoute>
-        } />
-        <Route path="test-fieldset-sidebar" element={
-          <RoleProtectedRoute requiredRoles={[
-            { name: "ADMIN", scope: "TENANT" }
-          ]}>
-            <FieldSetSidebarViewTest />
-          </RoleProtectedRoute>
-        } />
       </Route>
 
       <Route

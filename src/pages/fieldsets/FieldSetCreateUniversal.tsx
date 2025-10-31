@@ -283,7 +283,7 @@ export default function FieldSetCreateUniversal({ scope, projectId }: FieldSetCr
   }));
 
   return (
-    <div className={layout.container} style={{ maxWidth: '1600px', margin: '0 auto' }}>
+    <div className={layout.container} style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 1rem', width: '100%', boxSizing: 'border-box' }}>
       {/* Header Section */}
       <div className={layout.headerSection}>
         <h1 className={layout.title}>{getTitle()}</h1>

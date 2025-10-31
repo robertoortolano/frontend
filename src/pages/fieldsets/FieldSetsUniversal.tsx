@@ -117,14 +117,6 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
     content = (
       <div>
         <p className="list-loading">Nessun field set trovato.</p>
-        <div className="mt-6">
-          <button
-            className={buttons.button}
-            onClick={handleCreate}
-          >
-            Add Field Set
-          </button>
-        </div>
       </div>
     );
   } else {

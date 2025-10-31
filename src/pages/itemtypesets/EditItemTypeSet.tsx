@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
@@ -6,6 +6,8 @@ import { ItemTypeDto } from "../../types/itemtype.types";
 import { FieldSetViewDto } from "../../types/field.types";
 import { WorkflowSimpleDto } from "../../types/workflow.types";
 import { ItemTypeConfigurationDto, ItemTypeSetUpdateDto } from "../../types/itemtypeset.types";
+import { ItemTypeConfigurationMigrationImpactDto } from "../../types/item-type-configuration-migration.types";
+import { ItemTypeConfigurationMigrationModal } from "../../components/ItemTypeConfigurationMigrationModal";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -37,6 +39,15 @@ export default function EditItemTypeSet() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // State per il modal di migrazione
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [migrationImpacts, setMigrationImpacts] = useState<ItemTypeConfigurationMigrationImpactDto[]>([]);
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
+  
+  // Store delle configurazioni originali per il confronto
+  const originalConfigurationsRef = useRef<ItemTypeConfigurationDto[]>([]);
+
   useEffect(() => {
     if (!token) return;
 
@@ -65,15 +76,15 @@ export default function EditItemTypeSet() {
 
         setName(setData.name || "");
         setDescription(setData.description || "");
-        setItemTypeConfigurations(
-          (setData.itemTypeConfigurations || []).map((conf: any) => ({
-            id: conf.id,
-            itemTypeId: conf.itemType.id,
-            category: conf.category,
-            fieldSetId: conf.fieldSet?.id,
-            workflowId: conf.workflow?.id,
-          }))
-        );
+        const configs = (setData.itemTypeConfigurations || []).map((conf: any) => ({
+          id: conf.id,
+          itemTypeId: conf.itemType.id,
+          category: conf.category,
+          fieldSetId: conf.fieldSet?.id,
+          workflowId: conf.workflow?.id,
+        }));
+        setItemTypeConfigurations(configs);
+        originalConfigurationsRef.current = [...configs]; // Salva copia delle originali
 
         setItemTypes(typesRes.data);
         setCategories(categoriesRes.data);
@@ -102,9 +113,158 @@ export default function EditItemTypeSet() {
   );
 
   const updateEntry = (index: number, updatedFields: Partial<ItemTypeConfigurationDto>) => {
+    // Applica sempre la modifica direttamente (senza analisi immediata)
     setItemTypeConfigurations((prev) =>
-      prev.map((entry, i) => (i === index ? { ...entry, ...updatedFields } : entry))
+      prev.map((e, i) => (i === index ? { ...e, ...updatedFields } : e))
     );
+  };
+  
+  // Identifica le configurazioni con cambiamenti
+  const getConfigurationsWithChanges = (): Array<{
+    config: ItemTypeConfigurationDto;
+    originalConfig: ItemTypeConfigurationDto;
+    index: number;
+  }> => {
+    return itemTypeConfigurations
+      .map((config, index) => {
+        const originalConfig = originalConfigurationsRef.current.find(c => c.id === config.id);
+        if (!originalConfig || !config.id) return null;
+        
+        const fieldSetChanged = originalConfig.fieldSetId !== config.fieldSetId;
+        const workflowChanged = originalConfig.workflowId !== config.workflowId;
+        
+        if (fieldSetChanged || workflowChanged) {
+          return { config, originalConfig, index };
+        }
+        return null;
+      })
+      .filter((item): item is { config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number } => item !== null);
+  };
+
+  // Gestisce la conferma della migrazione (una per ogni configurazione modificata)
+  const handleMigrationConfirm = async (preservePermissionIdsMap: Map<number, number[]>) => {
+    try {
+      setMigrationLoading(true);
+      
+      // Applica la migrazione per ogni configurazione
+      // IMPORTANTE: preservePermissionIds può essere un array vuoto [] se l'utente ha deselezionato tutto
+      for (const [configId, preservePermissionIds] of preservePermissionIdsMap) {
+        // Trova la configurazione corrispondente per ottenere i nuovi FieldSetId e WorkflowId
+        const config = itemTypeConfigurations.find(c => c.id === configId);
+        if (!config) {
+          console.error(`Configurazione ${configId} non trovata`);
+          continue;
+        }
+        
+        // Se preservePermissionIds è undefined o null, usa array vuoto
+        // Questo significa che l'utente non ha selezionato nulla intenzionalmente
+        const permissionIdsToPreserve = preservePermissionIds || [];
+        
+        await api.post(
+          `/item-type-configurations/${configId}/migrate-permissions`,
+          {
+            itemTypeConfigurationId: configId,
+            newFieldSetId: config.fieldSetId || null,
+            newWorkflowId: config.workflowId || null,
+            preservePermissionIds: permissionIdsToPreserve, // Può essere [] se l'utente ha deselezionato tutto
+            preserveAllPreservable: null,
+            removeAll: null,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
+      
+      // Aggiorna le originali con le nuove versioni
+      originalConfigurationsRef.current = [...itemTypeConfigurations];
+      
+      // Procedi con il salvataggio
+      await performSave();
+      
+      setShowMigrationModal(false);
+      setMigrationImpacts([]);
+      setPendingSave(false);
+    } catch (err: any) {
+      console.error("Errore nell'applicazione della migrazione:", err);
+      setError(err.response?.data?.message || "Errore nell'applicazione della migrazione");
+    } finally {
+      setMigrationLoading(false);
+    }
+  };
+  
+  const handleMigrationCancel = () => {
+    setShowMigrationModal(false);
+    setMigrationImpacts([]);
+    setPendingSave(false);
+  };
+  
+  // Gestisce l'export CSV del report di migrazione
+  const handleExportMigrationCsv = async () => {
+    if (migrationImpacts.length === 0) return;
+    
+    try {
+      // Esporta il CSV per la prima configurazione (o tutte se necessario)
+      // Per semplicità, esportiamo il primo. In futuro si può fare un export aggregato
+      const firstImpact = migrationImpacts[0];
+      
+      const response = await api.get(
+        `/item-type-configurations/${firstImpact.itemTypeConfigurationId}/export-migration-impact-csv`,
+        {
+          params: {
+            newFieldSetId: firstImpact.newFieldSet?.fieldSetId || undefined,
+            newWorkflowId: firstImpact.newWorkflow?.workflowId || undefined,
+          },
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob',
+        }
+      );
+      
+      // Crea un blob URL e scarica il file
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      link.download = `itemtypeconfiguration_migration_${firstImpact.itemTypeConfigurationId}_${timestamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Errore nell'export CSV:", err);
+      setError(err.response?.data?.message || "Errore nell'export CSV");
+    }
+  };
+  
+  // Esegue il salvataggio effettivo
+  const performSave = async () => {
+    const dto: ItemTypeSetUpdateDto = {
+      name,
+      description,
+      itemTypeConfigurations: itemTypeConfigurations.map((conf) => ({
+        id: conf.id,
+        itemTypeId: conf.itemTypeId,
+        category: conf.category,
+        fieldSetId: conf.fieldSetId || null,
+        workflowId: conf.workflowId || null,
+      })),
+    };
+
+    await api.put(`/item-type-sets/${id}`, dto, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    // Aggiorna automaticamente i ruoli per l'ItemTypeSet modificato
+    try {
+      await api.delete(`/itemtypeset-roles/itemtypeset/${id}/all`);
+      await api.post(`/itemtypeset-roles/create-for-itemtypeset/${id}`);
+    } catch (roleError) {
+      console.warn("Errore nell'aggiornamento automatico dei ruoli:", roleError);
+    }
+
+    navigate("/tenant/item-type-sets");
   };
 
   const handleAddEntry = () => {
@@ -135,35 +295,50 @@ export default function EditItemTypeSet() {
     setError(null);
 
     try {
-      const dto: ItemTypeSetUpdateDto = {
-        name,
-        description,
-        itemTypeConfigurations: itemTypeConfigurations.map((conf) => ({
-          id: conf.id,
-          itemTypeId: conf.itemTypeId,
-          category: conf.category,
-          fieldSetId: conf.fieldSetId || null,
-          workflowId: conf.workflowId || null,
-        })),
-      };
-
-      await api.put(`/item-type-sets/${id}`, dto, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // Aggiorna automaticamente i ruoli per l'ItemTypeSet modificato
-      try {
-        await api.delete(`/itemtypeset-roles/itemtypeset/${id}/all`);
-        await api.post(`/itemtypeset-roles/create-for-itemtypeset/${id}`);
-      } catch (roleError) {
-        console.warn("Errore nell'aggiornamento automatico dei ruoli:", roleError);
+      // Identifica le configurazioni con cambiamenti
+      const configurationsWithChanges = getConfigurationsWithChanges();
+      
+      if (configurationsWithChanges.length === 0) {
+        // Nessun cambiamento di FieldSet/Workflow, salva direttamente
+        await performSave();
+        setSaving(false);
+        return;
       }
-
-      navigate("/tenant/item-type-sets");
+      
+      // Analizza l'impatto per tutte le configurazioni modificate
+      setMigrationLoading(true);
+      const impacts: ItemTypeConfigurationMigrationImpactDto[] = [];
+      
+      for (const { config } of configurationsWithChanges) {
+        try {
+          const response = await api.get(
+            `/item-type-configurations/${config.id}/migration-impact`,
+            {
+              params: {
+                newFieldSetId: config.fieldSetId || undefined,
+                newWorkflowId: config.workflowId || undefined,
+              },
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          impacts.push(response.data);
+        } catch (err: any) {
+          console.error(`Errore nell'analisi dell'impatto per configurazione ${config.id}:`, err);
+          setError(err.response?.data?.message || "Errore nell'analisi dell'impatto della migrazione");
+          setMigrationLoading(false);
+          setSaving(false);
+          return;
+        }
+      }
+      
+      setMigrationImpacts(impacts);
+      setPendingSave(true);
+      setShowMigrationModal(true);
+      setSaving(false);
+      setMigrationLoading(false);
     } catch (err: any) {
       console.error("Errore durante l'aggiornamento", err);
       setError(err.response?.data?.message || "Errore durante l'aggiornamento");
-    } finally {
       setSaving(false);
     }
   };
@@ -379,6 +554,16 @@ export default function EditItemTypeSet() {
           </button>
         </div>
       </form>
+      
+      {/* Modal di migrazione */}
+      <ItemTypeConfigurationMigrationModal
+        isOpen={showMigrationModal}
+        onClose={handleMigrationCancel}
+        onConfirm={handleMigrationConfirm}
+        onExport={handleExportMigrationCsv}
+        impacts={migrationImpacts}
+        loading={migrationLoading}
+      />
     </div>
   );
 }

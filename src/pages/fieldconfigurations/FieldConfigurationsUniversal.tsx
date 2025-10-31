@@ -129,14 +129,6 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
     content = (
       <div>
         <p className="list-loading">Nessuna configurazione trovata.</p>
-        <div className="mt-6">
-          <button
-            className={buttons.button}
-            onClick={handleCreate}
-          >
-            Add Configuration
-          </button>
-        </div>
       </div>
     );
   } else {
