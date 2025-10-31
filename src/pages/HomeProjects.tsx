@@ -15,7 +15,7 @@ import buttons from "../styles/common/Buttons.module.css";
 export default function HomeProjects() {
   const auth = useAuth() as any;
   const token = auth?.token;
-  const { favoriteIds, toggleFavorite } = useFavorites();
+  const { favoriteIds, toggleFavorite, refreshFavorites } = useFavorites();
 
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,11 @@ export default function HomeProjects() {
   };
 
   useEffect(() => {
-    if (token) fetchProjects();
+    if (token) {
+      fetchProjects();
+      // Assicurati che i preferiti siano aggiornati quando carichi i progetti
+      refreshFavorites();
+    }
   }, [token]);
 
   const handleProjectCreated = () => {

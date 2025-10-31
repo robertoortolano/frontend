@@ -13,20 +13,10 @@ export default function NavProjects() {
   const token = auth?.token;
   const username = localStorage.getItem("username");
   const { projectId } = useParams<{ projectId?: string }>();
-  const { favoriteIds } = useFavorites();
-  
-  const [projectName, setProjectName] = useState<string>("");
+  const { favoriteProjects } = useFavorites();
   
   const pathname = location.pathname;
   const isOnProjectsPage = pathname === "/projects";
-  const isInProject = projectId && pathname.startsWith(`/projects/${projectId}`);
-  const isProjectFavorite = projectId ? favoriteIds.has(parseInt(projectId)) : false;
-  
-  // Mostra il nome del progetto se:
-  // 1. Sei in un progetto specifico E il progetto è nei preferiti
-  // 2. OPPURE sei nella lista progetti E hai dei preferiti
-  const shouldShowProjectName = (isInProject && isProjectFavorite) || 
-                               (isOnProjectsPage && favoriteIds.size > 0);
 
   const handleLogout = () => {
     logout();
@@ -37,40 +27,6 @@ export default function NavProjects() {
   const handleNavigation = (path: string) => {
     navigate(path);
   };
-
-  // Recupera il nome del progetto quando sei in un progetto o nella lista progetti
-  useEffect(() => {
-    const fetchProjectName = async () => {
-      if (projectId && token) {
-        // Sei in un progetto specifico
-        try {
-          const response = await api.get(`/projects/${projectId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setProjectName(response.data.name);
-        } catch (err) {
-          console.error("Errore nel recupero del progetto:", err);
-          setProjectName("");
-        }
-      } else if (isOnProjectsPage && favoriteIds.size > 0 && token) {
-        // Sei nella lista progetti e hai dei preferiti
-        try {
-          const firstFavoriteId = Array.from(favoriteIds)[0];
-          const response = await api.get(`/projects/${firstFavoriteId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setProjectName(response.data.name);
-        } catch (err) {
-          console.error("Errore nel recupero del progetto preferito:", err);
-          setProjectName("");
-        }
-      } else {
-        setProjectName("");
-      }
-    };
-
-    fetchProjectName();
-  }, [projectId, token, favoriteIds, isOnProjectsPage]);
 
   return (
     <nav className="nav-bar">
@@ -86,46 +42,49 @@ export default function NavProjects() {
           </button>
         </li>
 
-        {/* Nome del progetto corrente (solo se è nei preferiti) */}
-        {shouldShowProjectName && projectName && (
-          <li>
-            <button
-              onClick={() => {
-                if (isInProject) {
-                  // Sei già nel progetto, non fare nulla
-                  return;
-                } else {
-                  // Sei nella lista progetti, vai al primo progetto preferito
-                  const firstFavoriteId = Array.from(favoriteIds)[0];
-                  if (firstFavoriteId) {
-                    handleNavigation(`/projects/${firstFavoriteId}`);
-                  }
-                }
-              }}
-              className="nav-item-indented nav-link-favorite"
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                cursor: 'pointer',
-                textAlign: 'left',
-                width: '100%',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                transition: 'background-color 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (!isInProject) {
-                  e.currentTarget.style.backgroundColor = '#f0f0f0';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              title={isInProject ? "Sei già in questo progetto" : "Vai al progetto"}
-            >
-              {projectName}
-            </button>
-          </li>
+        {/* Progetti preferiti - mostra tutti i preferiti */}
+        {favoriteProjects.length > 0 && (
+          <>
+            {favoriteProjects.map((favProject) => {
+              const isCurrentProject = projectId && Number(projectId) === favProject.id;
+              return (
+                <li key={favProject.id}>
+                  <button
+                    onClick={() => {
+                      if (!isCurrentProject) {
+                        handleNavigation(`/projects/${favProject.id}`);
+                      }
+                    }}
+                    className={`nav-item-indented nav-link-favorite ${isCurrentProject ? "active" : ""}`}
+                    style={{ 
+                      background: isCurrentProject ? '#00ddd4' : 'none', 
+                      border: 'none', 
+                      cursor: isCurrentProject ? 'default' : 'pointer',
+                      textAlign: 'left',
+                      width: '100%',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      transition: 'background-color 0.2s ease',
+                      color: isCurrentProject ? 'white' : '#1e3a8a',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isCurrentProject) {
+                        e.currentTarget.style.backgroundColor = '#f0f0f0';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isCurrentProject) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                    title={isCurrentProject ? "Sei già in questo progetto" : `Vai a ${favProject.name}`}
+                  >
+                    {favProject.name}
+                  </button>
+                </li>
+              );
+            })}
+          </>
         )}
 
         {/* Spazio separatore */}

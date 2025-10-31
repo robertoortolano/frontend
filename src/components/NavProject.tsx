@@ -22,6 +22,8 @@ export default function NavProject() {
 
   const isOnHomePage = /^\/projects\/\d+$/.test(pathname);
   const isOnFieldConfigurationsPage = pathname.includes('/field-configurations');
+  const isOnFieldSetsPage = pathname.includes('/field-sets');
+  const isOnWorkflowsPage = pathname.includes('/workflows');
   const isOnSettingsPage = /^\/projects\/\d+\/settings(\/.+)?$/.test(pathname);
 
   // Check if user is ADMIN (TENANT scope)
@@ -36,6 +38,9 @@ export default function NavProject() {
 
   // Field Configurations: Tenant Admin OR Project Admin of the current project
   const canAccessFieldConfigurations = isTenantAdmin || isProjectAdmin;
+  
+  // Workflows: Tenant Admin OR Project Admin of the current project
+  const canAccessWorkflows = isTenantAdmin || isProjectAdmin;
   
   // Settings: Tenant Admin OR Project Admin of the current project
   const canAccessSettings = isTenantAdmin || isProjectAdmin;
@@ -85,9 +90,21 @@ export default function NavProject() {
           <li>
             <button
               onClick={() => handleNavigation(`/projects/${projectId}/field-sets`)}
-              className={`nav-link ${pathname.includes('/field-sets') ? "active" : ""}`}
+              className={`nav-link ${isOnFieldSetsPage ? "active" : ""}`}
             >
               Field Sets
+            </button>
+          </li>
+        )}
+
+        {/* Workflows */}
+        {canAccessWorkflows && (
+          <li>
+            <button
+              onClick={() => handleNavigation(`/projects/${projectId}/workflows`)}
+              className={`nav-link ${isOnWorkflowsPage ? "active" : ""}`}
+            >
+              Workflows
             </button>
           </li>
         )}

@@ -37,6 +37,8 @@ import { getCategoryColor } from '../pages/workflows/components/workflowUtils';
 interface UseWorkflowEditorProps {
   mode: 'create' | 'edit';
   workflowId?: number;
+  scope?: 'tenant' | 'project';
+  projectId?: string;
   onSave?: (workflow: WorkflowState['workflow']) => void;
   onCancel?: () => void;
 }
@@ -44,6 +46,8 @@ interface UseWorkflowEditorProps {
 export function useWorkflowEditor({
   mode,
   workflowId,
+  scope = 'tenant',
+  projectId,
   onSave,
   onCancel
 }: UseWorkflowEditorProps): UseWorkflowEditorReturn {
@@ -97,7 +101,7 @@ export function useWorkflowEditor({
   
   useEffect(() => {
     loadInitialData();
-  }, [mode, workflowId]);
+  }, [mode, workflowId, scope, projectId]);
 
   const loadInitialData = async () => {
     try {
@@ -223,12 +227,8 @@ export function useWorkflowEditor({
   }, []);
 
   const addNode = useCallback((statusId: number, position: { x: number; y: number }) => {
-    console.log('addNode called with statusId:', statusId, 'position:', position);
-    console.log('Available statuses:', availableStatuses.length);
-    
     const status = availableStatuses.find(s => s.id === statusId);
     if (!status) {
-      console.error('Status not found:', statusId);
       return;
     }
 
@@ -252,7 +252,6 @@ export function useWorkflowEditor({
       };
 
       const newNodes = [...prev.nodes, newNode];
-      console.log('Adding node to state. Is first node:', isFirstNode, 'New nodes:', newNodes);
       
       // Update React Flow immediately with correct callbacks
       // We capture handleRemoveNode from the current closure - it will be defined later
@@ -260,7 +259,6 @@ export function useWorkflowEditor({
         newNode,
         handleCategoryChange,
         (nodeId: string) => {
-          console.log('onRemove called in addNode callback, nodeId:', nodeId);
           // This will be handled by the actual handleRemoveNode function
           // For now, just trigger state update which will handle it
           setState(prev => {
@@ -276,7 +274,6 @@ export function useWorkflowEditor({
                 index === 0 ? { ...n, isInitial: true } : { ...n, isInitial: false }
               );
               newInitialStatusId = updatedFiltered[0].statusId;
-              console.log('Made first remaining node initial:', updatedFiltered[0].statusName);
             }
             
             return {
@@ -359,15 +356,22 @@ export function useWorkflowEditor({
       let endpoint = '';
       let payload: any;
       
+      // Build endpoint with project context if needed
+      const workflowIdForEndpoint = currentState.workflow?.id || state.workflow?.id;
+      let baseEndpoint = `/workflows/${workflowIdForEndpoint}`;
+      if (scope === 'project' && projectId) {
+        baseEndpoint = `/workflows/project/${projectId}/${workflowIdForEndpoint}`;
+      }
+      
       if (impactType === 'status') {
         // For status removal, send the full workflow DTO
         // The DTO should NOT include the removed status, so backend detects it as removed
-        endpoint = `/workflows/${currentState.workflow?.id}/analyze-status-removal-impact`;
+        endpoint = `${baseEndpoint}/analyze-status-removal-impact`;
         payload = convertToWorkflowUpdateDto(currentState, mode);
       } else if (impactType === 'transition') {
         // For transition removal, send only the array of transition IDs
         // Backend will analyze impact of these specific transitions
-        endpoint = `/workflows/${currentState.workflow?.id || state.workflow?.id}/analyze-transition-removal-impact`;
+        endpoint = `${baseEndpoint}/analyze-transition-removal-impact`;
         // Extract transition IDs from operations (only existing transitions have IDs)
         const transitionIds = operations
           .filter(op => op.type === 'edge')
@@ -494,7 +498,6 @@ export function useWorkflowEditor({
   }, [state, mode]);
 
   const handleRemoveNode = useCallback(async (nodeId: string) => {
-    console.log('handleRemoveNode called, nodeId:', nodeId);
     
     const node = state.nodes.find(n => n.statusId === Number(nodeId));
     if (!node) {
@@ -504,7 +507,6 @@ export function useWorkflowEditor({
 
     // If it's a new node, remove directly
     if (node.isNew) {
-      console.log('Removing new node. Before:', state.nodes.length);
       
       // If we're removing the initial node and there are still nodes, make the first remaining one initial
       const wasInitial = node.isInitial;
@@ -517,7 +519,6 @@ export function useWorkflowEditor({
           index === 0 ? { ...n, isInitial: true } : { ...n, isInitial: false }
         );
         newInitialStatusId = updatedFiltered[0].statusId;
-        console.log('Made first remaining node initial:', updatedFiltered[0].statusName);
       }
       
       setState(prev => ({
@@ -789,7 +790,6 @@ export function useWorkflowEditor({
   // ========================
   
   const addEdge = useCallback((sourceId: string, targetId: string, transitionName: string = '', sourceHandle?: string, targetHandle?: string) => {
-    console.log('addEdge called with sourceHandle:', sourceHandle, 'targetHandle:', targetHandle);
     
     const newEdge: WorkflowEdgeData = {
       edgeId: null,
@@ -1060,14 +1060,6 @@ export function useWorkflowEditor({
           )
         );
         
-        console.log('Identified connected transitions for summary report:', {
-          removedStatusIds: Array.from(removedStatusIds),
-          allEdgesCount: allEdges.length,
-          stateEdgesCount: state.edges.length,
-          pendingRemovedEdgesCount: state.pendingChanges.removedEdges.length,
-          connectedTransitionsCount: connectedTransitions.length,
-          connectedTransitionIds: connectedTransitions.map(ct => ct.transitionId || ct.transitionTempId || 'no-id'),
-        });
         
         // Analyze using CURRENT state (nodes already removed)
         statusImpact = await analyzeImpact(statusOperations, state);
@@ -1116,32 +1108,13 @@ export function useWorkflowEditor({
               }),
             };
             
-            console.log('Analyzing connected transitions impact:', {
-              connectedTransitionsCount: connectedTransitions.length,
-              existingConnectedTransitionsCount: existingConnectedTransitions.length,
-              transitionIdsToExclude: Array.from(transitionIdsToExclude),
-              stateEdgesCount: state.edges.length,
-              stateWithoutTransitionsEdgesCount: stateWithoutTransitions.edges.length,
-            });
             
             const connectedTransitionImpact = await analyzeImpact(connectedTransitionOperations, stateWithoutTransitions);
             
-            console.log('Connected transition impact received:', {
-              hasImpact: !!connectedTransitionImpact,
-              permissionsCount: connectedTransitionImpact?.permissions?.length || 0,
-              permissions: connectedTransitionImpact?.permissions?.map(p => ({
-                type: p.type,
-                itemsCount: p.items?.length || 0,
-              })),
-            });
             
             // Merge connected transition impact into status impact
             // Always merge, even if statusImpact is null (should not happen, but be safe)
             if (connectedTransitionImpact) {
-              console.log('Merging connected transition impact into status impact:', {
-                statusImpactPermissions: statusImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
-                transitionImpactPermissions: connectedTransitionImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
-              });
               
               if (statusImpact) {
                 statusImpact = {
@@ -1170,10 +1143,6 @@ export function useWorkflowEditor({
                   },
                 };
                 
-                console.log('Merged status impact:', {
-                  permissionsCount: statusImpact.permissions?.length || 0,
-                  permissions: statusImpact.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
-                });
               } else {
                 // If statusImpact is null, use connectedTransitionImpact as base
                 statusImpact = connectedTransitionImpact;
@@ -1215,20 +1184,12 @@ export function useWorkflowEditor({
       // IMPORTANT: statusImpact already includes connected transition permissions from above merge
       // So we need to merge statusImpact.permissions with transitionImpact.permissions
       // (which only contains independent transitions, not connected ones)
-      console.log('Combining summary impacts:', {
-        statusImpactPermissions: statusImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
-        transitionImpactPermissions: transitionImpact?.permissions?.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
-      });
       
       const allSummaryPermissions = [
         ...(statusImpact?.permissions || []),
         ...(transitionImpact?.permissions || []),
       ];
       
-      console.log('Combined summary permissions:', {
-        totalPermissionsCount: allSummaryPermissions.length,
-        permissions: allSummaryPermissions.map(p => ({ type: p.type, itemsCount: p.items?.length || 0 })),
-      });
       
       let combinedImpact: ImpactReportData | null = null;
       if (statusImpact || transitionImpact) {
@@ -1312,12 +1273,21 @@ export function useWorkflowEditor({
 
     try {
       const dto = convertToWorkflowUpdateDto(state, mode);
-      console.log('Saving workflow with DTO:', JSON.stringify(dto, null, 2));
+      
+      // Build endpoint base URL
+      let baseEndpoint = '/workflows';
+      if (scope === 'project' && projectId) {
+        baseEndpoint = `/workflows/project/${projectId}`;
+      }
       
       let response;
       if (mode === 'create') {
-        response = await api.post('/workflows', dto);
+        response = await api.post(baseEndpoint, dto);
       } else {
+        // Build endpoint for update operations
+        const updateBaseEndpoint = scope === 'project' && projectId
+          ? `/workflows/project/${projectId}/${state.workflow.id}`
+          : `/workflows/${state.workflow.id}`;
         // APPROACH 1: If there are removed edges (transitions) or nodes (statuses) that were confirmed for removal,
         // use the appropriate confirm endpoint to properly handle permission removal
         // Otherwise use normal PUT and handle IMPACT errors if they occur
@@ -1325,25 +1295,25 @@ export function useWorkflowEditor({
           if (hasRemovedStatuses && hasRemovedTransitions) {
             // Both statuses and transitions removed - prioritize status removal endpoint
             // (it handles both, or we might need a combined endpoint)
-            response = await api.post(`/workflows/${state.workflow.id}/confirm-status-removal`, dto);
+            response = await api.post(`${updateBaseEndpoint}/confirm-status-removal`, dto);
           } else if (hasRemovedStatuses) {
             // Only statuses removed - use confirm-status-removal endpoint
-            response = await api.post(`/workflows/${state.workflow.id}/confirm-status-removal`, dto);
+            response = await api.post(`${updateBaseEndpoint}/confirm-status-removal`, dto);
           } else if (hasRemovedTransitions) {
             // Only transitions removed - use confirm-transition-removal endpoint
-            response = await api.post(`/workflows/${state.workflow.id}/confirm-transition-removal`, dto);
+            response = await api.post(`${updateBaseEndpoint}/confirm-transition-removal`, dto);
           } else {
             // Normal save - backend might still detect removed items and require confirmation
-            response = await api.put(`/workflows/${state.workflow.id}`, dto);
+            response = await api.put(updateBaseEndpoint, dto);
           }
         } catch (err: any) {
           // Handle case where backend detects removed items with permissions and requires confirmation
           if (err.response?.data?.message?.includes('TRANSITION_REMOVAL_IMPACT')) {
             // Backend detected removed transitions - use confirm endpoint
-            response = await api.post(`/workflows/${state.workflow.id}/confirm-transition-removal`, dto);
+            response = await api.post(`${updateBaseEndpoint}/confirm-transition-removal`, dto);
           } else if (err.response?.data?.message?.includes('STATUS_REMOVAL_IMPACT')) {
             // Backend detected removed statuses - use confirm endpoint
-            response = await api.post(`/workflows/${state.workflow.id}/confirm-status-removal`, dto);
+            response = await api.post(`${updateBaseEndpoint}/confirm-status-removal`, dto);
           } else {
             throw err;
           }
@@ -1626,7 +1596,6 @@ export function useWorkflowEditor({
   useEffect(() => {
     // Only sync if workflow loaded, React Flow is empty
     if (state.workflow && state.nodes.length > 0 && reactFlowNodes.length === 0 && !loading) {
-      console.log('Syncing React Flow with loaded data, nodes:', state.nodes.length);
       const reactNodes = state.nodes.map(node => 
         convertToReactFlowNode(
           node,

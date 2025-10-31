@@ -17,12 +17,16 @@ interface WorkflowEditorControlsProps {
   workflowEditor: UseWorkflowEditorReturn;
   availableStatuses: StatusViewDto[];
   onAddNode: (statusId: number, position: { x: number; y: number }) => void;
+  scope?: 'tenant' | 'project';
+  projectId?: string;
 }
 
 export const WorkflowEditorControls: React.FC<WorkflowEditorControlsProps> = ({
   workflowEditor,
   availableStatuses,
   onAddNode,
+  scope = 'tenant',
+  projectId,
 }) => {
   const navigate = useNavigate();
   const { state, actions } = workflowEditor;
@@ -56,7 +60,11 @@ export const WorkflowEditorControls: React.FC<WorkflowEditorControlsProps> = ({
       // The navigation will be handled by the onSave callback when the save is truly complete
       // But if there was no summary report, navigate immediately
       if (!workflowEditor.state.ui.pendingSave) {
-        navigate('/tenant/workflows');
+        if (scope === 'tenant') {
+          navigate('/tenant/workflows');
+        } else if (scope === 'project' && projectId) {
+          navigate(`/projects/${projectId}/workflows`);
+        }
       }
     } catch (err: any) {
       console.error('Error saving workflow:', err);
@@ -69,7 +77,11 @@ export const WorkflowEditorControls: React.FC<WorkflowEditorControlsProps> = ({
 
   const handleCancel = () => {
     actions.cancelChanges();
-    navigate('/tenant/workflows');
+    if (scope === 'tenant') {
+      navigate('/tenant/workflows');
+    } else if (scope === 'project' && projectId) {
+      navigate(`/projects/${projectId}/workflows`);
+    }
   };
 
   const handleAddNode = (statusId: number) => {

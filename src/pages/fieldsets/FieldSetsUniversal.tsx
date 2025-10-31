@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/api";
 
@@ -24,6 +24,8 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
   const [fieldSets, setFieldSets] = useState<FieldSetViewDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasFieldConfigurations, setHasFieldConfigurations] = useState(false);
+  const [loadingConfigurations, setLoadingConfigurations] = useState(true);
 
   // Stato per gestire quali field sets sono espansi
   const [expandedFieldSets, setExpandedFieldSets] = useState<Record<number, boolean>>({});
@@ -57,7 +59,27 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
       }
     };
 
+    const fetchFieldConfigurations = async () => {
+      try {
+        let endpoint = "/fieldconfigurations";
+        if (scope === 'project' && projectId) {
+          endpoint = `/fieldconfigurations/project/${projectId}`;
+        }
+
+        const response = await api.get(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setHasFieldConfigurations(response.data && response.data.length > 0);
+      } catch (err: any) {
+        console.error("Errore nel caricamento delle field configurations", err);
+        setHasFieldConfigurations(false);
+      } finally {
+        setLoadingConfigurations(false);
+      }
+    };
+
     fetchFieldSets();
+    fetchFieldConfigurations();
   }, [token, scope, projectId]);
 
   const handleEdit = (id: number, defaultFieldSet: boolean) => {
@@ -231,6 +253,8 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
           <button
             className={buttons.button}
             onClick={handleCreate}
+            disabled={!hasFieldConfigurations || loadingConfigurations}
+            title={!hasFieldConfigurations ? "Devi creare almeno una Field Configuration prima di poter creare un Field Set" : ""}
           >
             Aggiungi Field Set
           </button>

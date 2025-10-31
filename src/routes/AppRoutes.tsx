@@ -57,7 +57,9 @@ import StatusEdit from "../pages/statuses/StatusEdit";
 
 // Workflows
 import Workflows from "../pages/workflows/Workflows";
+import WorkflowsUniversal from "../pages/workflows/WorkflowsUniversal";
 import WorkflowEditor from "../pages/workflows/WorkflowEditor";
+import ProjectWorkflows from "../pages/projects/ProjectWorkflows";
 
 // Roles
 import Roles from "../pages/roles/Roles";
@@ -209,21 +211,21 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <Workflows />
+            <WorkflowsUniversal scope="tenant" />
           </RoleProtectedRoute>
         } />
         <Route path="workflows/create" element={
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <WorkflowEditor />
+            <WorkflowEditor scope="tenant" />
           </RoleProtectedRoute>
         } />
         <Route path="workflows/:id" element={
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <WorkflowEditor />
+            <WorkflowEditor scope="tenant" />
           </RoleProtectedRoute>
         } />
 
@@ -371,6 +373,32 @@ export default function AppRoutes() {
             { name: "ADMIN", scope: "PROJECT" }
           ]}>
             <ProjectFieldSets />
+          </RoleProtectedRoute>
+        } />
+
+        {/* Workflows del Progetto */}
+        <Route path="workflows" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ProjectWorkflows />
+          </RoleProtectedRoute>
+        } />
+        <Route path="workflows/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <WorkflowEditor scope="project" />
+          </RoleProtectedRoute>
+        } />
+        <Route path="workflows/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <WorkflowEditor scope="project" />
           </RoleProtectedRoute>
         } />
       </Route>

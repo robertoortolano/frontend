@@ -57,6 +57,17 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       // Aggiorna immediatamente
       await refreshFavorites();
     } catch (err: any) {
+      // Se l'errore è "Project is already in favorites" o "Project is not in favorites",
+      // significa che lo stato locale non è sincronizzato con il database
+      // In questo caso, aggiorna i preferiti dal server per sincronizzare
+      const errorMessage = err.response?.data?.message || err.message || '';
+      if (errorMessage.includes('already in favorites') || errorMessage.includes('not in favorites')) {
+        console.warn("Stato preferiti non sincronizzato, aggiornando dal server...");
+        await refreshFavorites();
+        // Non lanciare l'errore, perché abbiamo già sincronizzato lo stato
+        return;
+      }
+      
       console.error("Errore toggle preferito:", err);
       throw err;
     }

@@ -24,8 +24,6 @@ import { WorkflowEditorControls } from './components/WorkflowEditorControls';
 import { WorkflowImpactManager } from './components/WorkflowImpactManager';
 import CustomNode from './components/CustomNode';
 import SelectableEdge from './components/SelectableEdge';
-import { getCategoryColor } from './components/workflowUtils';
-import { convertToReactFlowEdge } from '../../utils/workflow-converters';
 
 import board from '../../styles/common/WorkflowBoard.module.css';
 
@@ -45,9 +43,18 @@ function createSelectableEdgeWrapper(
   };
 }
 
-export default function WorkflowEditor() {
-  const { id } = useParams<{ id: string }>();
+interface WorkflowEditorProps {
+  scope?: 'tenant' | 'project';
+  projectId?: string;
+}
+
+export default function WorkflowEditor({ scope = 'tenant', projectId }: WorkflowEditorProps = {}) {
+  const { id, projectId: projectIdFromParams } = useParams<{ id: string; projectId?: string }>();
   const navigate = useNavigate();
+  
+  // Use projectId from props if provided, otherwise from URL params
+  const finalProjectId = projectId || projectIdFromParams;
+  const finalScope = scope || (finalProjectId ? 'project' : 'tenant');
   
   const mode: 'create' | 'edit' = id ? 'edit' : 'create';
   const workflowId = id ? Number(id) : undefined;
@@ -61,12 +68,21 @@ export default function WorkflowEditor() {
   const workflowEditor = useWorkflowEditor({
     mode,
     workflowId,
+    scope: finalScope,
+    projectId: finalProjectId,
     onSave: (workflow) => {
-      console.log('Workflow saved:', workflow);
-      navigate('/tenant/workflows');
+      if (finalScope === 'tenant') {
+        navigate('/tenant/workflows');
+      } else if (finalScope === 'project' && finalProjectId) {
+        navigate(`/projects/${finalProjectId}/workflows`);
+      }
     },
     onCancel: () => {
-      navigate('/tenant/workflows');
+      if (finalScope === 'tenant') {
+        navigate('/tenant/workflows');
+      } else if (finalScope === 'project' && finalProjectId) {
+        navigate(`/projects/${finalProjectId}/workflows`);
+      }
     },
   });
 
@@ -115,20 +131,14 @@ export default function WorkflowEditor() {
 
   // Handle node addition
   const handleAddNode = useCallback((statusId: number, position: { x: number; y: number }) => {
-    console.log('handleAddNode in WorkflowEditor called, statusId:', statusId, 'actions:', actions);
-    console.log('actions.addNode exists?', !!actions.addNode);
     if (actions.addNode) {
       actions.addNode(statusId, position);
-    } else {
-      console.error('actions.addNode is not defined!');
     }
   }, [actions]);
 
   // Handle edge connection
   const handleConnect = useCallback((params: Connection) => {
     if (!params.source || !params.target) return;
-    
-    console.log('handleConnect called with:', params);
     
     // Check if edge already exists in unified state
     const existingEdge = state.edges.find(edge => 
@@ -137,7 +147,6 @@ export default function WorkflowEditor() {
     );
     
     if (existingEdge) {
-      console.warn('Edge already exists between these nodes');
       return;
     }
     
@@ -377,6 +386,8 @@ export default function WorkflowEditor() {
         availableStatuses={workflowEditor.availableStatuses}
         statusCategories={workflowEditor.statusCategories}
         onAddNode={handleAddNode}
+        scope={finalScope}
+        projectId={finalProjectId}
       />
 
       {/* React Flow */}
