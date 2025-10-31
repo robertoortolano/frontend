@@ -225,13 +225,11 @@ export default function WorkflowEdit() {
 
   const onRemoveNode = useCallback(
     (nodeId: string) => {
-      console.log("🗑️ onRemoveNode chiamato per nodeId:", nodeId);
       
       // Se il nodo ha un workflowStatusId (è uno Status esistente), marcalo per rimozione
       const node = nodes.find(n => n.id === nodeId);
       
       if (node?.data?.id) { // Usiamo node.data.id invece di node.data.workflowStatusId
-        console.log("🔄 Rimuovendo status esistente con workflowStatusId:", node.data.id);
         
         setRemovedStatusIds(prev => [...prev, node.data.id]);
         
@@ -240,13 +238,11 @@ export default function WorkflowEdit() {
         setRemovedNodes(prev => [...prev, node]);
         setRemovedEdges(prev => [...prev, ...edgesToRemove]);
         
-        console.log("✅ Nodo salvato per ripristino:", node.data.label);
         
         // Rimuovi il nodo dall'interfaccia (solo visivamente)
         setNodes((nds) => nds.filter((n) => n.id !== nodeId));
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
       } else {
-        console.log("🔄 Rimuovendo nodo temporaneo (nessun workflowStatusId)");
         // Se è un nodo temporaneo, rimuovi direttamente
         setNodes((nds) => nds.filter((n) => n.id !== nodeId));
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
@@ -467,21 +463,16 @@ export default function WorkflowEdit() {
       navigate(-1);
         } catch (err: any) {
           console.error("Errore salvataggio workflow", err);
-          console.log("🔍 Errore completo:", err.response?.data);
-          console.log("🔍 Messaggio errore:", err.response?.data?.message);
           
           // Se l'errore è TRANSITION_REMOVAL_IMPACT, analizza gli impatti
           if (err.response?.data?.message?.includes("TRANSITION_REMOVAL_IMPACT")) {
-            console.log("🔄 Gestendo TRANSITION_REMOVAL_IMPACT");
             await analyzeTransitionRemovalImpact(removedTransitionIds);
           } else if (err.response?.data?.message?.includes("STATUS_REMOVAL_IMPACT")) {
-            console.log("🔄 Gestendo STATUS_REMOVAL_IMPACT");
             // Se l'errore è STATUS_REMOVAL_IMPACT, analizza gli impatti
             // Usa removedStatusIds se disponibile, altrimenti usa array vuoto
             const statusIdsToAnalyze = removedStatusIds.length > 0 ? removedStatusIds : [];
             await analyzeStatusRemovalImpact(statusIdsToAnalyze);
           } else {
-            console.log("❌ Errore non gestito:", err.response?.data?.message);
           }
         } finally {
       setSaving(false);
@@ -745,8 +736,6 @@ export default function WorkflowEdit() {
   };
 
   const handleCancelStatusSave = () => {
-    console.log("🔄 handleCancelStatusSave - removedNodes:", removedNodes.length);
-    console.log("🔄 handleCancelStatusSave - removedEdges:", removedEdges.length);
     
     setShowStatusImpactReport(false);
     setStatusImpactReport(null);
@@ -754,12 +743,10 @@ export default function WorkflowEdit() {
 
     // Ripristina i nodi e gli edge rimossi
     if (removedNodes.length > 0) {
-      console.log("🔄 Ripristinando", removedNodes.length, "nodi");
       setNodes(prev => [...prev, ...removedNodes]);
     }
     
     if (removedEdges.length > 0) {
-      console.log("🔄 Ripristinando", removedEdges.length, "edge");
       setEdges(prev => [...prev, ...removedEdges]);
     }
     

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 
-import ReactFlow, { Background, Controls, MiniMap, MarkerType, ReactFlowProvider } from "reactflow";
+import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider } from "reactflow";
 import 'reactflow/dist/style.css';
 
 import CustomNode from "./components/CustomNode";
@@ -11,7 +11,6 @@ import { useAuth } from "../../context/AuthContext";
 import { WorkflowSimpleDto, WorkflowViewDto, WorkflowDetailDto } from "../../types/workflow.types";
 import { StatusCategory } from "../../types/common.types";
 import UsedInItemTypeSetsPopup from "../../components/shared/UsedInItemTypeSetsPopup";
-import { convertToReactFlowNode } from "../../utils/workflow-converters";
 import { getCategoryColor } from "./components/workflowUtils";
 
 import layout from "../../styles/common/Layout.module.css";
