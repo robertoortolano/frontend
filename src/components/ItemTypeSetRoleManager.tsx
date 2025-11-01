@@ -28,23 +28,29 @@ interface ItemTypeSetRoleManagerProps {
   onPermissionGrantClick?: (permission: any) => void;
   refreshTrigger?: number;
   projectId?: string; // Per includere grant di progetto quando si caricano le permissions
+  showOnlyWithAssignments?: boolean; // Se true, mostra solo le permission con assegnazioni
+  showOnlyProjectGrants?: boolean; // Se true, nella colonna Assegnazioni mostra solo i dettagli dei grant di progetto (non quelli globali). Non filtra le permission.
 }
 
 export default function ItemTypeSetRoleManager({
   itemTypeSetId,
   onPermissionGrantClick,
   refreshTrigger,
+  projectId,
+  showOnlyWithAssignments = false,
+  showOnlyProjectGrants = false,
 }: ItemTypeSetRoleManagerProps) {
   const [roles, setRoles] = useState<any>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [grantDetailsMap, setGrantDetailsMap] = useState<Map<number, any>>(new Map());
   const [filters, setFilters] = useState<FilterValues>({
     permission: "All",
     itemTypes: ["All"],
     status: "All",
     field: "All",
     workflow: "All",
-    grant: "All",
+    grant: showOnlyWithAssignments ? "Y" : "All",
   });
 
   useEffect(() => {
@@ -56,11 +62,87 @@ export default function ItemTypeSetRoleManager({
   const fetchRoles = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      // Piccolo delay per assicurarsi che il backend abbia finito di salvare
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const url = projectId 
         ? `/itemtypeset-permissions/itemtypeset/${itemTypeSetId}?projectId=${projectId}`
         : `/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`;
       const response = await api.get(url);
       setRoles(response.data);
+      
+      // Carica i dettagli dei grant per tutte le permission che ne hanno uno
+      const allPermissions: any[] = [];
+      Object.values(response.data).forEach((permissionList: any) => {
+        if (Array.isArray(permissionList)) {
+          allPermissions.push(...permissionList);
+        }
+      });
+      
+      const detailsMap = new Map<number, any>();
+      const fetchPromises = allPermissions
+        .filter((perm: any) => {
+          const roleId = perm.itemTypeSetRoleId || perm.id;
+          return roleId && typeof roleId === 'number' && (perm.grantId || perm.hasProjectGrant);
+        })
+        .map(async (perm: any) => {
+          const roleId = perm.itemTypeSetRoleId || perm.id;
+          const grantDetails: any = {};
+          
+          // Carica grant globale se presente (solo se non siamo in modalità showOnlyProjectGrants)
+          if (perm.grantId && !showOnlyProjectGrants) {
+            try {
+              const grantResponse = await api.get(`/itemtypeset-roles/${roleId}/grant-details`);
+              Object.assign(grantDetails, grantResponse.data);
+            } catch (err) {
+              console.error(`Error fetching grant details for role ${roleId}:`, err);
+            }
+          }
+          
+          // Carica grant di progetto se presente e se abbiamo projectId
+          if (perm.hasProjectGrant && projectId) {
+            try {
+              const projectGrantResponse = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
+              // Se showOnlyProjectGrants è true, carica solo i grant di progetto senza combinare con quelli globali
+              if (showOnlyProjectGrants) {
+                Object.assign(grantDetails, projectGrantResponse.data);
+                grantDetails.isProjectGrant = true;
+              } else {
+                // Combina i dettagli del grant di progetto con quelli globali
+                if (grantDetails.users || grantDetails.groups) {
+                  // Se ci sono già grant globali, combina le liste
+                  grantDetails.users = [...(grantDetails.users || []), ...(projectGrantResponse.data.users || [])];
+                  grantDetails.groups = [...(grantDetails.groups || []), ...(projectGrantResponse.data.groups || [])];
+                  grantDetails.negatedUsers = [...(grantDetails.negatedUsers || []), ...(projectGrantResponse.data.negatedUsers || [])];
+                  grantDetails.negatedGroups = [...(grantDetails.negatedGroups || []), ...(projectGrantResponse.data.negatedGroups || [])];
+                } else {
+                  Object.assign(grantDetails, projectGrantResponse.data);
+                }
+                grantDetails.isProjectGrant = true;
+              }
+            } catch (err) {
+              console.error(`Error fetching project grant details for role ${roleId}:`, err);
+            }
+          }
+          
+          // Se showOnlyProjectGrants è true, non caricare i grant globali
+          if (showOnlyProjectGrants && perm.grantId) {
+            // Resetta i grant globali se esistono
+            delete grantDetails.users;
+            delete grantDetails.groups;
+            delete grantDetails.negatedUsers;
+            delete grantDetails.negatedGroups;
+          }
+          
+          if (Object.keys(grantDetails).length > 0) {
+            detailsMap.set(roleId, grantDetails);
+          }
+        });
+      
+      await Promise.all(fetchPromises);
+      setGrantDetailsMap(detailsMap);
     } catch (err: any) {
       if (err.response?.status === 500) {
         try {
@@ -70,6 +152,77 @@ export default function ItemTypeSetRoleManager({
             : `/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`;
           const retryResponse = await api.get(url);
           setRoles(retryResponse.data);
+          
+          // Carica i dettagli dei grant anche dopo il retry
+          const allPermissions: any[] = [];
+          Object.values(retryResponse.data).forEach((permissionList: any) => {
+            if (Array.isArray(permissionList)) {
+              allPermissions.push(...permissionList);
+            }
+          });
+          
+          const detailsMap = new Map<number, any>();
+          const fetchPromises = allPermissions
+            .filter((perm: any) => {
+              const roleId = perm.itemTypeSetRoleId || perm.id;
+              return roleId && typeof roleId === 'number' && (perm.grantId || perm.hasProjectGrant);
+            })
+            .map(async (perm: any) => {
+              const roleId = perm.itemTypeSetRoleId || perm.id;
+              const grantDetails: any = {};
+              
+              // Carica grant globale se presente (solo se non siamo in modalità showOnlyProjectGrants)
+              if (perm.grantId && !showOnlyProjectGrants) {
+                try {
+                  const grantResponse = await api.get(`/itemtypeset-roles/${roleId}/grant-details`);
+                  Object.assign(grantDetails, grantResponse.data);
+                } catch (err) {
+                  console.error(`Error fetching grant details for role ${roleId}:`, err);
+                }
+              }
+              
+              // Carica grant di progetto se presente e se abbiamo projectId
+              if (perm.hasProjectGrant && projectId) {
+                try {
+                  const projectGrantResponse = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
+                  // Se showOnlyProjectGrants è true, carica solo i grant di progetto senza combinare con quelli globali
+                  if (showOnlyProjectGrants) {
+                    Object.assign(grantDetails, projectGrantResponse.data);
+                    grantDetails.isProjectGrant = true;
+                  } else {
+                    // Combina i dettagli del grant di progetto con quelli globali
+                    if (grantDetails.users || grantDetails.groups) {
+                      // Se ci sono già grant globali, combina le liste
+                      grantDetails.users = [...(grantDetails.users || []), ...(projectGrantResponse.data.users || [])];
+                      grantDetails.groups = [...(grantDetails.groups || []), ...(projectGrantResponse.data.groups || [])];
+                      grantDetails.negatedUsers = [...(grantDetails.negatedUsers || []), ...(projectGrantResponse.data.negatedUsers || [])];
+                      grantDetails.negatedGroups = [...(grantDetails.negatedGroups || []), ...(projectGrantResponse.data.negatedGroups || [])];
+                    } else {
+                      Object.assign(grantDetails, projectGrantResponse.data);
+                    }
+                    grantDetails.isProjectGrant = true;
+                  }
+                } catch (err) {
+                  console.error(`Error fetching project grant details for role ${roleId}:`, err);
+                }
+              }
+              
+              // Se showOnlyProjectGrants è true, non caricare i grant globali
+              if (showOnlyProjectGrants && perm.grantId) {
+                // Resetta i grant globali se esistono
+                delete grantDetails.users;
+                delete grantDetails.groups;
+                delete grantDetails.negatedUsers;
+                delete grantDetails.negatedGroups;
+              }
+              
+              if (Object.keys(grantDetails).length > 0) {
+                detailsMap.set(roleId, grantDetails);
+              }
+            });
+          
+          await Promise.all(fetchPromises);
+          setGrantDetailsMap(detailsMap);
         } catch (createErr) {
           setError("Errore nella creazione delle permissions");
           console.error("Error creating permissions:", createErr);
@@ -153,17 +306,36 @@ export default function ItemTypeSetRoleManager({
     // All = non filtra (mostra tutte indipendentemente dal workflow)
 
     // Filtra per assegnazioni (ruoli o grant)
-    if (filters.grant !== "All") {
-      // Controlla se ci sono assegnazioni: ruoli O grant
-      const hasRoles = permission.hasAssignments === true;
-      const hasGrant = permission.grantId != null || permission.assignmentType === 'GRANT';
-      const hasAssignments = hasRoles || hasGrant;
-      
-      if (filters.grant === "Y" && !hasAssignments) {
-        return false;
-      }
-      if (filters.grant === "N" && hasAssignments) {
-        return false;
+    // Nota: showOnlyProjectGrants non filtra le permission (mostra tutte), ma modifica solo cosa viene mostrato nella colonna Assegnazioni
+    // Se showOnlyWithAssignments è true, mostra solo quelle con assegnazioni (ruoli O grant globali O di progetto)
+    if (showOnlyWithAssignments || filters.grant !== "All") {
+      // Se showOnlyProjectGrants è true, il filtro controlla solo le assegnazioni di progetto
+      if (showOnlyProjectGrants && filters.grant !== "All") {
+        if (filters.grant === "Y" && !permission.hasProjectGrant) {
+          return false;
+        }
+        if (filters.grant === "N" && permission.hasProjectGrant) {
+          return false;
+        }
+      } else {
+        // Comportamento normale: controlla tutte le assegnazioni (ruoli O grant globali O di progetto)
+        const hasRoles = permission.hasAssignments === true || (permission.assignedRoles && permission.assignedRoles.length > 0);
+        const hasGrant = permission.grantId != null || permission.assignmentType === 'GRANT' || permission.hasProjectGrant;
+        const hasAssignments = hasRoles || hasGrant;
+        
+        // Se showOnlyWithAssignments è true, filtra sempre per mostrare solo quelle con assegnazioni
+        if (showOnlyWithAssignments && !hasAssignments) {
+          return false;
+        }
+        
+        if (filters.grant !== "All") {
+          if (filters.grant === "Y" && !hasAssignments) {
+            return false;
+          }
+          if (filters.grant === "N" && hasAssignments) {
+            return false;
+          }
+        }
       }
     }
 
@@ -229,6 +401,7 @@ export default function ItemTypeSetRoleManager({
             onFilterChange={setFilters}
             totalCount={totalCount}
             filteredCount={filteredCount}
+            hideGrantFilter={showOnlyWithAssignments}
           />
           
           {Object.keys(filteredRoles).length === 0 ? (
@@ -285,31 +458,135 @@ export default function ItemTypeSetRoleManager({
                         </td>
                         <td>
                           {(() => {
+                            const roleId = role.itemTypeSetRoleId || role.id;
+                            const grantDetails = roleId ? grantDetailsMap.get(roleId) : null;
+                            
+                            // Se showOnlyProjectGrants è true, mostra solo grant di progetto
+                            if (showOnlyProjectGrants) {
+                              if (!role.hasProjectGrant) {
+                                return (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
+                                    N
+                                  </span>
+                                );
+                              }
+                              
+                              // Carica solo i dettagli del grant di progetto (senza combinare con quelli globali)
+                              // I dettagli dovrebbero essere già caricati separatamente se isProjectGrant è true
+                              if (!grantDetails || !grantDetails.isProjectGrant) {
+                                return (
+                                  <div className="text-xs text-gray-500 italic">Caricamento dettagli grant di progetto...</div>
+                                );
+                              }
+                              
+                              // Mostra solo i dettagli del grant di progetto
+                              return (
+                                <div className="text-sm space-y-1">
+                                  {grantDetails.users && grantDetails.users.length > 0 && (
+                                    <div>
+                                      <span className="text-xs font-semibold text-green-700">Utenti: </span>
+                                      <span className="text-xs text-gray-600">
+                                        {grantDetails.users.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {grantDetails.groups && grantDetails.groups.length > 0 && (
+                                    <div>
+                                      <span className="text-xs font-semibold text-green-700">Gruppi: </span>
+                                      <span className="text-xs text-gray-600">
+                                        {grantDetails.groups.map((g: any) => g.name).join(', ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0 && (
+                                    <div>
+                                      <span className="text-xs font-semibold text-red-700">Utenti Negati: </span>
+                                      <span className="text-xs text-gray-600">
+                                        {grantDetails.negatedUsers.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0 && (
+                                    <div>
+                                      <span className="text-xs font-semibold text-red-700">Gruppi Negati: </span>
+                                      <span className="text-xs text-gray-600">
+                                        {grantDetails.negatedGroups.map((g: any) => g.name).join(', ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                            
+                            // Comportamento normale: mostra tutte le assegnazioni
                             // Controlla se ci sono assegnazioni: ruoli O grant (globali O di progetto)
                             const hasRoles = role.hasAssignments === true || (role.assignedRoles && role.assignedRoles.length > 0);
                             const hasGrant = role.grantId != null || role.assignmentType === 'GRANT' || role.hasProjectGrant;
                             const hasAssignments = hasRoles || hasGrant;
                             
-                            return (
-                              <>
-                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                  hasAssignments 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-gray-100 text-gray-500'
-                                }`}>
-                                  {hasAssignments ? 'Y' : 'N'}
+                            if (!hasAssignments) {
+                              return (
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
+                                  N
                                 </span>
+                              );
+                            }
+                            
+                            return (
+                              <div className="text-sm space-y-1">
+                                {/* Ruoli assegnati */}
                                 {hasRoles && role.assignedRoles && role.assignedRoles.length > 0 && (
-                                  <div className="mt-1 text-xs text-gray-600">
-                                    {role.assignedRoles.length} ruolo{role.assignedRoles.length !== 1 ? 'i' : ''}
+                                  <div>
+                                    <span className="text-xs font-semibold text-gray-700">Ruoli: </span>
+                                    <span className="text-xs text-gray-600">
+                                      {role.assignedRoles.map((r: any) => r.name || r).join(', ')}
+                                    </span>
                                   </div>
                                 )}
-                                {hasGrant && (
-                                  <div className="mt-1 text-xs text-gray-600">
-                                    Grant diretto
-                                  </div>
+                                
+                                {/* Dettagli Grant - mostra sia grant globali che di progetto */}
+                                {hasGrant && grantDetails && (
+                                  <>
+                                    {grantDetails.users && grantDetails.users.length > 0 && (
+                                      <div>
+                                        <span className="text-xs font-semibold text-green-700">Utenti: </span>
+                                        <span className="text-xs text-gray-600">
+                                          {grantDetails.users.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {grantDetails.groups && grantDetails.groups.length > 0 && (
+                                      <div>
+                                        <span className="text-xs font-semibold text-green-700">Gruppi: </span>
+                                        <span className="text-xs text-gray-600">
+                                          {grantDetails.groups.map((g: any) => g.name).join(', ')}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0 && (
+                                      <div>
+                                        <span className="text-xs font-semibold text-red-700">Utenti Negati: </span>
+                                        <span className="text-xs text-gray-600">
+                                          {grantDetails.negatedUsers.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0 && (
+                                      <div>
+                                        <span className="text-xs font-semibold text-red-700">Gruppi Negati: </span>
+                                        <span className="text-xs text-gray-600">
+                                          {grantDetails.negatedGroups.map((g: any) => g.name).join(', ')}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
-                              </>
+                                
+                                {/* Fallback se grant esiste ma dettagli non ancora caricati */}
+                                {hasGrant && !grantDetails && (
+                                  <div className="text-xs text-gray-500 italic">Caricamento dettagli grant...</div>
+                                )}
+                              </div>
                             );
                           })()}
                         </td>

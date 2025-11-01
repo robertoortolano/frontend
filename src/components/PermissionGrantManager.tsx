@@ -28,13 +28,13 @@ interface Group {
 interface Permission {
   id: number | string;
   name: string;
-  workflowStatus?: { name: string };
-  workflow?: { name: string };
-  itemType?: { name: string };
-  fieldConfiguration?: { name: string; fieldType: string };
-  fromStatus?: { name: string };
-  toStatus?: { name: string };
-  transition?: any;
+  workflowStatus?: { id?: number; name: string };
+  workflow?: { id?: number; name: string };
+  itemType?: { id?: number; name: string };
+  fieldConfiguration?: { id?: number; name: string; fieldType: string };
+  fromStatus?: { id?: number; name: string };
+  toStatus?: { id?: number; name: string };
+  transition?: { id?: number; [key: string]: any };
   assignedRoles?: Role[];
   // Nuovi campi per Grant diretto
   grantId?: number;
@@ -42,6 +42,9 @@ interface Permission {
   roleTemplateId?: number;
   roleTemplateName?: string;
   assignmentType?: string; // "GRANT", "ROLE", "GRANTS", "NONE"
+  itemTypeSetRoleId?: number;
+  hasProjectGrant?: boolean;
+  projectGrantId?: number;
 }
 
 interface PermissionGrantManagerProps {
@@ -109,11 +112,12 @@ export default function PermissionGrantManager({
       setSelectedRoles(permission.assignedRoles || []);
       
       // Se c'è già un Grant globale assegnato, carica i suoi dettagli
+      // MA solo se NON siamo in modalità progetto (dove le globali sono già visibili in sola lettura)
       const itemTypeSetRoleId = (permission as any).itemTypeSetRoleId || permission.id;
-      if (permission.grantId && itemTypeSetRoleId && typeof itemTypeSetRoleId === 'number') {
+      if (scope !== 'project' && permission.grantId && itemTypeSetRoleId && typeof itemTypeSetRoleId === 'number') {
         fetchGrantDetails(itemTypeSetRoleId);
       } else {
-        // Reset se non c'è grant globale
+        // Reset se non c'è grant globale o siamo in modalità progetto
         setGrantUsers([]);
         setGrantGroups([]);
         setGrantNegatedUsers([]);
@@ -268,6 +272,33 @@ export default function PermissionGrantManager({
           itemTypeSetRoleId: itemTypeSetRoleId
         };
         
+        // Aggiungi informazioni sulla permission per permettere la creazione automatica dell'ItemTypeSetRole se non esiste
+        if (itemTypeSetId) {
+          payload.itemTypeSetId = itemTypeSetId;
+        }
+        
+        const permissionType = getPermissionType(permission.name);
+        if (permissionType) {
+          payload.permissionType = permissionType;
+        }
+        
+        // Aggiungi informazioni sulle entità correlate in base al tipo di permission
+        if (permission.itemType?.id) {
+          payload.itemTypeId = permission.itemType.id;
+        }
+        if (permission.workflow?.id) {
+          payload.workflowId = permission.workflow.id;
+        }
+        if (permission.workflowStatus?.id) {
+          payload.workflowStatusId = permission.workflowStatus.id;
+        }
+        if (permission.fieldConfiguration?.id) {
+          payload.fieldConfigurationId = permission.fieldConfiguration.id;
+        }
+        if (permission.transition?.id) {
+          payload.transitionId = permission.transition.id;
+        }
+        
         if (grantUsers.length > 0) {
           payload.userIds = grantUsers.map(u => u.id);
         }
@@ -380,7 +411,13 @@ export default function PermissionGrantManager({
         }
       }
 
+      // Chiama onSave prima di chiudere per permettere il refresh
       onSave();
+      
+      // Chiudi il modal dopo un breve delay per dare tempo al refresh
+      setTimeout(() => {
+        onClose();
+      }, 100);
     } catch (err: any) {
       setError(err.message || 'Errore durante il salvataggio');
       console.error('Error saving permission assignments:', err);
@@ -514,316 +551,6 @@ export default function PermissionGrantManager({
 
       {scope === 'project' && projectId ? (
         <>
-          {/* SEZIONE PERMISSION GLOBALI */}
-          <div style={{ 
-            border: '2px solid #3b82f6', 
-            borderRadius: '0.75rem', 
-            padding: '1.5rem', 
-            backgroundColor: '#f0f9ff',
-            marginBottom: '2rem'
-          }}>
-            <h3 style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: '700', 
-              color: '#1e40af',
-              marginBottom: '1rem'
-            }}>
-              Permission Globali
-            </h3>
-            <p style={{ 
-              fontSize: '0.875rem', 
-              color: '#475569',
-              marginBottom: '1.5rem'
-            }}>
-              Queste assegnazioni si applicano a tutti i progetti che usano questo ItemTypeSet.
-            </p>
-            
-            <div className="grid grid-cols-1 gap-6">
-        {/* 1. Sezione Ruoli (Role template) */}
-        <RoleAssignmentSection
-          selectedRoles={selectedRoles}
-          availableRoles={availableRoles}
-          onAddRole={addRole}
-          onRemoveRole={removeRole}
-        />
-
-        {/* 2. Sezione Grant - Utenti Autorizzati */}
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: '0.5rem', 
-          padding: '1rem', 
-          backgroundColor: 'white' 
-        }}>
-          <h3 style={{ 
-            fontSize: '1rem', 
-            fontWeight: '600', 
-            color: '#1e3a8a',
-            marginBottom: '1rem'
-          }}>
-            Utenti Autorizzati
-          </h3>
-          <UserAutocomplete
-            selectedUsers={grantUsers}
-            onAddUser={handleAddUser}
-            onRemoveUser={handleRemoveUser}
-            label="Aggiungi Utente Autorizzato"
-            placeholder="Cerca utente per nome o email..."
-          />
-        </div>
-
-        {/* 3. Sezione Grant - Utenti Negati */}
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: '0.5rem', 
-          padding: '1rem', 
-          backgroundColor: 'white' 
-        }}>
-          <h3 style={{ 
-            fontSize: '1rem', 
-            fontWeight: '600', 
-            color: '#1e3a8a',
-            marginBottom: '1rem'
-          }}>
-            Utenti Negati
-          </h3>
-          <UserAutocomplete
-            selectedUsers={grantNegatedUsers}
-            onAddUser={handleAddNegatedUser}
-            onRemoveUser={handleRemoveNegatedUser}
-            label="Aggiungi Utente Negato"
-            placeholder="Cerca utente per nome o email..."
-            variant="negated"
-          />
-        </div>
-
-        {/* 4. Sezione Grant - Gruppi Autorizzati */}
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: '0.5rem', 
-          padding: '1rem', 
-          backgroundColor: 'white' 
-        }}>
-          <h3 style={{ 
-            fontSize: '1rem', 
-            fontWeight: '600', 
-            color: '#1e3a8a',
-            marginBottom: '1rem'
-          }}>
-            Gruppi Autorizzati
-          </h3>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <label htmlFor="group-select" className="block text-sm font-medium text-gray-700 mb-1">
-              Aggiungi Gruppo
-            </label>
-            <select
-              id="group-select"
-              onChange={(e) => {
-                const groupId = e.target.value;
-                if (groupId) {
-                  const group = availableGroups.find(g => g.id === Number(groupId));
-                  if (group) handleAddGroup(group);
-                  e.target.value = '';
-                }
-              }}
-              className="w-full p-2 border border-gray-300 rounded"
-            >
-              <option value="">Seleziona un gruppo...</option>
-              {availableGroups
-                .filter(group => !grantGroups.find(g => g.id === group.id))
-                .map(group => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-          {grantGroups.length > 0 && (
-            <div style={{ marginTop: '28px', marginBottom: '28px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                {grantGroups.map(group => (
-                  <div
-                    key={group.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: '8px',
-                      paddingLeft: '12px',
-                      paddingRight: '4px',
-                      paddingTop: '8px',
-                      paddingBottom: '8px',
-                      borderRadius: '9999px',
-                      maxWidth: 'fit-content',
-                    }}
-                    className="bg-green-50 hover:bg-green-100 border border-green-200 transition-colors group"
-                  >
-                    <span className="text-sm font-medium text-green-900">
-                      {group.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveGroup(group.id)}
-                      className="group-remove-btn"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        border: 'none',
-                        cursor: 'pointer',
-                        backgroundColor: '#fecaca',
-                        color: '#991b1b',
-                        transition: 'background-color 150ms, color 150ms',
-                      }}
-                      title={`Rimuovi ${group.name}`}
-                      aria-label={`Rimuovi ${group.name}`}
-                      onMouseEnter={(e) => {
-                        const btn = e.currentTarget;
-                        btn.style.backgroundColor = '#ef4444';
-                        btn.style.color = 'white';
-                        const icon = btn.querySelector('svg');
-                        if (icon) {
-                          icon.style.color = 'white';
-                          icon.style.stroke = 'white';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        const btn = e.currentTarget;
-                        btn.style.backgroundColor = '#fecaca';
-                        btn.style.color = '#991b1b';
-                        const icon = btn.querySelector('svg');
-                        if (icon) {
-                          icon.style.color = '#991b1b';
-                          icon.style.stroke = '#991b1b';
-                        }
-                      }}
-                    >
-                      <X size={12} strokeWidth={2.5} style={{ color: 'inherit', stroke: 'currentColor' }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 5. Sezione Grant - Gruppi Negati */}
-        <div style={{ 
-          border: '1px solid #e5e7eb', 
-          borderRadius: '0.5rem', 
-          padding: '1rem', 
-          backgroundColor: 'white' 
-        }}>
-          <h3 style={{ 
-            fontSize: '1rem', 
-            fontWeight: '600', 
-            color: '#1e3a8a',
-            marginBottom: '1rem'
-          }}>
-            Gruppi Negati
-          </h3>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <label htmlFor="negated-group-select" className="block text-sm font-medium text-gray-700 mb-1">
-              Aggiungi Gruppo Negato
-            </label>
-            <select
-              id="negated-group-select"
-              onChange={(e) => {
-                const groupId = e.target.value;
-                if (groupId) {
-                  const group = availableGroups.find(g => g.id === Number(groupId));
-                  if (group) handleAddNegatedGroup(group);
-                  e.target.value = '';
-                }
-              }}
-              className="w-full p-2 border border-gray-300 rounded"
-            >
-              <option value="">Seleziona un gruppo...</option>
-              {availableGroups
-                .filter(group => !grantNegatedGroups.find(g => g.id === group.id))
-                .map(group => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-          {grantNegatedGroups.length > 0 && (
-            <div style={{ marginTop: '28px', marginBottom: '28px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                {grantNegatedGroups.map(group => (
-                  <div
-                    key={group.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: '8px',
-                      paddingLeft: '12px',
-                      paddingRight: '4px',
-                      paddingTop: '8px',
-                      paddingBottom: '8px',
-                      borderRadius: '9999px',
-                      maxWidth: 'fit-content',
-                    }}
-                    className="bg-red-50 hover:bg-red-100 border border-red-200 transition-colors group"
-                  >
-                    <span className="text-sm font-medium text-red-900">
-                      {group.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveNegatedGroup(group.id)}
-                      className="group-remove-btn"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        border: 'none',
-                        cursor: 'pointer',
-                        backgroundColor: '#fecaca',
-                        color: '#991b1b',
-                        transition: 'background-color 150ms, color 150ms',
-                      }}
-                      title={`Rimuovi ${group.name}`}
-                      aria-label={`Rimuovi ${group.name}`}
-                      onMouseEnter={(e) => {
-                        const btn = e.currentTarget;
-                        btn.style.backgroundColor = '#ef4444';
-                        btn.style.color = 'white';
-                        const icon = btn.querySelector('svg');
-                        if (icon) {
-                          icon.style.color = 'white';
-                          icon.style.stroke = 'white';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        const btn = e.currentTarget;
-                        btn.style.backgroundColor = '#fecaca';
-                        btn.style.color = '#991b1b';
-                        const icon = btn.querySelector('svg');
-                        if (icon) {
-                          icon.style.color = '#991b1b';
-                          icon.style.stroke = '#991b1b';
-                        }
-                      }}
-                    >
-                      <X size={12} strokeWidth={2.5} style={{ color: 'inherit', stroke: 'currentColor' }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-          </div>
-          
           {/* SEZIONE PERMISSION SPECIFICHE DEL PROGETTO */}
           <div style={{ 
             border: '2px solid #10b981', 

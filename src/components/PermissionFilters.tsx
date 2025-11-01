@@ -12,7 +12,7 @@ export interface FilterValues {
   status: string; // "All", "None", o ID specifico
   field: string; // "All", "None", o ID specifico
   workflow: string; // "All", "None", o ID specifico
-  grant: string; // "All", "Y", "N" - indica se ci sono ruoli custom assegnati
+  grant: string; // "All", "Y", "N" - indica se ci sono assegnazioni (ruoli o grant)
 }
 
 interface PermissionFiltersProps {
@@ -20,6 +20,7 @@ interface PermissionFiltersProps {
   onFilterChange: (filters: FilterValues) => void;
   totalCount: number;
   filteredCount: number;
+  hideGrantFilter?: boolean; // Se true, nasconde il filtro "Assegnazioni"
 }
 
 // Helper for keyboard accessibility
@@ -35,6 +36,7 @@ export default function PermissionFilters({
   onFilterChange,
   totalCount,
   filteredCount,
+  hideGrantFilter = false,
 }: PermissionFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isItemTypeDropdownOpen, setIsItemTypeDropdownOpen] = useState(false);
@@ -499,20 +501,22 @@ export default function PermissionFilters({
             </select>
           </div>
 
-          {/* Grant Filter */}
-          <div style={{ flex: "1 1 150px", minWidth: "150px" }}>
-            <label htmlFor="filter-grant" className={form.label} style={{ fontSize: "0.875rem" }}>Ruoli</label>
-            <select
-              id="filter-grant"
-              value={filters.grant}
-              onChange={(e) => updateFilter("grant", e.target.value)}
-              className={form.select}
-            >
-              <option value="All">All</option>
-              <option value="Y">Y (con ruoli)</option>
-              <option value="N">N (senza ruoli)</option>
-            </select>
-          </div>
+          {/* Grant Filter - nascosto se hideGrantFilter è true */}
+          {!hideGrantFilter && (
+            <div style={{ flex: "1 1 150px", minWidth: "150px" }}>
+              <label htmlFor="filter-grant" className={form.label} style={{ fontSize: "0.875rem" }}>Assegnazioni</label>
+              <select
+                id="filter-grant"
+                value={filters.grant}
+                onChange={(e) => updateFilter("grant", e.target.value)}
+                className={form.select}
+              >
+                <option value="All">All</option>
+                <option value="Y">Y (con assegnazioni)</option>
+                <option value="N">N (senza assegnazioni)</option>
+              </select>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -353,6 +353,7 @@ function ItemTypeSetDetails({
                   itemTypeSetId={itemTypeSet.id}
                   refreshTrigger={refreshTrigger}
                   projectId={projectId}
+                  showOnlyWithAssignments={true}
                   // Non passiamo onPermissionGrantClick così non è possibile modificare (sola lettura)
                 />
               </div>
@@ -382,18 +383,33 @@ function ItemTypeSetDetails({
             Queste grant si aggiungono alle permission globali sopra.
           </p>
           
-          <button
-            className={`${buttons.button} ${utilities.mt4}`}
-            onClick={() => {
-              // Apri il modal per selezionare una permission e gestire la sua grant di progetto
-              // Per ora usiamo un approccio semplice: mostra tutte le permission e permetti di cliccare
-              setSelectedPermissionForProjectGrant({ itemTypeSetId: itemTypeSet.id });
-            }}
-            disabled={loadingPermissions}
-          >
-            <Shield size={16} className="mr-2" />
-            Gestisci Grant di Progetto
-          </button>
+          {loadingPermissions ? (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 size={16} className="animate-spin" />
+              <span>Caricamento grant di progetto...</span>
+            </div>
+          ) : globalPermissions ? (
+            <div style={{ 
+              backgroundColor: 'white', 
+              borderRadius: '0.5rem', 
+              padding: '1rem',
+              border: '1px solid #e5e7eb'
+            }}>
+              <ItemTypeSetRoleManager
+                itemTypeSetId={itemTypeSet.id}
+                refreshTrigger={refreshTrigger}
+                projectId={projectId}
+                showOnlyWithAssignments={false}
+                showOnlyProjectGrants={true}
+                onPermissionGrantClick={(permission: any) => {
+                  // Apri il modal per gestire la grant di progetto di questa permission
+                  setSelectedPermissionForProjectGrant(permission);
+                }}
+              />
+            </div>
+          ) : (
+            <p className={alert.muted}>Nessuna permission disponibile.</p>
+          )}
 
           {selectedPermissionForProjectGrant && (
             <>
@@ -410,105 +426,6 @@ function ItemTypeSetDetails({
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 1000,
-                  }}
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) {
-                      setSelectedPermissionForProjectGrant(null);
-                    }
-                  }}
-                >
-                  <div
-                    style={{
-                      backgroundColor: 'white',
-                      borderRadius: '0.5rem',
-                      padding: '2rem',
-                      maxWidth: '90vw',
-                      maxHeight: '90vh',
-                      overflowY: 'auto',
-                      width: '800px',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <h2 className={layout.sectionTitle} style={{ marginBottom: '1rem' }}>
-                      Seleziona Permission per Gestire Grant di Progetto
-                    </h2>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Seleziona una permission dalla lista per gestire le sue grant specifiche di progetto.
-                    </p>
-                    
-                    {globalPermissions && Object.keys(globalPermissions).length > 0 ? (
-                      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                        {Object.entries(globalPermissions).map(([permissionType, permissions]: [string, any]) => {
-                          if (!Array.isArray(permissions) || permissions.length === 0) return null;
-                          
-                          return (
-                            <div key={permissionType} style={{ marginBottom: '1rem' }}>
-                              <h4 style={{ 
-                                fontSize: '0.875rem', 
-                                fontWeight: '600', 
-                                color: '#374151',
-                                marginBottom: '0.5rem'
-                              }}>
-                                {permissionType}
-                              </h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                {permissions.map((perm: any) => (
-                                  <button
-                                    key={perm.id}
-                                    className={buttons.button}
-                                    style={{ 
-                                      textAlign: 'left',
-                                      justifyContent: 'flex-start',
-                                      padding: '0.5rem 1rem'
-                                    }}
-                                    onClick={() => {
-                                      // Passa la permission completa con projectId al PermissionGrantManager
-                                      setSelectedPermissionForProjectGrant({
-                                        ...perm,
-                                        itemTypeSetId: itemTypeSet.id,
-                                      });
-                                    }}
-                                  >
-                                    {perm.name}
-                                    {perm.itemType && ` - ${perm.itemType.name}`}
-                                    {perm.workflowStatus && ` - ${perm.workflowStatus.name}`}
-                                    {perm.fieldConfiguration && ` - ${perm.fieldConfiguration.name}`}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className={alert.muted}>Nessuna permission disponibile.</p>
-                    )}
-                    
-                    <div className={layout.buttonRow} style={{ marginTop: '1.5rem' }}>
-                      <button
-                        className={buttons.button}
-                        onClick={() => setSelectedPermissionForProjectGrant(null)}
-                      >
-                        Chiudi
-                      </button>
-                    </div>
-                  </div>
-                </div>,
-                document.body
-              )}
-              {selectedPermissionForProjectGrant?.itemTypeSetRoleId && createPortal(
-                <div
-                  style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1001,
                   }}
                   onClick={(e) => {
                     if (e.target === e.currentTarget) {
