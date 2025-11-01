@@ -497,4 +497,3 @@ export default function FieldSetCreateUniversal({ scope, projectId }: FieldSetCr
     </div>
   );
 }
-
