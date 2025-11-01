@@ -27,6 +27,7 @@ interface ItemTypeSetRoleManagerProps {
   itemTypeSetId: number;
   onPermissionGrantClick?: (permission: any) => void;
   refreshTrigger?: number;
+  projectId?: string; // Per includere grant di progetto quando si caricano le permissions
 }
 
 export default function ItemTypeSetRoleManager({
@@ -50,18 +51,24 @@ export default function ItemTypeSetRoleManager({
     if (itemTypeSetId) {
       fetchRoles();
     }
-  }, [itemTypeSetId, refreshTrigger]);
+  }, [itemTypeSetId, refreshTrigger, projectId]);
 
   const fetchRoles = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`);
+      const url = projectId 
+        ? `/itemtypeset-permissions/itemtypeset/${itemTypeSetId}?projectId=${projectId}`
+        : `/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`;
+      const response = await api.get(url);
       setRoles(response.data);
     } catch (err: any) {
       if (err.response?.status === 500) {
         try {
           await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSetId}`);
-          const retryResponse = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`);
+          const url = projectId 
+            ? `/itemtypeset-permissions/itemtypeset/${itemTypeSetId}?projectId=${projectId}`
+            : `/itemtypeset-permissions/itemtypeset/${itemTypeSetId}`;
+          const retryResponse = await api.get(url);
           setRoles(retryResponse.data);
         } catch (createErr) {
           setError("Errore nella creazione delle permissions");
@@ -145,13 +152,17 @@ export default function ItemTypeSetRoleManager({
     }
     // All = non filtra (mostra tutte indipendentemente dal workflow)
 
-    // Filtra per ruoli custom (ex grant)
+    // Filtra per assegnazioni (ruoli o grant)
     if (filters.grant !== "All") {
+      // Controlla se ci sono assegnazioni: ruoli O grant
       const hasRoles = permission.hasAssignments === true;
-      if (filters.grant === "Y" && !hasRoles) {
+      const hasGrant = permission.grantId != null || permission.assignmentType === 'GRANT';
+      const hasAssignments = hasRoles || hasGrant;
+      
+      if (filters.grant === "Y" && !hasAssignments) {
         return false;
       }
-      if (filters.grant === "N" && hasRoles) {
+      if (filters.grant === "N" && hasAssignments) {
         return false;
       }
     }
@@ -250,7 +261,7 @@ export default function ItemTypeSetRoleManager({
                   <thead>
                     <tr>
                       <th>Dettagli</th>
-                      <th>Ruoli</th>
+                      <th>Assegnazioni</th>
                       <th>Azioni</th>
                     </tr>
                   </thead>
@@ -273,30 +284,50 @@ export default function ItemTypeSetRoleManager({
                           </div>
                         </td>
                         <td>
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            role.hasAssignments 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {role.hasAssignments ? 'Y' : 'N'}
-                          </span>
-                          {role.assignedRoles && role.assignedRoles.length > 0 && (
-                            <div className="mt-1 text-xs text-gray-600">
-                              {role.assignedRoles.length} ruolo{role.assignedRoles.length !== 1 ? 'i' : ''}
-                            </div>
-                          )}
+                          {(() => {
+                            // Controlla se ci sono assegnazioni: ruoli O grant (globali O di progetto)
+                            const hasRoles = role.hasAssignments === true || (role.assignedRoles && role.assignedRoles.length > 0);
+                            const hasGrant = role.grantId != null || role.assignmentType === 'GRANT' || role.hasProjectGrant;
+                            const hasAssignments = hasRoles || hasGrant;
+                            
+                            return (
+                              <>
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  hasAssignments 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                  {hasAssignments ? 'Y' : 'N'}
+                                </span>
+                                {hasRoles && role.assignedRoles && role.assignedRoles.length > 0 && (
+                                  <div className="mt-1 text-xs text-gray-600">
+                                    {role.assignedRoles.length} ruolo{role.assignedRoles.length !== 1 ? 'i' : ''}
+                                  </div>
+                                )}
+                                {hasGrant && (
+                                  <div className="mt-1 text-xs text-gray-600">
+                                    Grant diretto
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                         <td>
-                          <button
-                            onClick={() => {
-                              onPermissionGrantClick?.(role);
-                            }}
-                            className={buttons.button}
-                            style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                            title="Gestisci Ruoli"
-                          >
-                            <Shield size={14} />
-                          </button>
+                          {onPermissionGrantClick ? (
+                            <button
+                              onClick={() => {
+                                onPermissionGrantClick(role);
+                              }}
+                              className={buttons.button}
+                              style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                              title="Gestisci Ruoli"
+                            >
+                              <Shield size={14} />
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Sola lettura</span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -212,11 +212,10 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
           <table className={form.table}>
             <thead>
               <tr>
-                <th style={{ width: '40px' }}>Preserva</th>
+                <th style={{ width: '120px' }}>Azione</th>
                 <th>Entity</th>
                 <th>Match nel nuovo stato</th>
                 <th>Ruoli assegnati</th>
-                <th>Azione suggerita</th>
               </tr>
             </thead>
             <tbody>
@@ -235,16 +234,37 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
                     }}
                   >
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => togglePermission(impact.itemTypeConfigurationId, perm.permissionId)}
-                        disabled={!canPreserve || loading}
-                        style={{
-                          cursor: canPreserve ? 'pointer' : 'not-allowed',
-                          accentColor: '#00ddd4',
+                      <span
+                        onClick={() => {
+                          if (canPreserve && !loading) {
+                            togglePermission(impact.itemTypeConfigurationId, perm.permissionId);
+                          }
                         }}
-                      />
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          backgroundColor: isSelected && canPreserve ? '#d1fae5' : '#fee2e2',
+                          color: isSelected && canPreserve ? '#059669' : '#dc2626',
+                          cursor: canPreserve && !loading ? 'pointer' : 'not-allowed',
+                          display: 'inline-block',
+                          userSelect: 'none',
+                          transition: 'background-color 0.2s, color 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (canPreserve && !loading) {
+                            e.currentTarget.style.opacity = '0.8';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (canPreserve && !loading) {
+                            e.currentTarget.style.opacity = '1';
+                          }
+                        }}
+                      >
+                        {isSelected && canPreserve ? '✓ Preserva' : '✗ Rimuovi'}
+                      </span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {renderEntityInfo(perm)}
@@ -272,20 +292,6 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
                       ) : (
                         <span style={{ color: '#9ca3af' }}>Nessuno</span>
                       )}
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          backgroundColor: perm.suggestedAction === 'PRESERVE' ? '#d1fae5' : '#fee2e2',
-                          color: perm.suggestedAction === 'PRESERVE' ? '#059669' : '#dc2626',
-                        }}
-                      >
-                        {perm.suggestedAction === 'PRESERVE' ? '✓ Preserva' : '✗ Rimuovi'}
-                      </span>
                     </td>
                   </tr>
                 );

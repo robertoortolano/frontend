@@ -15,6 +15,7 @@ interface UserAutocompleteProps {
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  variant?: 'authorized' | 'negated'; // Per distinguere tra utenti autorizzati (blu) e negati (rosso)
 }
 
 export default function UserAutocomplete({
@@ -24,6 +25,7 @@ export default function UserAutocomplete({
   label = "Utenti",
   placeholder = "Cerca utente per nome o email...",
   disabled = false,
+  variant = 'authorized',
 }: UserAutocompleteProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<UserOption[]>([]);
@@ -165,9 +167,13 @@ export default function UserAutocomplete({
                   borderRadius: '9999px',
                   maxWidth: 'fit-content',
                 }}
-                className="bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors group"
+                className={
+                  variant === 'negated'
+                    ? "bg-red-50 hover:bg-red-100 border border-red-200 transition-colors group"
+                    : "bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors group"
+                }
               >
-                <span className="text-sm font-medium text-blue-900">
+                <span className={`text-sm font-medium ${variant === 'negated' ? 'text-red-900' : 'text-blue-900'}`}>
                   {getUserDisplayName(user)}
                 </span>
                 <button
@@ -183,21 +189,35 @@ export default function UserAutocomplete({
                     borderRadius: '50%',
                     border: 'none',
                     cursor: disabled ? 'not-allowed' : 'pointer',
-                    transition: 'all 150ms',
+                    transition: 'background-color 150ms, color 150ms',
+                    backgroundColor: '#fecaca',
+                    color: '#991b1b',
                   }}
-                  className="bg-blue-200 hover:bg-red-500 text-blue-700 hover:text-white disabled:opacity-50"
+                  className="disabled:opacity-50"
                   title={`Rimuovi ${getUserDisplayName(user)}`}
                   aria-label={`Rimuovi ${getUserDisplayName(user)}`}
                   onMouseEnter={(e) => {
                     if (!disabled) {
-                      e.currentTarget.style.backgroundColor = '#ef4444';
-                      e.currentTarget.style.color = 'white';
+                      const btn = e.currentTarget;
+                      btn.style.backgroundColor = '#ef4444';
+                      btn.style.color = 'white';
+                      const icon = btn.querySelector('svg');
+                      if (icon) {
+                        icon.style.color = 'white';
+                        icon.style.stroke = 'white';
+                      }
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!disabled) {
-                      e.currentTarget.style.backgroundColor = '#bfdbfe';
-                      e.currentTarget.style.color = '#1e3a8a';
+                      const btn = e.currentTarget;
+                      btn.style.backgroundColor = '#fecaca';
+                      btn.style.color = '#991b1b';
+                      const icon = btn.querySelector('svg');
+                      if (icon) {
+                        icon.style.color = '#991b1b';
+                        icon.style.stroke = '#991b1b';
+                      }
                     }
                   }}
                 >

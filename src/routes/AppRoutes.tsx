@@ -33,7 +33,9 @@ import EditItemType from "../pages/itemtypes/EditItemType";
 
 // Item Type Sets
 import ItemTypeSets from "../pages/itemtypesets/ItemTypeSets";
+import ItemTypeSetsUniversal from "../pages/itemtypesets/ItemTypeSetsUniversal";
 import ItemTypeSetCreate from "../pages/itemtypesets/ItemTypeSetCreate";
+import ItemTypeSetCreateUniversal from "../pages/itemtypesets/ItemTypeSetCreateUniversal";
 import EditItemTypeSet from "../pages/itemtypesets/EditItemTypeSet";
 
 // Fields
@@ -145,21 +147,21 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <ItemTypeSets />
+            <ItemTypeSetsUniversal scope="tenant" />
           </RoleProtectedRoute>
         } />
         <Route path="item-type-sets/edit/:id" element={
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <EditItemTypeSet />
+            <EditItemTypeSet scope="tenant" />
           </RoleProtectedRoute>
         } />
         <Route path="item-type-sets/create" element={
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <ItemTypeSetCreate />
+            <ItemTypeSetCreateUniversal scope="tenant" />
           </RoleProtectedRoute>
         } />
 
@@ -399,6 +401,32 @@ export default function AppRoutes() {
             { name: "ADMIN", scope: "PROJECT" }
           ]}>
             <WorkflowEditor scope="project" />
+          </RoleProtectedRoute>
+        } />
+
+        {/* Item Type Sets del Progetto */}
+        <Route path="item-type-sets" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ItemTypeSetsUniversal scope="project" />
+          </RoleProtectedRoute>
+        } />
+        <Route path="item-type-sets/create" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <ItemTypeSetCreateUniversal scope="project" />
+          </RoleProtectedRoute>
+        } />
+        <Route path="item-type-sets/edit/:id" element={
+          <RoleProtectedRoute requiredRoles={[
+            { name: "ADMIN", scope: "TENANT" },
+            { name: "ADMIN", scope: "PROJECT" }
+          ]}>
+            <EditItemTypeSet scope="project" />
           </RoleProtectedRoute>
         } />
       </Route>

@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ProjectDto } from "../../types/project.types";
-import { CheckCircle, Loader2, AlertCircle, Check, Home, Settings, Users } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle, Check, Home, Settings, Users, Shield, Eye } from "lucide-react";
 import ProjectMembersPanel from "../../components/ProjectMembersPanel";
+import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
+import PermissionGrantManager from "../../components/PermissionGrantManager";
+import { createPortal } from "react-dom";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -132,25 +135,29 @@ function ProjectDetails({ project, onEdit }: ProjectDetailsProps) {
 
 interface ItemTypeSetDetailsProps {
   itemTypeSet: any;
-  onEdit: () => void;
   onItemTypeSetChange: (itemTypeSetId: number) => void;
   isUpdatingItemTypeSet: boolean;
   successMessage: string | null;
   error: string | null;
+  projectId: string;
 }
 
 function ItemTypeSetDetails({ 
   itemTypeSet, 
-  onEdit, 
   onItemTypeSetChange, 
   isUpdatingItemTypeSet,
   successMessage,
-  error
+  error,
+  projectId
 }: ItemTypeSetDetailsProps) {
   const [isChanging, setIsChanging] = useState(false);
   const [availableItemTypeSets, setAvailableItemTypeSets] = useState<any[]>([]);
   const [selectedItemTypeSet, setSelectedItemTypeSet] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const [globalPermissions, setGlobalPermissions] = useState<any>(null);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [selectedPermissionForProjectGrant, setSelectedPermissionForProjectGrant] = useState<any>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const hasEntries = itemTypeSet.itemTypeConfigurations?.length > 0;
   const isGlobal = itemTypeSet.scope === 'TENANT';
@@ -159,10 +166,20 @@ function ItemTypeSetDetails({
   const hasOtherItemTypeSets = availableItemTypeSets.length > 1 || 
     (availableItemTypeSets.length === 1 && availableItemTypeSets[0].id !== itemTypeSet.id);
 
-  // Carica gli ItemTypeSet disponibili al mount del componente
+  // Carica gli ItemTypeSet disponibili e le permission globali al mount del componente
   useEffect(() => {
     fetchAvailableItemTypeSets();
-  }, []);
+    if (itemTypeSet?.id) {
+      fetchGlobalPermissions();
+    }
+  }, [itemTypeSet?.id]);
+
+  // Ricarica le permission quando cambia il trigger
+  useEffect(() => {
+    if (itemTypeSet?.id) {
+      fetchGlobalPermissions();
+    }
+  }, [refreshTrigger]);
 
   const fetchAvailableItemTypeSets = async () => {
     try {
@@ -175,6 +192,52 @@ function ItemTypeSetDetails({
       setLoading(false);
     }
   };
+
+  const fetchGlobalPermissions = async () => {
+    if (!itemTypeSet?.id) return;
+    
+    try {
+      setLoadingPermissions(true);
+      // Carica le permission globali SENZA projectId per vedere solo quelle globali nella visualizzazione
+      // Poi le ricarichiamo CON projectId per la selezione (così abbiamo anche hasProjectGrant)
+      const response = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}`);
+      setGlobalPermissions(response.data);
+      
+      // Carica anche con projectId per avere le informazioni sulle grant di progetto per la selezione
+      try {
+        const responseWithProject = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}?projectId=${projectId}`);
+        // Aggiorna le permission con le informazioni sulle grant di progetto
+        const permissionsWithProjectInfo = { ...responseWithProject.data };
+        setGlobalPermissions(permissionsWithProjectInfo);
+      } catch (projectErr) {
+        // Se fallisce, usa comunque le permission globali
+        console.warn("Could not load project grant info:", projectErr);
+      }
+    } catch (err: any) {
+      console.error("Error fetching global permissions:", err);
+      // Se fallisce con 500, prova a creare le permission
+      if (err.response?.status === 500) {
+        try {
+          await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSet.id}`);
+          const retryResponse = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}`);
+          setGlobalPermissions(retryResponse.data);
+          
+          // Prova anche con projectId
+          try {
+            const responseWithProject = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}?projectId=${projectId}`);
+            setGlobalPermissions(responseWithProject.data);
+          } catch (projectErr) {
+            console.warn("Could not load project grant info:", projectErr);
+          }
+        } catch (createErr) {
+          console.error("Error creating permissions:", createErr);
+        }
+      }
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
 
   const handleStartChange = () => {
     setIsChanging(true);
@@ -198,20 +261,10 @@ function ItemTypeSetDetails({
     }
   };
 
-  const renderItemTypeSetInfo = (itemTypeSet: any, title: string, showEditButton = false) => (
+  const renderItemTypeSetInfo = (itemTypeSet: any, title: string) => (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className={layout.sectionTitle}>{title}</h3>
-        {showEditButton && (
-          <button
-            className={buttons.button}
-            onClick={onEdit}
-            disabled={isGlobal}
-            title={isGlobal ? "Global sets cannot be edited" : "Edit item type set"}
-          >
-            Modifica
-          </button>
-        )}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -261,7 +314,238 @@ function ItemTypeSetDetails({
       <h1 className={layout.title}>Item Type Set</h1>
       <div className={layout.block}>
         {/* ItemTypeSet Attualmente Applicato - sempre visibile */}
-        {renderItemTypeSetInfo(itemTypeSet, "ItemTypeSet Attualmente Applicato", true)}
+        {renderItemTypeSetInfo(itemTypeSet, "ItemTypeSet Attualmente Applicato")}
+        
+        {/* Sezione Permission Globali (sola lettura) */}
+        {itemTypeSet.scope === 'TENANT' && (
+          <div className="mt-8" style={{ 
+            border: '2px solid #3b82f6', 
+            borderRadius: '0.75rem', 
+            padding: '1.5rem', 
+            backgroundColor: '#f0f9ff'
+          }}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Shield size={20} color="#1e40af" />
+                <h3 className={layout.sectionTitle} style={{ color: '#1e40af' }}>
+                  Permission Globali (Sola Lettura)
+                </h3>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Queste sono le permission configurate a livello globale per questo ItemTypeSet. 
+              Si applicano a tutti i progetti che usano questo ITS. Per modificarle, vai alla sezione ItemTypeSets globale.
+            </p>
+            
+            {loadingPermissions ? (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 size={16} className="animate-spin" />
+                <span>Caricamento permission globali...</span>
+              </div>
+            ) : globalPermissions ? (
+              <div style={{ 
+                backgroundColor: 'white', 
+                borderRadius: '0.5rem', 
+                padding: '1rem',
+                border: '1px solid #e5e7eb'
+              }}>
+                <ItemTypeSetRoleManager
+                  itemTypeSetId={itemTypeSet.id}
+                  refreshTrigger={refreshTrigger}
+                  projectId={projectId}
+                  // Non passiamo onPermissionGrantClick così non è possibile modificare (sola lettura)
+                />
+              </div>
+            ) : (
+              <p className={alert.muted}>Nessuna permission configurata.</p>
+            )}
+          </div>
+        )}
+
+        {/* Sezione Grant di Progetto (gestione) */}
+        <div className="mt-8" style={{ 
+          border: '2px solid #10b981', 
+          borderRadius: '0.75rem', 
+          padding: '1.5rem', 
+          backgroundColor: '#ecfdf5'
+        }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Eye size={20} color="#047857" />
+              <h3 className={layout.sectionTitle} style={{ color: '#047857' }}>
+                Grant Specifiche del Progetto
+              </h3>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            Gestisci le grant aggiuntive specifiche per questo progetto. 
+            Queste grant si aggiungono alle permission globali sopra.
+          </p>
+          
+          <button
+            className={`${buttons.button} ${utilities.mt4}`}
+            onClick={() => {
+              // Apri il modal per selezionare una permission e gestire la sua grant di progetto
+              // Per ora usiamo un approccio semplice: mostra tutte le permission e permetti di cliccare
+              setSelectedPermissionForProjectGrant({ itemTypeSetId: itemTypeSet.id });
+            }}
+            disabled={loadingPermissions}
+          >
+            <Shield size={16} className="mr-2" />
+            Gestisci Grant di Progetto
+          </button>
+
+          {selectedPermissionForProjectGrant && (
+            <>
+              {createPortal(
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                  }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      setSelectedPermissionForProjectGrant(null);
+                    }
+                  }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: '0.5rem',
+                      padding: '2rem',
+                      maxWidth: '90vw',
+                      maxHeight: '90vh',
+                      overflowY: 'auto',
+                      width: '800px',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h2 className={layout.sectionTitle} style={{ marginBottom: '1rem' }}>
+                      Seleziona Permission per Gestire Grant di Progetto
+                    </h2>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Seleziona una permission dalla lista per gestire le sue grant specifiche di progetto.
+                    </p>
+                    
+                    {globalPermissions && Object.keys(globalPermissions).length > 0 ? (
+                      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {Object.entries(globalPermissions).map(([permissionType, permissions]: [string, any]) => {
+                          if (!Array.isArray(permissions) || permissions.length === 0) return null;
+                          
+                          return (
+                            <div key={permissionType} style={{ marginBottom: '1rem' }}>
+                              <h4 style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: '600', 
+                                color: '#374151',
+                                marginBottom: '0.5rem'
+                              }}>
+                                {permissionType}
+                              </h4>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                {permissions.map((perm: any) => (
+                                  <button
+                                    key={perm.id}
+                                    className={buttons.button}
+                                    style={{ 
+                                      textAlign: 'left',
+                                      justifyContent: 'flex-start',
+                                      padding: '0.5rem 1rem'
+                                    }}
+                                    onClick={() => {
+                                      // Passa la permission completa con projectId al PermissionGrantManager
+                                      setSelectedPermissionForProjectGrant({
+                                        ...perm,
+                                        itemTypeSetId: itemTypeSet.id,
+                                      });
+                                    }}
+                                  >
+                                    {perm.name}
+                                    {perm.itemType && ` - ${perm.itemType.name}`}
+                                    {perm.workflowStatus && ` - ${perm.workflowStatus.name}`}
+                                    {perm.fieldConfiguration && ` - ${perm.fieldConfiguration.name}`}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className={alert.muted}>Nessuna permission disponibile.</p>
+                    )}
+                    
+                    <div className={layout.buttonRow} style={{ marginTop: '1.5rem' }}>
+                      <button
+                        className={buttons.button}
+                        onClick={() => setSelectedPermissionForProjectGrant(null)}
+                      >
+                        Chiudi
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
+              {selectedPermissionForProjectGrant?.itemTypeSetRoleId && createPortal(
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1001,
+                  }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      setSelectedPermissionForProjectGrant(null);
+                    }
+                  }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: '0.5rem',
+                      padding: '2rem',
+                      maxWidth: '90vw',
+                      maxHeight: '90vh',
+                      overflowY: 'auto',
+                      width: '900px',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PermissionGrantManager
+                      permission={selectedPermissionForProjectGrant}
+                      onClose={() => setSelectedPermissionForProjectGrant(null)}
+                      onSave={() => {
+                        setSelectedPermissionForProjectGrant(null);
+                        setRefreshTrigger((prev) => prev + 1);
+                      }}
+                      itemTypeSetId={itemTypeSet.id}
+                      scope="project"
+                      projectId={projectId}
+                    />
+                  </div>
+                </div>,
+                document.body
+              )}
+            </>
+          )}
+        </div>
         
         {/* Sezione Cambio ItemTypeSet */}
         <div className="mt-6">
@@ -432,12 +716,6 @@ export default function ProjectSettings() {
     navigate("details", { state: { token, from: location.pathname } });
   };
 
-  const handleEditItemTypeSet = () => {
-    if (project?.itemTypeSet) {
-      navigate(`item-type-set/${project.itemTypeSet.id}`, { state: { token } });
-    }
-  };
-
   if (loading) return <Loading />;
   if (error) return <ErrorMessage message={error} />;
   if (!project) return <ErrorMessage message="Project not found or loading error." />;
@@ -487,11 +765,11 @@ export default function ProjectSettings() {
             {project.itemTypeSet ? (
               <ItemTypeSetDetails 
                 itemTypeSet={project.itemTypeSet} 
-                onEdit={handleEditItemTypeSet}
                 onItemTypeSetChange={handleItemTypeSetChange}
                 isUpdatingItemTypeSet={isUpdatingItemTypeSet}
                 successMessage={successMessage}
                 error={error}
+                projectId={projectId!}
               />
             ) : (
               <div className={layout.block}>

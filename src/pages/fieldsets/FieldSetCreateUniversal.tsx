@@ -276,11 +276,13 @@ export default function FieldSetCreateUniversal({ scope, projectId }: FieldSetCr
     return <p className="list-loading">Caricamento configurazioni...</p>;
   }
 
-  // Organizza le configurazioni per field
-  const configurationsByField = fields.map(field => ({
-    field,
-    configurations: fieldConfigurations.filter(config => config.fieldId === field.id)
-  }));
+  // Organizza le configurazioni per field e filtra solo i field con almeno una configurazione
+  const configurationsByField = fields
+    .map(field => ({
+      field,
+      configurations: fieldConfigurations.filter(config => config.fieldId === field.id)
+    }))
+    .filter(({ configurations }) => configurations.length > 0); // Mostra solo field con configurazioni
 
   return (
     <div className={layout.container} style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 1rem', width: '100%', boxSizing: 'border-box' }}>

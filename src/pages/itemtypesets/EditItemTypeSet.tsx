@@ -15,8 +15,15 @@ import form from "../../styles/common/Forms.module.css";
 import alert from "../../styles/common/Alerts.module.css";
 import utilities from "../../styles/common/Utilities.module.css";
 
-export default function EditItemTypeSet() {
-  const { id } = useParams<{ id: string }>();
+interface EditItemTypeSetProps {
+  scope?: 'tenant' | 'project';
+  projectId?: string;
+}
+
+export default function EditItemTypeSet({ scope: scopeProp, projectId: projectIdProp }: EditItemTypeSetProps = {}) {
+  const { id, projectId: projectIdFromParams } = useParams<{ id: string; projectId?: string }>();
+  const scope = scopeProp || (projectIdFromParams ? 'project' : 'tenant');
+  const projectId = projectIdProp || projectIdFromParams;
   const navigate = useNavigate();
   const auth = useAuth() as any;
   const token = auth?.token;
@@ -54,8 +61,12 @@ export default function EditItemTypeSet() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        const itemTypeSetEndpoint = scope === 'project' && projectId
+          ? `/item-type-sets/project/${projectId}/${id}`
+          : `/item-type-sets/${id}`;
+
         const [setRes, typesRes, categoriesRes, fieldSetsRes, workflowsRes] = await Promise.all([
-          api.get(`/item-type-sets/${id}`, {
+          api.get(itemTypeSetEndpoint, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           api.get("/item-types", {
@@ -64,10 +75,14 @@ export default function EditItemTypeSet() {
           api.get("/item-types/categories", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          api.get("/field-sets", {
+          api.get(scope === 'project' && projectId 
+            ? `/field-sets/project/${projectId}` 
+            : "/field-sets", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          api.get("/workflows", {
+          api.get(scope === 'project' && projectId 
+            ? `/workflows/project/${projectId}` 
+            : "/workflows", {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -98,7 +113,7 @@ export default function EditItemTypeSet() {
     };
 
     fetchData();
-  }, [id, token]);
+  }, [id, token, scope, projectId]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -252,7 +267,11 @@ export default function EditItemTypeSet() {
       })),
     };
 
-    await api.put(`/item-type-sets/${id}`, dto, {
+    const updateEndpoint = scope === 'project' && projectId
+      ? `/item-type-sets/project/${projectId}/${id}`
+      : `/item-type-sets/${id}`;
+
+    await api.put(updateEndpoint, dto, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -264,7 +283,11 @@ export default function EditItemTypeSet() {
       console.warn("Errore nell'aggiornamento automatico dei ruoli:", roleError);
     }
 
-    navigate("/tenant/item-type-sets");
+    if (scope === 'tenant') {
+      navigate("/tenant/item-type-sets");
+    } else if (scope === 'project' && projectId) {
+      navigate(`/projects/${projectId}/item-type-sets`);
+    }
   };
 
   const handleAddEntry = () => {
@@ -344,7 +367,11 @@ export default function EditItemTypeSet() {
   };
 
   const handleCancel = () => {
-    navigate("/tenant/item-type-sets");
+    if (scope === 'tenant') {
+      navigate("/tenant/item-type-sets");
+    } else if (scope === 'project' && projectId) {
+      navigate(`/projects/${projectId}/item-type-sets`);
+    }
   };
 
   if (loading) {
@@ -355,9 +382,13 @@ export default function EditItemTypeSet() {
     <div className={layout.container} style={{ maxWidth: '800px', margin: '0 auto' }}>
       {/* Header Section */}
       <div className={layout.headerSection}>
-        <h1 className={layout.title}>Modifica Item Type Set</h1>
+        <h1 className={layout.title}>
+          {scope === 'tenant' ? "Modifica Item Type Set" : "Modifica Item Type Set di Progetto"}
+        </h1>
         <p className={layout.paragraphMuted}>
-          Modifica le informazioni dell'item type set e le sue configurazioni.
+          {scope === 'tenant'
+            ? "Modifica le informazioni dell'item type set e le sue configurazioni."
+            : "Modifica le informazioni dell'item type set del progetto. Gli ItemType sono sempre globali, mentre FieldSet e Workflow sono del progetto."}
         </p>
       </div>
 
@@ -437,7 +468,7 @@ export default function EditItemTypeSet() {
               className={form.select}
               disabled={saving}
             >
-              <option value="">-- Seleziona un field set --</option>
+              <option value="">-- Seleziona un field set {scope === 'project' && "(del progetto)"} --</option>
               {fieldSets.map((fs) => (
                 <option key={fs.id} value={fs.id}>
                   {fs.name}
@@ -451,7 +482,7 @@ export default function EditItemTypeSet() {
               className={form.select}
               disabled={saving}
             >
-              <option value="">-- Seleziona un workflow --</option>
+              <option value="">-- Seleziona un workflow {scope === 'project' && "(del progetto)"} --</option>
               {workflows.map((wf) => (
                 <option key={wf.id} value={wf.id}>
                   {wf.name}

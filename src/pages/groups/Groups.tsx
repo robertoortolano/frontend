@@ -194,10 +194,6 @@ export default function Groups() {
         <div className={layout.section}>
           <div className="flex items-center justify-between mb-4">
             <h2 className={layout.sectionTitle}>{editingGroup ? "Modifica Gruppo" : "Nuovo Gruppo"}</h2>
-            <button onClick={resetForm} className={buttons.button}>
-              <X size={18} />
-              Annulla
-            </button>
           </div>
 
           <form onSubmit={handleSubmit}>
