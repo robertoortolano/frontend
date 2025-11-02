@@ -30,9 +30,10 @@ import {
   WorkflowStatusViewDto,
 } from "../../types/workflow.types";
 import { TransitionRemovalImpactDto } from "../../types/transition-impact.types";
-import { TransitionImpactReportModal } from "../../components/TransitionImpactReportModal";
+import { TransitionEnhancedImpactReportModal } from "../../components/TransitionEnhancedImpactReportModal";
 import { StatusRemovalImpactDto } from "../../types/status-impact.types";
-import { StatusImpactReportModal } from "../../components/StatusImpactReportModal";
+import { StatusEnhancedImpactReportModal } from "../../components/StatusEnhancedImpactReportModal";
+import { Toast } from "../../components/Toast";
 
 import board from "../../styles/common/WorkflowBoard.module.css";
 import "reactflow/dist/style.css";
@@ -727,7 +728,7 @@ export default function WorkflowEdit() {
           }
         };
 
-  const handleConfirmSave = async () => {
+  const handleConfirmSave = async (preservedPermissionIds?: number[]) => {
     setShowImpactReport(false);
     setImpactReport(null);
     
@@ -751,7 +752,7 @@ export default function WorkflowEdit() {
     setRemovedEdgesForTransitions([]);
   };
 
-  const handleConfirmStatusSave = async () => {
+  const handleConfirmStatusSave = async (preservedPermissionIds?: number[]) => {
     setShowStatusImpactReport(false);
     setStatusImpactReport(null);
     
@@ -838,11 +839,10 @@ export default function WorkflowEdit() {
       </div>
 
       {/* Impact Report Modal */}
-      <TransitionImpactReportModal
+      <TransitionEnhancedImpactReportModal
         isOpen={showImpactReport}
         onClose={handleCancelSave}
-        onConfirm={handleConfirmSave}
-        onExport={handleExportReport}
+        onConfirm={(preservedPermissionIds) => handleConfirmSave(preservedPermissionIds)}
         impact={impactReport}
         loading={analyzingImpact || saving}
       />
@@ -850,11 +850,10 @@ export default function WorkflowEdit() {
     </ReactFlowProvider>
     
     {/* Status Impact Report Modal - Fuori dal ReactFlowProvider */}
-    <StatusImpactReportModal
+    <StatusEnhancedImpactReportModal
       isOpen={showStatusImpactReport}
       onClose={handleCancelStatusSave}
-      onConfirm={handleConfirmStatusSave}
-      onExport={handleExportStatusReport}
+      onConfirm={(preservedPermissionIds) => handleConfirmStatusSave(preservedPermissionIds)}
       impact={statusImpactReport}
       loading={analyzingStatusImpact || saving}
     />

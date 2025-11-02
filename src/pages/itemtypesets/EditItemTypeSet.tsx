@@ -9,7 +9,7 @@ import { ItemTypeConfigurationDto, ItemTypeSetUpdateDto } from "../../types/item
 import { ItemTypeConfigurationMigrationImpactDto } from "../../types/item-type-configuration-migration.types";
 import { ItemTypeConfigurationMigrationModal } from "../../components/ItemTypeConfigurationMigrationModal";
 import { ItemTypeConfigurationRemovalImpactDto } from "../../types/itemtypeconfiguration-impact.types";
-import { ItemTypeConfigurationImpactReportModal } from "../../components/ItemTypeConfigurationImpactReportModal";
+import { ItemTypeConfigurationEnhancedImpactReportModal } from "../../components/ItemTypeConfigurationEnhancedImpactReportModal";
 import { Toast } from "../../components/Toast";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -378,7 +378,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     }
   };
   
-  const handleRemovalImpactConfirm = () => {
+  const handleRemovalImpactConfirm = async (preservedPermissionIds?: number[]) => {
     // Verifica che non sia l'ultima configurazione prima di rimuovere
     if (itemTypeConfigurations.length <= 1) {
       setError("Non è possibile rimuovere l'ultima ItemTypeConfiguration. Un ItemTypeSet deve avere almeno una configurazione.");
@@ -388,7 +388,9 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       return;
     }
     
-    // Rimuovi la configurazione dopo la conferma
+    // Se ci sono permission preservate, chiama il backend per gestirle
+    // Per ora rimuoviamo semplicemente la configurazione
+    // TODO: In futuro potrebbe essere necessario passare preservedPermissionIds al backend
     if (pendingRemoval) {
       setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== pendingRemoval.index));
       setPendingRemoval(null);
@@ -689,10 +691,10 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       />
       
       {/* Modal di rimozione impatto */}
-      <ItemTypeConfigurationImpactReportModal
+      <ItemTypeConfigurationEnhancedImpactReportModal
         isOpen={showRemovalImpactModal}
         onClose={handleRemovalImpactCancel}
-        onConfirm={handleRemovalImpactConfirm}
+        onConfirm={(preservedPermissionIds) => handleRemovalImpactConfirm(preservedPermissionIds)}
         impact={removalImpact}
         loading={removalImpactLoading}
       />

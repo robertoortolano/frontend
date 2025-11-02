@@ -26,6 +26,7 @@ import {
 } from "../../types/field.types";
 import { FieldSetRemovalImpactDto } from "../../types/fieldset-impact.types";
 import { FieldSetImpactReportModal } from "../../components/FieldSetImpactReportModal";
+import { FieldSetEnhancedImpactReportModal } from "../../components/FieldSetEnhancedImpactReportModal";
 import { Toast } from "../../components/Toast";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -297,7 +298,8 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
   
-  const confirmProvisionalRemoval = (configIds: number[]) => {
+  const confirmProvisionalRemoval = (configIds: number[], preservedPermissionIds?: number[]) => {
+    // TODO: Gestire le permission preservate anche per le rimozioni provvisorie se necessario
     setSelectedConfigurations(prev => prev.filter(id => !configIds.includes(id)));
     setPendingRemovedConfigurations(prev => [...prev, ...configIds]);
     setShowProvisionalReport(false);
@@ -432,7 +434,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
 
-  const handleConfirmSave = async () => {
+  const handleConfirmSave = async (preservedPermissionIds?: number[]) => {
     if (!fieldSet || !impactReport) return;
     
     setSaving(true);
@@ -464,6 +466,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         const request = {
           removedFieldConfigIds: removedConfigIds,
           addedFieldConfigIds: addedConfigIds,
+          preservedPermissionIds: preservedPermissionIds || [],
         };
 
         await api.post(`/field-sets/${id}/remove-orphaned-permissions`, request, {
@@ -480,7 +483,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore durante la rimozione delle permission");
-      console.error('Error removing orphaned permissions:', err);
     } finally {
       setSaving(false);
     }
@@ -784,34 +786,13 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         isProvisional={false}
       />
       
-      {/* Provisional Impact Report Modal (immediate removal confirmation) */}
-      <FieldSetImpactReportModal
+      {/* Provisional Impact Report Modal (immediate removal confirmation) - ENHANCED VERSION FOR TESTING */}
+      <FieldSetEnhancedImpactReportModal
         isOpen={showProvisionalReport}
         onClose={cancelProvisionalRemoval}
-        onConfirm={() => {
+        onConfirm={(preservedPermissionIds) => {
           if (removalToConfirm !== null) {
-            confirmProvisionalRemoval([removalToConfirm]);
-          }
-        }}
-        onExport={async () => {
-          if (removalToConfirm !== null && provisionalImpactReport) {
-            try {
-              const response = await api.post(`/field-sets/${id}/export-removal-impact-csv`, [removalToConfirm], {
-                headers: { Authorization: `Bearer ${token}` },
-                responseType: 'blob'
-              });
-
-              const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
-              const link = document.createElement('a');
-              link.href = url;
-              link.setAttribute('download', `fieldset_provisional_removal_impact_${id}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-              document.body.appendChild(link);
-              link.click();
-              link.remove();
-              window.URL.revokeObjectURL(url);
-            } catch (err: any) {
-              setError(err.response?.data?.message || "Errore durante l'esportazione del report");
-            }
+            confirmProvisionalRemoval([removalToConfirm], preservedPermissionIds);
           }
         }}
         impact={provisionalImpactReport}

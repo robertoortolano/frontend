@@ -24,6 +24,17 @@ export interface ItemTypeSetImpact {
   itemTypeSetName: string;
   projectId: number | null;
   projectName: string | null;
+  totalPermissions?: number;
+  totalRoleAssignments?: number;
+  totalGlobalGrants?: number;
+  totalProjectGrants?: number;
+  projectImpacts?: ProjectImpact[];
+}
+
+export interface ProjectImpact {
+  projectId: number;
+  projectName: string;
+  projectGrantsCount: number;
 }
 
 export interface PermissionImpact {
@@ -51,5 +62,27 @@ export interface PermissionImpact {
   assignedRoles: string[];
   assignedGrants: string[];
   hasAssignments: boolean;
+  
+  // Info per preservazione
+  fieldId?: number;
+  fieldName?: string;
+  statusId?: number;
+  statusName?: string;
+  matchingFieldId?: number;
+  matchingFieldName?: string;
+  matchingStatusId?: number;
+  matchingStatusName?: string;
+  canBePreserved?: boolean;
+  defaultPreserve?: boolean;
+  
+  // Grant di progetto
+  projectGrants?: ProjectGrantInfo[];
 }
+
+export interface ProjectGrantInfo {
+  projectId: number;
+  projectName: string;
+  roleId: number;
+}
+
 
