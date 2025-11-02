@@ -25,6 +25,7 @@ export interface ItemTypeSetDto {
   scope: ScopeType;
   defaultItemTypeSet: boolean;
   itemTypeConfigurations: ItemTypeConfigurationDto[];
+  projectsAssociation?: Array<{ id: number; name: string; projectKey: string }>; // Progetti che usano questo ItemTypeSet
 }
 
 export interface ItemTypeSetCreateDto {

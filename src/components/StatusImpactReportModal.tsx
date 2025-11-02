@@ -36,14 +36,16 @@ export const StatusImpactReportModal: React.FC<StatusImpactReportModalProps> = (
     id: its.itemTypeSetId
   }));
 
-  const statusOwnerPermissionsData = impact.statusOwnerPermissions.map(perm => ({
-    itemTypeSet: perm.itemTypeSetName,
-    project: perm.projectName || 'N/A',
-    status: perm.statusName,
-    category: perm.statusCategory,
-    roles: perm.assignedRoles.join(', ') || 'Nessuno',
-    populated: perm.hasAssignments ? 'Sì' : 'No'
-  }));
+  const statusOwnerPermissionsData = impact.statusOwnerPermissions
+    .filter(perm => perm.hasAssignments)
+    .map(perm => ({
+      itemTypeSet: perm.itemTypeSetName,
+      project: perm.projectName || 'N/A',
+      status: perm.statusName,
+      category: perm.statusCategory,
+      roles: perm.assignedRoles.join(', ') || 'Nessuno',
+      populated: perm.hasAssignments ? 'Sì' : 'No'
+    }));
 
   const data: ImpactReportData = {
     title: '📊 Report Impatto Rimozione Status',
@@ -75,7 +77,7 @@ export const StatusImpactReportModal: React.FC<StatusImpactReportModalProps> = (
         data: itemTypeSetData,
         showIfEmpty: false
       },
-      {
+      ...(statusOwnerPermissionsData.length > 0 ? [{
         title: 'Permission Status Owner',
         icon: '🔐',
         columns: [
@@ -96,7 +98,7 @@ export const StatusImpactReportModal: React.FC<StatusImpactReportModalProps> = (
         ],
         data: statusOwnerPermissionsData,
         showIfEmpty: false
-      }
+      }] : [])
     ],
     hasPopulatedPermissions,
     warningMessage: hasPopulatedPermissions 

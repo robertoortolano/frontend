@@ -145,6 +145,7 @@ export default function WorkflowEdit() {
   const [statusImpactReport, setStatusImpactReport] = useState<StatusRemovalImpactDto | null>(null);
   const [analyzingStatusImpact, setAnalyzingStatusImpact] = useState(false);
   const [pendingStatusSave, setPendingStatusSave] = useState<(() => Promise<void>) | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
   const [removedStatusIds, setRemovedStatusIds] = useState<number[]>([]);
   const [removedNodes, setRemovedNodes] = useState<any[]>([]);
   const [removedEdges, setRemovedEdges] = useState<any[]>([]);
@@ -612,11 +613,25 @@ export default function WorkflowEdit() {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       
-      setImpactReport(response.data);
-      setShowImpactReport(true);
+      const impact = response.data;
       
-      // Store the save function to be called after confirmation
-      setPendingSave(() => () => performConfirmSave());
+      // Verifica se ci sono permission con assegnazioni
+      const hasPopulatedPermissions = 
+        impact.executorPermissions?.some(p => p.hasAssignments) || false;
+      
+      if (hasPopulatedPermissions) {
+        setImpactReport(impact);
+        setShowImpactReport(true);
+        // Store the save function to be called after confirmation
+        setPendingSave(() => () => performConfirmSave());
+      } else {
+        // Se non ci sono assegnazioni, procedi direttamente con il salvataggio
+        await performConfirmSave();
+        setToast({ 
+          message: 'Transition rimosse con successo. Nessun impatto rilevato sulle permission Executor.', 
+          type: 'success' 
+        });
+      }
     } catch (err: any) {
       console.error("Errore durante l'analisi degli impatti", err);
       // Se non ci sono impatti, procedi direttamente con la rimozione
@@ -684,11 +699,25 @@ export default function WorkflowEdit() {
               headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             });
             
-            setStatusImpactReport(response.data);
-            setShowStatusImpactReport(true);
+            const impact = response.data;
             
-            // Store the save function to be called after confirmation
-            setPendingStatusSave(() => () => performConfirmStatusSave());
+            // Verifica se ci sono permission con assegnazioni
+            const hasPopulatedPermissions = 
+              impact.statusOwnerPermissions?.some(p => p.hasAssignments) || false;
+            
+            if (hasPopulatedPermissions) {
+              setStatusImpactReport(impact);
+              setShowStatusImpactReport(true);
+              // Store the save function to be called after confirmation
+              setPendingStatusSave(() => () => performConfirmStatusSave());
+            } else {
+              // Se non ci sono assegnazioni, procedi direttamente con il salvataggio
+              await performConfirmStatusSave();
+              setToast({ 
+                message: 'Workflow aggiornato con successo. Nessun impatto rilevato sulle permission Status Owner.', 
+                type: 'success' 
+              });
+            }
           } catch (err: any) {
             console.error("❌ Errore durante l'analisi degli impatti status", err);
             // Se non ci sono impatti, procedi direttamente con la rimozione
@@ -829,6 +858,15 @@ export default function WorkflowEdit() {
       impact={statusImpactReport}
       loading={analyzingStatusImpact || saving}
     />
+    
+    {/* Toast Notification */}
+    {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(null)}
+      />
+    )}
     </>
   );
 }

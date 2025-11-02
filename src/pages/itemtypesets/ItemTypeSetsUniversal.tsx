@@ -162,8 +162,6 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
   };
 
   const handleDelete = async (id: number) => {
-    const itemTypeSet = itemTypeSets.find(set => set.id === id);
-
     if (!window.confirm("Sei sicuro di voler eliminare questo item type set?")) return;
 
     try {
@@ -177,8 +175,12 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
         });
       }
       setItemTypeSets((prev) => prev.filter((set) => set.id !== id));
+      setError(null); // Reset error on success
     } catch (err: any) {
-      setError(err.response?.data?.message || "Errore durante l'eliminazione");
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Errore durante l'eliminazione";
+      setError(errorMessage);
+      // Show alert for better visibility
+      window.alert(errorMessage);
     }
   };
 
@@ -338,8 +340,14 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
                       e.stopPropagation();
                       handleDelete(set.id);
                     }}
-                    disabled={set.defaultItemTypeSet}
-                    title={set.defaultItemTypeSet ? "Item Type Set di default non eliminabile" : "Elimina Item Type Set"}
+                    disabled={set.defaultItemTypeSet || (set.projectsAssociation && set.projectsAssociation.length > 0)}
+                    title={
+                      set.defaultItemTypeSet
+                        ? "Item Type Set di default non eliminabile"
+                        : set.projectsAssociation && set.projectsAssociation.length > 0
+                        ? `Non puoi eliminare: usato in ${set.projectsAssociation.length} progetto/i`
+                        : "Elimina Item Type Set"
+                    }
                   >
                     Delete
                   </button>

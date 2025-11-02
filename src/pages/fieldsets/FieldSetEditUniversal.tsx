@@ -26,6 +26,7 @@ import {
 } from "../../types/field.types";
 import { FieldSetRemovalImpactDto } from "../../types/fieldset-impact.types";
 import { FieldSetImpactReportModal } from "../../components/FieldSetImpactReportModal";
+import { Toast } from "../../components/Toast";
 
 import layout from "../../styles/common/Layout.module.css";
 import form from "../../styles/common/Forms.module.css";
@@ -137,6 +138,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const [provisionalImpactReport, setProvisionalImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
   const [pendingRemovedConfigurations, setPendingRemovedConfigurations] = useState<number[]>([]);
   const [removalToConfirm, setRemovalToConfirm] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -271,16 +273,21 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
 
       const impact: FieldSetRemovalImpactDto = response.data;
       
-      const hasPermissions = 
-        (impact.fieldOwnerPermissions && impact.fieldOwnerPermissions.length > 0) ||
-        (impact.fieldStatusPermissions && impact.fieldStatusPermissions.length > 0) ||
-        (impact.itemTypeSetRoles && impact.itemTypeSetRoles.length > 0);
+      // Verifica se ci sono permission con assegnazioni
+      const hasPopulatedPermissions = 
+        impact.fieldOwnerPermissions?.some(p => p.hasAssignments) ||
+        impact.fieldStatusPermissions?.some(p => p.hasAssignments) ||
+        impact.itemTypeSetRoles?.some(p => p.hasAssignments);
       
-      if (hasPermissions) {
+      if (hasPopulatedPermissions) {
         setProvisionalImpactReport(impact);
         setShowProvisionalReport(true);
       } else {
         confirmProvisionalRemoval(removedConfigIds);
+        setToast({ 
+          message: 'Configurazione rimossa. Nessun impatto rilevato sulle permission.', 
+          type: 'info' 
+        });
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
@@ -367,17 +374,22 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
 
       const impact: FieldSetRemovalImpactDto = response.data;
       
-      const hasPermissions = 
-        (impact.fieldOwnerPermissions && impact.fieldOwnerPermissions.length > 0) ||
-        (impact.fieldStatusPermissions && impact.fieldStatusPermissions.length > 0) ||
-        (impact.itemTypeSetRoles && impact.itemTypeSetRoles.length > 0);
+      // Verifica se ci sono permission con assegnazioni
+      const hasPopulatedPermissions = 
+        impact.fieldOwnerPermissions?.some(p => p.hasAssignments) ||
+        impact.fieldStatusPermissions?.some(p => p.hasAssignments) ||
+        impact.itemTypeSetRoles?.some(p => p.hasAssignments);
       
-      if (hasPermissions) {
+      if (hasPopulatedPermissions) {
         setImpactReport(impact);
         setShowImpactReport(true);
         setPendingSave(() => performSave);
       } else {
         await performSave();
+        setToast({ 
+          message: 'FieldSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 
+          type: 'success' 
+        });
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
@@ -806,6 +818,15 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         loading={analyzingImpact}
         isProvisional={true}
       />
+      
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

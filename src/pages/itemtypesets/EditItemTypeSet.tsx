@@ -8,6 +8,9 @@ import { WorkflowSimpleDto } from "../../types/workflow.types";
 import { ItemTypeConfigurationDto, ItemTypeSetUpdateDto } from "../../types/itemtypeset.types";
 import { ItemTypeConfigurationMigrationImpactDto } from "../../types/item-type-configuration-migration.types";
 import { ItemTypeConfigurationMigrationModal } from "../../components/ItemTypeConfigurationMigrationModal";
+import { ItemTypeConfigurationRemovalImpactDto } from "../../types/itemtypeconfiguration-impact.types";
+import { ItemTypeConfigurationImpactReportModal } from "../../components/ItemTypeConfigurationImpactReportModal";
+import { Toast } from "../../components/Toast";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -51,6 +54,13 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   const [migrationImpacts, setMigrationImpacts] = useState<ItemTypeConfigurationMigrationImpactDto[]>([]);
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
+  
+  // State per il modal di rimozione impatto
+  const [showRemovalImpactModal, setShowRemovalImpactModal] = useState(false);
+  const [removalImpact, setRemovalImpact] = useState<ItemTypeConfigurationRemovalImpactDto | null>(null);
+  const [removalImpactLoading, setRemovalImpactLoading] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<{ index: number; configId: number | undefined } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
   
   // Store delle configurazioni originali per il confronto
   const originalConfigurationsRef = useRef<ItemTypeConfigurationDto[]>([]);
@@ -308,8 +318,89 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     setSelectedWorkflowId("");
   };
 
-  const handleRemoveEntry = (index: number) => {
-    setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveEntry = async (index: number) => {
+    const configToRemove = itemTypeConfigurations[index];
+    
+    // Verifica che non sia l'ultima configurazione
+    if (itemTypeConfigurations.length === 1) {
+      setError("Non è possibile rimuovere l'ultima ItemTypeConfiguration. Un ItemTypeSet deve avere almeno una configurazione.");
+      return;
+    }
+    
+    // Se la configurazione non ha ID (è nuova, non ancora salvata), rimuovila direttamente (solo se non è l'ultima)
+    if (!configToRemove.id) {
+      if (itemTypeConfigurations.length <= 1) {
+        setError("Non è possibile rimuovere l'ultima ItemTypeConfiguration. Un ItemTypeSet deve avere almeno una configurazione.");
+        return;
+      }
+      setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== index));
+      return;
+    }
+    
+    // Analizza l'impatto prima di rimuovere
+    try {
+      setRemovalImpactLoading(true);
+      const response = await api.post(
+        `/item-type-sets/${id}/analyze-itemtypeconfiguration-removal-impact`,
+        [configToRemove.id], // Passa come array per JSON serialization
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      const impact = response.data;
+      
+      // Verifica se ci sono permission con assegnazioni
+      const hasPopulatedPermissions = 
+        impact.fieldOwnerPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.statusOwnerPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.fieldStatusPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.executorPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.itemTypeSetRoles?.some((p: any) => p.hasAssignments);
+      
+      if (hasPopulatedPermissions) {
+        setRemovalImpact(impact);
+        setPendingRemoval({ index, configId: configToRemove.id });
+        setShowRemovalImpactModal(true);
+      } else {
+        // Se non ci sono assegnazioni, rimuovi direttamente e mostra toast
+        setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== index));
+        setToast({ 
+          message: 'ItemTypeConfiguration rimossa con successo. Nessun impatto rilevato sulle permission.', 
+          type: 'success' 
+        });
+      }
+    } catch (err: any) {
+      console.error("Errore nell'analisi dell'impatto:", err);
+      setError(err.response?.data?.message || "Errore nell'analisi dell'impatto della rimozione");
+    } finally {
+      setRemovalImpactLoading(false);
+    }
+  };
+  
+  const handleRemovalImpactConfirm = () => {
+    // Verifica che non sia l'ultima configurazione prima di rimuovere
+    if (itemTypeConfigurations.length <= 1) {
+      setError("Non è possibile rimuovere l'ultima ItemTypeConfiguration. Un ItemTypeSet deve avere almeno una configurazione.");
+      setShowRemovalImpactModal(false);
+      setRemovalImpact(null);
+      setPendingRemoval(null);
+      return;
+    }
+    
+    // Rimuovi la configurazione dopo la conferma
+    if (pendingRemoval) {
+      setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== pendingRemoval.index));
+      setPendingRemoval(null);
+    }
+    setShowRemovalImpactModal(false);
+    setRemovalImpact(null);
+  };
+  
+  const handleRemovalImpactCancel = () => {
+    setShowRemovalImpactModal(false);
+    setRemovalImpact(null);
+    setPendingRemoval(null);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -560,7 +651,8 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
                   type="button"
                   onClick={() => handleRemoveEntry(index)}
                   className={buttons.button}
-                  disabled={saving}
+                  disabled={saving || itemTypeConfigurations.length === 1}
+                  title={itemTypeConfigurations.length === 1 ? "Non è possibile rimuovere l'ultima ItemTypeConfiguration" : "Rimuovi configurazione"}
                 >
                   Remove
                 </button>
@@ -595,6 +687,24 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         impacts={migrationImpacts}
         loading={migrationLoading}
       />
+      
+      {/* Modal di rimozione impatto */}
+      <ItemTypeConfigurationImpactReportModal
+        isOpen={showRemovalImpactModal}
+        onClose={handleRemovalImpactCancel}
+        onConfirm={handleRemovalImpactConfirm}
+        impact={removalImpact}
+        loading={removalImpactLoading}
+      />
+      
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

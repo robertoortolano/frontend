@@ -37,7 +37,7 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
     summaryItems: [],
     tableSections: [
       // Field Owner Permissions section
-      ...(impact.fieldOwnerPermissions.length > 0 ? [{
+      ...(impact.fieldOwnerPermissions.filter(p => p.hasAssignments).length > 0 ? [{
         title: 'Permission Field Owner',
         icon: '👑',
         columns: [
@@ -68,6 +68,7 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
           },
         ],
         data: [...impact.fieldOwnerPermissions]
+          .filter(perm => perm.hasAssignments)
           .sort((a, b) => {
             const itsA = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
             if (itsA !== 0) return itsA;
@@ -81,7 +82,7 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
         showIfEmpty: false
       }] : []),
       // Field Status Permissions section
-      ...(impact.fieldStatusPermissions.length > 0 ? [{
+      ...(impact.fieldStatusPermissions.filter(p => p.hasAssignments).length > 0 ? [{
         title: 'Permission Field Status',
         icon: '🔐',
         columns: [
@@ -133,6 +134,7 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
           },
         ],
         data: [...impact.fieldStatusPermissions]
+          .filter(perm => perm.hasAssignments)
           .sort((a, b) => {
             const itsA = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
             if (itsA !== 0) return itsA;
@@ -150,7 +152,7 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
         showIfEmpty: false
       }] : []),
       // ItemTypeSet Roles section
-      ...(impact.itemTypeSetRoles.length > 0 ? [{
+      ...(impact.itemTypeSetRoles.filter(p => p.hasAssignments).length > 0 ? [{
         title: 'Permission ItemTypeSet Roles',
         icon: '👥',
         columns: [
@@ -179,6 +181,7 @@ export const FieldSetImpactReportModal: React.FC<FieldSetImpactReportModalProps>
           },
         ],
         data: [...impact.itemTypeSetRoles]
+          .filter(role => role.hasAssignments)
           .sort((a, b) => {
             const itsA = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
             if (itsA !== 0) return itsA;

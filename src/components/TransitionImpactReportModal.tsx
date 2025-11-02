@@ -36,15 +36,17 @@ export const TransitionImpactReportModal: React.FC<TransitionImpactReportModalPr
     id: its.itemTypeSetId
   }));
 
-  const executorPermissionsData = impact.executorPermissions.map(perm => ({
-    type: perm.permissionType,
-    itemTypeSet: perm.itemTypeSetName,
-    transition: perm.transitionName,
-    fromStatus: perm.fromStatusName,
-    toStatus: perm.toStatusName,
-    roles: perm.assignedRoles.join(', ') || 'Nessuno',
-    populated: perm.hasAssignments ? 'Sì' : 'No'
-  }));
+  const executorPermissionsData = impact.executorPermissions
+    .filter(perm => perm.hasAssignments)
+    .map(perm => ({
+      type: perm.permissionType,
+      itemTypeSet: perm.itemTypeSetName,
+      transition: perm.transitionName,
+      fromStatus: perm.fromStatusName,
+      toStatus: perm.toStatusName,
+      roles: perm.assignedRoles.join(', ') || 'Nessuno',
+      populated: perm.hasAssignments ? 'Sì' : 'No'
+    }));
 
   const data: ImpactReportData = {
     title: '📊 Report Impatto Rimozione Transition',
@@ -76,7 +78,7 @@ export const TransitionImpactReportModal: React.FC<TransitionImpactReportModalPr
         data: itemTypeSetData,
         showIfEmpty: false
       },
-      {
+      ...(executorPermissionsData.length > 0 ? [{
         title: 'Executor Permissions',
         icon: '⚡',
         columns: [
@@ -106,7 +108,7 @@ export const TransitionImpactReportModal: React.FC<TransitionImpactReportModalPr
         ],
         data: executorPermissionsData,
         showIfEmpty: false
-      }
+      }] : [])
     ],
     hasPopulatedPermissions,
     warningMessage: hasPopulatedPermissions 
