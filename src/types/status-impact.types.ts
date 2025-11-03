@@ -3,10 +3,14 @@ export interface StatusRemovalImpactDto {
   workflowName: string;
   removedStatusIds: number[];
   removedStatusNames: string[];
+  removedTransitionIds?: number[];
+  removedTransitionNames?: string[];
   affectedItemTypeSets: ItemTypeSetImpact[];
   statusOwnerPermissions: PermissionImpact[];
+  executorPermissions?: ExecutorPermissionImpact[];
   totalAffectedItemTypeSets: number;
   totalStatusOwnerPermissions: number;
+  totalExecutorPermissions?: number;
   totalGrantAssignments: number;
   totalRoleAssignments: number;
 }
@@ -62,6 +66,35 @@ export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
   roleId: number;
+}
+
+export interface ExecutorPermissionImpact {
+  permissionId: number;
+  permissionType: string; // "EXECUTORS"
+  itemTypeSetId: number;
+  itemTypeSetName: string;
+  projectId: number | null;
+  projectName: string | null;
+  transitionId: number;
+  transitionName: string;
+  fromStatusName: string;
+  toStatusName: string;
+  roleId?: number;
+  roleName?: string;
+  grantId?: number;
+  grantName?: string;
+  assignedRoles: string[];
+  hasAssignments: boolean;
+  
+  // Info per preservazione
+  transitionIdMatch?: number;
+  transitionNameMatch?: string;
+  matchingTransitionName?: string; // Nome della transition corrispondente nel nuovo stato
+  canBePreserved?: boolean;
+  defaultPreserve?: boolean;
+  
+  // Grant di progetto
+  projectGrants?: ProjectGrantInfo[];
 }
 
 

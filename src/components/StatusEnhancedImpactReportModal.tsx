@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusRemovalImpactDto, ProjectGrantInfo } from '../types/status-impact.types';
 import form from '../styles/common/Forms.module.css';
 import api from '../api/api';
+import { exportImpactReportToCSV, escapeCSV, PermissionData } from '../utils/csvExportUtils';
 
 interface StatusEnhancedImpactReportModalProps {
   isOpen: boolean;
@@ -37,7 +38,8 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
   useEffect(() => {
     if (impact) {
       const allPermissions = [
-        ...(impact.statusOwnerPermissions || [])
+        ...(impact.statusOwnerPermissions || []),
+        ...(impact.executorPermissions || [])
       ];
       
       const defaultPreserved = allPermissions
@@ -70,7 +72,8 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
 
   // Check if there are any permissions with assignments
   const hasPopulatedPermissions = 
-    impact.statusOwnerPermissions?.some(p => p.hasAssignments) || false;
+    impact.statusOwnerPermissions?.some(p => p.hasAssignments) || false ||
+    impact.executorPermissions?.some(p => p.hasAssignments) || false;
 
   if (!hasPopulatedPermissions) {
     return null;
@@ -78,12 +81,21 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
 
   // Funzione helper per generare il nome della permission
   const getPermissionName = (perm: any): string => {
+    if (perm.permissionType === 'EXECUTORS') {
+      // Formato: Executor - <stato_partenza> -> <stato_arrivo> (<nome_transition>)
+      const fromStatus = perm.fromStatusName || 'N/A';
+      const toStatus = perm.toStatusName || 'N/A';
+      const transitionName = perm.transitionName;
+      const transitionPart = transitionName ? ` (${transitionName})` : '';
+      return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
+    }
     return `Status Owner - ${perm.statusName || 'N/A'}`;
   };
 
-  // Raccogli tutte le permission con assegnazioni
+  // Raccogli tutte le permission con assegnazioni (status owners + executors)
   const allPermissionsWithAssignments = [
-    ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments)
+    ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments),
+    ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
   ].sort((a, b) => {
     const itsCompare = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
     if (itsCompare !== 0) return itsCompare;
@@ -94,318 +106,60 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
   const handleExportFullReport = async () => {
     if (!impact) return;
 
-    const escapeCSV = (value: any): string => {
-      if (value === null || value === undefined) return '';
-      const str = String(value);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
+    // Prepara le permissions con i dati necessari (status owners + executors)
+    const statusOwnerPerms = (impact.statusOwnerPermissions || [])
+      .filter(p => p.hasAssignments)
+      .map(perm => ({
+        permissionId: perm.permissionId,
+        permissionType: perm.permissionType || 'N/A',
+        itemTypeSetName: perm.itemTypeSetName || 'N/A',
+        statusName: perm.statusName || null,
+        fieldName: null,
+        fromStatusName: null,
+        toStatusName: null,
+        transitionName: null,
+        assignedRoles: perm.assignedRoles || [],
+        grantId: perm.grantId,
+        roleId: perm.roleId,
+        projectGrants: perm.projectGrants,
+        canBePreserved: perm.canBePreserved
+      }));
 
-    const header = [
-      'Permission',
-      'Item Type Set',
-      'Azione',
-      'Status',
-      'Ruolo',
-      'Grant Globale',
-      'Grant di progetto',
-      'Utente',
-      'Utente negato',
-      'Gruppo',
-      'Gruppo negato'
-    ];
+    const executorPerms = (impact.executorPermissions || [])
+      .filter(p => p.hasAssignments)
+      .map(perm => ({
+        permissionId: perm.permissionId,
+        permissionType: perm.permissionType || 'N/A',
+        itemTypeSetName: perm.itemTypeSetName || 'N/A',
+        statusName: null,
+        fieldName: null,
+        fromStatusName: perm.fromStatusName || null,
+        toStatusName: perm.toStatusName || null,
+        transitionName: perm.transitionName || null,
+        assignedRoles: perm.assignedRoles || [],
+        grantId: perm.grantId,
+        roleId: perm.roleId,
+        projectGrants: perm.projectGrants,
+        canBePreserved: perm.canBePreserved
+      }));
 
-    const rows: string[] = [header.map(escapeCSV).join(',')];
-    const allPermissions = [
-      ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments)
-    ];
+    const allPermissions = [...statusOwnerPerms, ...executorPerms];
 
-    for (const perm of allPermissions) {
-      const isSelected = perm.permissionId != null && preservedPermissionIds.has(perm.permissionId);
-      const action = isSelected && (perm.canBePreserved ?? false) ? 'Mantenuta' : 'Rimossa';
-      
-      const permissionName = perm.permissionType || 'N/A';
-      const itemTypeSetName = escapeCSV(perm.itemTypeSetName || 'N/A');
-      const statusName = escapeCSV(perm.statusName || '');
+    // Funzioni per estrarre i nomi (specifiche per Status report)
+    const getFieldName = () => ''; // Status owners e executors non hanno field
+    const getStatusName = (perm: PermissionData) => escapeCSV(perm.statusName || '');
+    // La formattazione viene gestita automaticamente dalla utility usando fromStatusName/toStatusName/transitionName
+    const getTransitionName = () => '';
 
-      if (perm.assignedRoles && perm.assignedRoles.length > 0) {
-        perm.assignedRoles.forEach((roleName: string) => {
-          rows.push([
-            escapeCSV(permissionName),
-            itemTypeSetName,
-            action,
-            statusName,
-            escapeCSV(roleName),
-            'No',
-            '',
-            '',
-            '',
-            '',
-            ''
-          ].join(','));
-        });
-      }
-
-      if (perm.grantId && perm.roleId) {
-        try {
-          const grantResponse = await api.get(`/itemtypeset-roles/${perm.roleId}/grant-details`);
-          const grantDetails = grantResponse.data;
-
-          if ((!grantDetails.users || grantDetails.users.length === 0) &&
-              (!grantDetails.groups || grantDetails.groups.length === 0) &&
-              (!grantDetails.negatedUsers || grantDetails.negatedUsers.length === 0) &&
-              (!grantDetails.negatedGroups || grantDetails.negatedGroups.length === 0)) {
-            rows.push([
-              escapeCSV(permissionName),
-              itemTypeSetName,
-              action,
-              statusName,
-              '',
-              'Yes',
-              '',
-              '',
-              '',
-              '',
-              ''
-            ].join(','));
-          } else {
-            if (grantDetails.users && grantDetails.users.length > 0) {
-              grantDetails.users.forEach((user: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  escapeCSV(user.username || user.email || `User #${user.id}`),
-                  '',
-                  '',
-                  ''
-                ].join(','));
-              });
-            }
-
-            if (grantDetails.groups && grantDetails.groups.length > 0) {
-              grantDetails.groups.forEach((group: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  '',
-                  escapeCSV(group.name || `Group #${group.id}`),
-                  ''
-                ].join(','));
-              });
-            }
-
-            if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
-              grantDetails.negatedUsers.forEach((user: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  escapeCSV(user.username || user.email || `User #${user.id}`),
-                  '',
-                  ''
-                ].join(','));
-              });
-            }
-
-            if (grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0) {
-              grantDetails.negatedGroups.forEach((group: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  '',
-                  '',
-                  escapeCSV(group.name || `Group #${group.id}`)
-                ].join(','));
-              });
-            }
-          }
-        } catch (error) {
-          rows.push([
-            escapeCSV(permissionName),
-            itemTypeSetName,
-            action,
-            statusName,
-            '',
-            'Yes',
-            '',
-            '',
-            '',
-            '',
-            ''
-          ].join(','));
-        }
-      }
-
-      if (perm.projectGrants && perm.projectGrants.length > 0) {
-        for (const projectGrant of perm.projectGrants) {
-          try {
-            const projectGrantResponse = await api.get(
-              `/project-itemtypeset-role-grants/project/${projectGrant.projectId}/role/${projectGrant.roleId}`
-            );
-            const projectGrantDetails = projectGrantResponse.data;
-            const projectName = escapeCSV(projectGrant.projectName);
-
-            if ((!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
-                (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
-                (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
-                (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
-              rows.push([
-                escapeCSV(permissionName),
-                itemTypeSetName,
-                action,
-                statusName,
-                '',
-                'No',
-                projectName,
-                '',
-                '',
-                '',
-                ''
-              ].join(','));
-            } else {
-              if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
-                projectGrantDetails.users.forEach((user: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    escapeCSV(user.username || user.email || `User #${user.id}`),
-                    '',
-                    '',
-                    ''
-                  ].join(','));
-                });
-              }
-
-              if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
-                projectGrantDetails.groups.forEach((group: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    '',
-                    escapeCSV(group.name || `Group #${group.id}`),
-                    ''
-                  ].join(','));
-                });
-              }
-
-              if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
-                projectGrantDetails.negatedUsers.forEach((user: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    escapeCSV(user.username || user.email || `User #${user.id}`),
-                    '',
-                    ''
-                  ].join(','));
-                });
-              }
-
-              if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
-                projectGrantDetails.negatedGroups.forEach((group: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    '',
-                    '',
-                    escapeCSV(group.name || `Group #${group.id}`)
-                  ].join(','));
-                });
-              }
-            }
-          } catch (error) {
-            rows.push([
-              escapeCSV(permissionName),
-              itemTypeSetName,
-              action,
-              statusName,
-              '',
-              'No',
-              escapeCSV(projectGrant.projectName),
-              '',
-              '',
-              '',
-              ''
-            ].join(','));
-          }
-        }
-      }
-
-      if ((!perm.assignedRoles || perm.assignedRoles.length === 0) &&
-          !perm.grantId &&
-          (!perm.projectGrants || perm.projectGrants.length === 0)) {
-        rows.push([
-          escapeCSV(permissionName),
-          itemTypeSetName,
-          action,
-          statusName,
-          '',
-          'No',
-          '',
-          '',
-          '',
-          '',
-          ''
-        ].join(','));
-      }
-    }
-    
-    const csvContent = rows.join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `status_impact_report_${impact.workflowId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    // Usa la utility unificata
+    await exportImpactReportToCSV({
+      permissions: allPermissions,
+      preservedPermissionIds,
+      getFieldName,
+      getStatusName,
+      getTransitionName,
+      fileName: `status_impact_report_${impact.workflowId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`
+    });
   };
 
   return (
@@ -543,12 +297,24 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                           {perm.itemTypeSetName || 'N/A'}
                         </td>
                         <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                          {canPreserve && perm.matchingStatusName ? (
-                            <span style={{ color: '#059669', fontSize: '0.875rem' }}>
-                              ✓ {perm.matchingStatusName}
-                            </span>
+                          {perm.permissionType === 'EXECUTORS' ? (
+                            // Per executor permissions, mostra matching transition se disponibile
+                            canPreserve && perm.matchingTransitionName ? (
+                              <span style={{ color: '#059669', fontSize: '0.875rem' }}>
+                                ✓ {perm.matchingTransitionName}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>✗ Rimosso</span>
+                            )
                           ) : (
-                            <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>✗ Rimosso</span>
+                            // Per status owner permissions, mostra matching status se disponibile
+                            canPreserve && perm.matchingStatusName ? (
+                              <span style={{ color: '#059669', fontSize: '0.875rem' }}>
+                                ✓ {perm.matchingStatusName}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>✗ Rimosso</span>
+                            )
                           )}
                         </td>
                         <td style={{ padding: '10px 12px', color: '#4b5563' }}>
@@ -993,4 +759,5 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
     </div>
   );
 };
+
 

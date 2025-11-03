@@ -150,6 +150,7 @@ export default function WorkflowEdit() {
   const [removedStatusIds, setRemovedStatusIds] = useState<number[]>([]);
   const [removedNodes, setRemovedNodes] = useState<any[]>([]);
   const [removedEdges, setRemovedEdges] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -227,6 +228,8 @@ export default function WorkflowEdit() {
 
   const onRemoveNode = useCallback(
     (nodeId: string) => {
+      // IMPORTANTE: Questa funzione rimuove solo visivamente il nodo e traccia l'ID per il salvataggio
+      // NON chiama mai analyzeStatusRemovalImpact - quello viene fatto solo da handleSave
       
       // Se il nodo ha un workflowStatusId (è uno Status esistente), marcalo per rimozione
       const node = nodes.find(n => n.id === nodeId);
@@ -255,6 +258,9 @@ export default function WorkflowEdit() {
 
   const onDeleteEdge = useCallback(
     (edgeId: string) => {
+      // IMPORTANTE: Questa funzione rimuove solo visivamente l'edge e traccia l'ID per il salvataggio
+      // NON chiama mai analyzeTransitionRemovalImpact - quello viene fatto solo da handleSave
+      
       const edge = edges.find(e => e.id === edgeId);
       if (!edge) return;
       
@@ -463,20 +469,10 @@ export default function WorkflowEdit() {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       navigate(-1);
-        } catch (err: any) {
-          console.error("Errore salvataggio workflow", err);
-          
-          // Se l'errore è TRANSITION_REMOVAL_IMPACT, analizza gli impatti
-          if (err.response?.data?.message?.includes("TRANSITION_REMOVAL_IMPACT")) {
-            await analyzeTransitionRemovalImpact(removedTransitionIds);
-          } else if (err.response?.data?.message?.includes("STATUS_REMOVAL_IMPACT")) {
-            // Se l'errore è STATUS_REMOVAL_IMPACT, analizza gli impatti
-            // Usa removedStatusIds se disponibile, altrimenti usa array vuoto
-            const statusIdsToAnalyze = removedStatusIds.length > 0 ? removedStatusIds : [];
-            await analyzeStatusRemovalImpact(statusIdsToAnalyze);
-          } else {
-          }
-        } finally {
+    } catch (err: any) {
+      console.error("Errore salvataggio workflow", err);
+      setError(err.response?.data?.message || "Errore durante il salvataggio del workflow");
+    } finally {
       setSaving(false);
     }
   };
@@ -642,91 +638,90 @@ export default function WorkflowEdit() {
     }
   };
 
-        const analyzeStatusRemovalImpact = async (statusIds: number[]) => {
-          setAnalyzingStatusImpact(true);
-          
-          try {
-            // Costruisci il DTO per l'analisi degli impatti
-            const workflowNodes = nodes.map((n: any) => ({
-              id: n.data.id ?? null,
-              statusId: n.data.statusId,
-              positionX: n.position.x,
-              positionY: n.position.y,
-            }));
+  const analyzeStatusRemovalImpact = async (statusIds: number[]) => {
+    setAnalyzingStatusImpact(true);
+    
+    try {
+      // Costruisci il DTO per l'analisi degli impatti
+      const workflowNodes = nodes.map((n: any) => ({
+        id: n.data.id ?? null,
+        statusId: n.data.statusId,
+        positionX: n.position.x,
+        positionY: n.position.y,
+      }));
 
-            const workflowEdges = edges.map((e: any) => ({
-              id: e.id?.startsWith("edge-") ? null : Number.parseInt(e.id),
-              transitionId: e.data?.transitionId ?? null,
-              transitionTempId: e.data?.transitionTempId ?? null,
-              sourceId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || Number.parseInt(e.source),
-              targetId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || Number.parseInt(e.target),
-              sourcePosition: e.sourceHandle || null,
-              targetPosition: e.targetHandle || null,
-            }));
+      const workflowEdges = edges.map((e: any) => ({
+        id: e.id?.startsWith("edge-") ? null : Number.parseInt(e.id),
+        transitionId: e.data?.transitionId ?? null,
+        transitionTempId: e.data?.transitionTempId ?? null,
+        sourceId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || Number.parseInt(e.source),
+        targetId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || Number.parseInt(e.target),
+        sourcePosition: e.sourceHandle || null,
+        targetPosition: e.targetHandle || null,
+      }));
 
-            const transitionMap = new Map<string, any>();
-            for (const e of edges as any[]) {
-              const key =
-                e.data?.transitionId ?? e.data?.transitionTempId ?? `${e.source}-${e.target}-${e.data?.label || ""}`;
-              if (!transitionMap.has(key)) {
-                transitionMap.set(key, {
-                  id: e.data?.transitionId ?? null,
-                  tempId: e.data?.transitionTempId ?? null,
-                  name: e.data?.label || "",
-                  fromStatusId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || Number.parseInt(e.source),
-                  toStatusId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || Number.parseInt(e.target),
-                });
-              }
-            }
-            const transitions = Array.from(transitionMap.values());
+      const transitionMap = new Map<string, any>();
+      for (const e of edges as any[]) {
+        const key =
+          e.data?.transitionId ?? e.data?.transitionTempId ?? `${e.source}-${e.target}-${e.data?.label || ""}`;
+        if (!transitionMap.has(key)) {
+          transitionMap.set(key, {
+            id: e.data?.transitionId ?? null,
+            tempId: e.data?.transitionTempId ?? null,
+            name: e.data?.label || "",
+            fromStatusId: (nodes as any[]).find((n: any) => n.id === e.source)?.data.statusId || Number.parseInt(e.source),
+            toStatusId: (nodes as any[]).find((n: any) => n.id === e.target)?.data.statusId || Number.parseInt(e.target),
+          });
+        }
+      }
+      const transitions = Array.from(transitionMap.values());
 
-            // Per l'analisi degli impatti Status, costruiamo i workflowStatuses
-            // basandoci sui nodi attualmente visibili (che escludono quelli rimossi)
-            const workflowStatuses = buildWorkflowStatusesFromFlow(nodes, edges);
+      // Per l'analisi degli impatti Status, costruiamo i workflowStatuses
+      // basandoci sui nodi attualmente visibili (che escludono quelli rimossi)
+      const workflowStatuses = buildWorkflowStatusesFromFlow(nodes, edges);
 
-            const initial = (nodes as any[]).find((n: any) => n.data.isInitial);
-            const dto: WorkflowUpdateDto = {
-              id: Number.parseInt(id!),
-              name: workflowName,
-              initialStatusId: initial ? initial.data.statusId : null,
-              workflowNodes,
-              workflowEdges,
-              workflowStatuses,
-              transitions,
-            };
+      const initial = (nodes as any[]).find((n: any) => n.data.isInitial);
+      const dto: WorkflowUpdateDto = {
+        id: Number.parseInt(id!),
+        name: workflowName,
+        initialStatusId: initial ? initial.data.statusId : null,
+        workflowNodes,
+        workflowEdges,
+        workflowStatuses,
+        transitions,
+      };
 
-            // Prima analizza gli impatti con POST
-            const response = await api.post(`/workflows/${id}/analyze-status-removal-impact`, dto, {
-              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-            });
-            
-            const impact = response.data;
-            
-            // Verifica se ci sono permission con assegnazioni
-            const hasPopulatedPermissions = 
-              impact.statusOwnerPermissions?.some(p => p.hasAssignments) || false;
-            
-            if (hasPopulatedPermissions) {
-              setStatusImpactReport(impact);
-              setShowStatusImpactReport(true);
-              // Store the save function to be called after confirmation
-              setPendingStatusSave(() => () => performConfirmStatusSave());
-            } else {
-              // Se non ci sono assegnazioni, procedi direttamente con il salvataggio
-              await performConfirmStatusSave();
-              setToast({ 
-                message: 'Workflow aggiornato con successo. Nessun impatto rilevato sulle permission Status Owner.', 
-                type: 'success' 
-              });
-            }
-          } catch (err: any) {
-            console.error("❌ Errore durante l'analisi degli impatti status", err);
-            // Se non ci sono impatti, procedi direttamente con la rimozione
-            await performSave();
-          } finally {
-            setAnalyzingStatusImpact(false);
-          }
-        };
+      // Prima analizza gli impatti con POST
+      const response = await api.post(`/workflows/${id}/analyze-status-removal-impact`, dto, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      
+      const impact = response.data;
+      
+      // Verifica se ci sono permission con assegnazioni
+      const hasPopulatedPermissions = 
+        impact.statusOwnerPermissions?.some(p => p.hasAssignments) || false;
+      
+      if (hasPopulatedPermissions) {
+        setStatusImpactReport(impact);
+        setShowStatusImpactReport(true);
+        // Store the save function to be called after confirmation
+        setPendingStatusSave(() => () => performConfirmStatusSave());
+      } else {
+        // Se non ci sono assegnazioni, procedi direttamente con il salvataggio
+        await performConfirmStatusSave();
+        setToast({ 
+          message: 'Workflow aggiornato con successo. Nessun impatto rilevato sulle permission Status Owner.', 
+          type: 'success' 
+        });
+      }
+    } catch (err: any) {
+      console.error("❌ Errore durante l'analisi degli impatti status", err);
+      setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
+    } finally {
+      setAnalyzingStatusImpact(false);
+    }
+  };
 
   const handleConfirmSave = async (preservedPermissionIds?: number[]) => {
     setShowImpactReport(false);

@@ -53,14 +53,13 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [migrationImpacts, setMigrationImpacts] = useState<ItemTypeConfigurationMigrationImpactDto[]>([]);
   const [migrationLoading, setMigrationLoading] = useState(false);
-  const [pendingSave, setPendingSave] = useState(false);
   
-  // State per il modal di rimozione impatto
+  // State per il modal di rimozione impatto (ora solo al salvataggio)
   const [showRemovalImpactModal, setShowRemovalImpactModal] = useState(false);
   const [removalImpact, setRemovalImpact] = useState<ItemTypeConfigurationRemovalImpactDto | null>(null);
   const [removalImpactLoading, setRemovalImpactLoading] = useState(false);
-  const [pendingRemoval, setPendingRemoval] = useState<{ index: number; configId: number | undefined } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
+  const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
   
   // Store delle configurazioni originali per il confronto
   const originalConfigurationsRef = useRef<ItemTypeConfigurationDto[]>([]);
@@ -171,6 +170,12 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     try {
       setMigrationLoading(true);
       
+      // Identifica le configurazioni rimosse
+      const removedConfigIds = originalConfigurationsRef.current
+        .map(c => c.id)
+        .filter((id): id is number => id !== undefined && id !== null)
+        .filter(id => !itemTypeConfigurations.some(c => c.id === id));
+      
       // Applica la migrazione per ogni configurazione
       // IMPORTANTE: preservePermissionIds può essere un array vuoto [] se l'utente ha deselezionato tutto
       for (const [configId, preservePermissionIds] of preservePermissionIdsMap) {
@@ -204,12 +209,15 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       // Aggiorna le originali con le nuove versioni
       originalConfigurationsRef.current = [...itemTypeConfigurations];
       
-      // Procedi con il salvataggio
-      await performSave();
+      // Se ci sono configurazioni rimosse, rimuovi le permission orfane
+      if (removedConfigIds.length > 0) {
+        await performSaveWithRemoval(removedConfigIds, undefined);
+      } else {
+        await performSave();
+      }
       
       setShowMigrationModal(false);
       setMigrationImpacts([]);
-      setPendingSave(false);
     } catch (err: any) {
       console.error("Errore nell'applicazione della migrazione:", err);
       setError(err.response?.data?.message || "Errore nell'applicazione della migrazione");
@@ -221,46 +229,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   const handleMigrationCancel = () => {
     setShowMigrationModal(false);
     setMigrationImpacts([]);
-    setPendingSave(false);
-  };
-  
-  // Gestisce l'export CSV del report di migrazione
-  const handleExportMigrationCsv = async () => {
-    if (migrationImpacts.length === 0) return;
-    
-    try {
-      // Esporta il CSV per la prima configurazione (o tutte se necessario)
-      // Per semplicità, esportiamo il primo. In futuro si può fare un export aggregato
-      const firstImpact = migrationImpacts[0];
-      
-      const response = await api.get(
-        `/item-type-configurations/${firstImpact.itemTypeConfigurationId}/export-migration-impact-csv`,
-        {
-          params: {
-            newFieldSetId: firstImpact.newFieldSet?.fieldSetId || undefined,
-            newWorkflowId: firstImpact.newWorkflow?.workflowId || undefined,
-          },
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
-        }
-      );
-      
-      // Crea un blob URL e scarica il file
-      const blob = new Blob([response.data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      link.download = `itemtypeconfiguration_migration_${firstImpact.itemTypeConfigurationId}_${timestamp}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error("Errore nell'export CSV:", err);
-      setError(err.response?.data?.message || "Errore nell'export CSV");
-    }
   };
   
   // Esegue il salvataggio effettivo
@@ -318,7 +286,9 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     setSelectedWorkflowId("");
   };
 
-  const handleRemoveEntry = async (index: number) => {
+  const handleRemoveEntry = (index: number) => {
+    // Rimuove solo visivamente la configurazione (rimozione "fittizia")
+    // L'analisi dell'impatto avverrà solo al salvataggio, come in FieldSet e Workflow
     const configToRemove = itemTypeConfigurations[index];
     
     // Verifica che non sia l'ultima configurazione
@@ -327,28 +297,90 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       return;
     }
     
-    // Se la configurazione non ha ID (è nuova, non ancora salvata), rimuovila direttamente (solo se non è l'ultima)
-    if (!configToRemove.id) {
-      if (itemTypeConfigurations.length <= 1) {
-        setError("Non è possibile rimuovere l'ultima ItemTypeConfiguration. Un ItemTypeSet deve avere almeno una configurazione.");
+    // Rimuovi visivamente la configurazione
+    setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== index));
+  };
+  
+  const handleRemovalImpactConfirm = async (preservedPermissionIds?: number[]) => {
+    if (pendingSave) {
+      await pendingSave(preservedPermissionIds);
+    }
+    setShowRemovalImpactModal(false);
+    setRemovalImpact(null);
+    setPendingSave(null);
+  };
+  
+  const handleRemovalImpactCancel = () => {
+    setShowRemovalImpactModal(false);
+    setRemovalImpact(null);
+    setPendingSave(null);
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!id) return;
+    
+    setSaving(true);
+    setError(null);
+
+    try {
+      // Identifica le configurazioni rimosse (quelle originali che non sono più presenti)
+      const originalConfigIds = originalConfigurationsRef.current
+        .map(c => c.id)
+        .filter((id): id is number => id !== undefined && id !== null);
+      
+      const currentConfigIds = itemTypeConfigurations
+        .map(c => c.id)
+        .filter((id): id is number => id !== undefined && id !== null);
+      
+      const removedConfigIds = originalConfigIds.filter(id => !currentConfigIds.includes(id));
+      
+      // Verifica che non sia l'ultima configurazione
+      if (itemTypeConfigurations.length === 0) {
+        setError("Un ItemTypeSet deve avere almeno una configurazione.");
+        setSaving(false);
         return;
       }
-      setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== index));
-      return;
+      
+      // Identifica le configurazioni con cambiamenti di FieldSet/Workflow
+      const configurationsWithChanges = getConfigurationsWithChanges();
+      
+      // Se ci sono configurazioni rimosse, analizza l'impatto della rimozione
+      if (removedConfigIds.length > 0) {
+        await analyzeRemovalImpact(removedConfigIds, configurationsWithChanges);
+        return; // L'analisi imposterà pendingSave e mostrerà il modal se necessario
+      }
+      
+      // Se ci sono cambiamenti di FieldSet/Workflow, analizza la migrazione
+      if (configurationsWithChanges.length > 0) {
+        await analyzeMigrationImpact(configurationsWithChanges);
+        return; // L'analisi mostrerà il modal se necessario
+      }
+      
+      // Nessuna modifica che richieda analisi, salva direttamente
+      await performSave();
+      setSaving(false);
+    } catch (err: any) {
+      console.error("Errore durante l'aggiornamento", err);
+      setError(err.response?.data?.message || "Errore durante l'aggiornamento");
+      setSaving(false);
     }
+  };
+  
+  const analyzeRemovalImpact = async (removedConfigIds: number[], configurationsWithChanges: Array<{ config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number }>) => {
+    setRemovalImpactLoading(true);
+    setError(null);
     
-    // Analizza l'impatto prima di rimuovere
     try {
-      setRemovalImpactLoading(true);
       const response = await api.post(
         `/item-type-sets/${id}/analyze-itemtypeconfiguration-removal-impact`,
-        [configToRemove.id], // Passa come array per JSON serialization
+        removedConfigIds,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       
-      const impact = response.data;
+      const impact: ItemTypeConfigurationRemovalImpactDto = response.data;
       
       // Verifica se ci sono permission con assegnazioni
       const hasPopulatedPermissions = 
@@ -360,69 +392,41 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       
       if (hasPopulatedPermissions) {
         setRemovalImpact(impact);
-        setPendingRemoval({ index, configId: configToRemove.id });
+        setPendingSave(() => async (preservedPermissionIds?: number[]) => {
+          // Se ci sono anche migrazioni, gestiscile prima del salvataggio finale
+          if (configurationsWithChanges.length > 0) {
+            await handleMigrationsThenSave(preservedPermissionIds);
+          } else {
+            await performSaveWithRemoval(removedConfigIds, preservedPermissionIds);
+          }
+        });
         setShowRemovalImpactModal(true);
       } else {
-        // Se non ci sono assegnazioni, rimuovi direttamente e mostra toast
-        setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== index));
-        setToast({ 
-          message: 'ItemTypeConfiguration rimossa con successo. Nessun impatto rilevato sulle permission.', 
-          type: 'success' 
-        });
+        // Se non ci sono assegnazioni per le rimozioni, controlla se ci sono migrazioni
+        if (configurationsWithChanges.length > 0) {
+          await analyzeMigrationImpact(configurationsWithChanges);
+        } else {
+          await performSaveWithRemoval(removedConfigIds, undefined);
+          setToast({ 
+            message: 'ItemTypeSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 
+            type: 'success' 
+          });
+        }
       }
     } catch (err: any) {
-      console.error("Errore nell'analisi dell'impatto:", err);
+      console.error("Errore nell'analisi dell'impatto della rimozione:", err);
       setError(err.response?.data?.message || "Errore nell'analisi dell'impatto della rimozione");
     } finally {
       setRemovalImpactLoading(false);
+      setSaving(false);
     }
   };
   
-  const handleRemovalImpactConfirm = async (preservedPermissionIds?: number[]) => {
-    // Verifica che non sia l'ultima configurazione prima di rimuovere
-    if (itemTypeConfigurations.length <= 1) {
-      setError("Non è possibile rimuovere l'ultima ItemTypeConfiguration. Un ItemTypeSet deve avere almeno una configurazione.");
-      setShowRemovalImpactModal(false);
-      setRemovalImpact(null);
-      setPendingRemoval(null);
-      return;
-    }
-    
-    // Se ci sono permission preservate, chiama il backend per gestirle
-    // Per ora rimuoviamo semplicemente la configurazione
-    // TODO: In futuro potrebbe essere necessario passare preservedPermissionIds al backend
-    if (pendingRemoval) {
-      setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== pendingRemoval.index));
-      setPendingRemoval(null);
-    }
-    setShowRemovalImpactModal(false);
-    setRemovalImpact(null);
-  };
-  
-  const handleRemovalImpactCancel = () => {
-    setShowRemovalImpactModal(false);
-    setRemovalImpact(null);
-    setPendingRemoval(null);
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSaving(true);
+  const analyzeMigrationImpact = async (configurationsWithChanges: Array<{ config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number }>) => {
+    setMigrationLoading(true);
     setError(null);
-
+    
     try {
-      // Identifica le configurazioni con cambiamenti
-      const configurationsWithChanges = getConfigurationsWithChanges();
-      
-      if (configurationsWithChanges.length === 0) {
-        // Nessun cambiamento di FieldSet/Workflow, salva direttamente
-        await performSave();
-        setSaving(false);
-        return;
-      }
-      
-      // Analizza l'impatto per tutte le configurazioni modificate
-      setMigrationLoading(true);
       const impacts: ItemTypeConfigurationMigrationImpactDto[] = [];
       
       for (const { config } of configurationsWithChanges) {
@@ -448,15 +452,51 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       }
       
       setMigrationImpacts(impacts);
-      setPendingSave(true);
       setShowMigrationModal(true);
       setSaving(false);
-      setMigrationLoading(false);
     } catch (err: any) {
-      console.error("Errore durante l'aggiornamento", err);
-      setError(err.response?.data?.message || "Errore durante l'aggiornamento");
+      console.error("Errore durante l'analisi della migrazione", err);
+      setError(err.response?.data?.message || "Errore durante l'analisi della migrazione");
       setSaving(false);
+    } finally {
+      setMigrationLoading(false);
     }
+  };
+  
+  const handleMigrationsThenSave = async (preservedRemovalPermissionIds?: number[]) => {
+    // Prima gestisci le migrazioni, poi il salvataggio finale con rimozioni
+    const removedConfigIds = originalConfigurationsRef.current
+      .map(c => c.id)
+      .filter((id): id is number => id !== undefined && id !== null)
+      .filter(id => !itemTypeConfigurations.some(c => c.id === id));
+    
+    // Le migrazioni vengono gestite nel handleMigrationConfirm, che chiama performSave
+    // Ma dobbiamo anche gestire le rimozioni
+    // TODO: Integrare meglio questa logica
+    await performSaveWithRemoval(removedConfigIds, preservedRemovalPermissionIds);
+  };
+  
+  const performSaveWithRemoval = async (removedConfigIds: number[], preservedPermissionIds?: number[]) => {
+    if (removedConfigIds.length > 0) {
+      // Chiama il backend per rimuovere le permission orfane (tranne quelle preservate)
+      try {
+        await api.post(
+          `/item-type-sets/${id}/remove-itemtypeconfiguration-permissions`,
+          {
+            removedItemTypeConfigurationIds: removedConfigIds,
+            preservedPermissionIds: preservedPermissionIds ? Array.from(preservedPermissionIds) : []
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } catch (err: any) {
+        console.error("Errore nella rimozione delle permission:", err);
+        // Continua comunque con il salvataggio
+      }
+    }
+    
+    await performSave();
   };
 
   const handleCancel = () => {
@@ -685,7 +725,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         isOpen={showMigrationModal}
         onClose={handleMigrationCancel}
         onConfirm={handleMigrationConfirm}
-        onExport={handleExportMigrationCsv}
         impacts={migrationImpacts}
         loading={migrationLoading}
       />

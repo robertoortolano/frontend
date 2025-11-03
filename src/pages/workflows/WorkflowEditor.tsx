@@ -28,6 +28,7 @@ import SelectableEdge from './components/SelectableEdge';
 import board from '../../styles/common/WorkflowBoard.module.css';
 
 // Memoized node and edge types to prevent React Flow warnings
+// Defined outside component to prevent recreation on every render
 const nodeTypes: NodeTypes = {
   customNode: CustomNode,
 };
@@ -86,7 +87,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     },
   });
 
-  const { state, actions, reactFlowNodes, reactFlowEdges, onEdgesChange, onNodesChange, loading, error } = workflowEditor;
+  const { state, actions, reactFlowNodes, reactFlowEdges, onEdgesChange, onNodesChange, loading, error, enhancedImpactDto } = workflowEditor;
 
   // Keep localEdges in sync with reactFlowEdges for SelectableEdge component
   // Preserve labels from localEdges when syncing to avoid losing unsaved changes
@@ -115,19 +116,25 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
   }, [reactFlowEdges]);
 
   // Create edge types with proper handlers - must be before conditional returns
+  // Memoize callbacks per evitare che cambino ad ogni render e causino warning React Flow
+  // Estrai actions una volta per evitare dipendenze instabili
+  const { removeEdge, updateEdge } = actions;
+  
   const handleDeleteEdge = useCallback((edgeId: string) => {
     // Call the remove edge action from the hook
-    actions.removeEdge(edgeId);
-  }, [actions]);
+    removeEdge(edgeId);
+  }, [removeEdge]);
 
   const handleUpdateLabel = useCallback((edgeId: string, label: string) => {
     // Update the edge label in the unified state
-    actions.updateEdge(edgeId, { transitionName: label });
-  }, [actions]);
+    updateEdge(edgeId, { transitionName: label });
+  }, [updateEdge]);
 
+  // Memoize edgeTypes to prevent React Flow warnings
+  // setLocalEdges is stable (from useState), so it's safe to include
   const edgeTypesWithHandlers: EdgeTypes = useMemo(() => ({
     selectableEdge: createSelectableEdgeWrapper(handleDeleteEdge, handleUpdateLabel, setLocalEdges),
-  }), [handleDeleteEdge, handleUpdateLabel]);
+  }), [handleDeleteEdge, handleUpdateLabel, setLocalEdges]);
 
   // Handle node addition
   const handleAddNode = useCallback((statusId: number, position: { x: number; y: number }) => {
@@ -291,64 +298,6 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     actions.cancelRemoval();
   }, [actions]);
 
-  // Handle CSV export
-  const handleExportReport = useCallback(() => {
-    if (!workflowEditor.impactReport) return;
-
-    try {
-      // Create CSV content
-      const csvContent = generateCSVContent(workflowEditor.impactReport);
-      
-      // Download CSV
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `workflow_impact_${workflowEditor.impactReport.type}_${Date.now()}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error('Error exporting report:', err);
-      // TODO: Show error message to user
-    }
-  }, [workflowEditor.impactReport]);
-
-  // Generate CSV content for impact report
-  const generateCSVContent = (report: any) => {
-    const headers = [
-      'Workflow',
-      'Tipo Rimozione',
-      'Item Rimosso',
-      'ItemTypeSet',
-      'Progetto',
-      'Permission Type',
-      'Ruoli Assegnati',
-      'Ha Assegnazioni'
-    ];
-
-    const rows = [headers.join(',')];
-
-    report.permissions.forEach((permission: any) => {
-      permission.items.forEach((item: any) => {
-        const row = [
-          report.workflowName,
-          report.type,
-          item.itemName,
-          item.itemTypeSetName,
-          item.projectName || 'N/A',
-          permission.type,
-          item.assignedRoles.join(';'),
-          item.hasAssignments ? 'Sì' : 'No'
-        ].map(field => `"${field}"`).join(',');
-        
-        rows.push(row);
-      });
-    });
-
-    return rows.join('\n');
-  };
 
   // Loading state
   if (loading) {
@@ -417,7 +366,6 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
         workflowEditor={workflowEditor}
         onConfirmRemoval={handleConfirmRemoval}
         onCancelRemoval={handleCancelRemoval}
-        onExportReport={handleExportReport}
       />
     </div>
   );

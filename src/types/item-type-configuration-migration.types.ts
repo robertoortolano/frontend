@@ -94,8 +94,26 @@ export interface SelectablePermissionImpact {
   projectId: number | null;
   projectName: string | null;
   
+  // Grant information
+  roleId?: number | null;
+  roleName?: string | null;
+  grantId?: number | null;
+  grantName?: string | null;
+  projectGrants?: ProjectGrantInfo[];
+  
+  // Per EXECUTORS: informazioni sulla Transition
+  fromStatusName?: string | null;
+  toStatusName?: string | null;
+  transitionName?: string | null;
+  
   // Suggerimento azione
   suggestedAction: "PRESERVE" | "REMOVE" | "NEW";
+}
+
+export interface ProjectGrantInfo {
+  projectId: number;
+  projectName: string;
+  roleId: number; // ID dell'ItemTypeSetRole associato (per recuperare i dettagli via API)
 }
 
 export interface ItemTypeConfigurationMigrationRequest {

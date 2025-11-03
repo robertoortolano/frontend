@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FieldSetRemovalImpactDto, ProjectGrantInfo } from '../types/fieldset-impact.types';
 import form from '../styles/common/Forms.module.css';
 import api from '../api/api';
+import { exportImpactReportToCSV, escapeCSV, PermissionData } from '../utils/csvExportUtils';
 
 interface FieldSetEnhancedImpactReportModalProps {
   isOpen: boolean;
@@ -222,361 +223,52 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
   const handleExportFullReport = async () => {
     if (!impact) return;
 
-    // Funzione helper per formattare i valori CSV
-    const escapeCSV = (value: any): string => {
-      if (value === null || value === undefined) return '';
-      const str = String(value);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    // Header CSV
-    const header = [
-      'Permission',
-      'Item Type Set',
-      'Azione',
-      'Field',
-      'Status',
-      'Ruolo',
-      'Grant Globale',
-      'Grant di progetto',
-      'Utente',
-      'Utente negato',
-      'Gruppo',
-      'Gruppo negato'
-    ];
-
-    const rows: string[] = [header.map(escapeCSV).join(',')];
-
     // Raccogli tutte le permission con assegnazioni
     const allPermissions = [
       ...(impact.fieldOwnerPermissions || []).filter(p => p.hasAssignments),
       ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments),
       ...(impact.itemTypeSetRoles || []).filter(p => p.hasAssignments)
-    ];
-
-    // Processa ogni permission
-    for (const perm of allPermissions) {
-      const isSelected = perm.permissionId != null && preservedPermissionIds.has(perm.permissionId);
-      const action = isSelected && (perm.canBePreserved ?? false) ? 'Mantenuta' : 'Rimossa';
+    ].map(perm => {
+      // Il backend popola fieldName per FIELD_OWNERS, EDITORS, VIEWERS
+      // Se fieldName non è disponibile, usa fieldConfigurationName come fallback
+      const fieldName = (perm.fieldName && perm.fieldName.trim().length > 0) 
+        ? perm.fieldName 
+        : (perm.fieldConfigurationName && perm.fieldConfigurationName.trim().length > 0)
+          ? perm.fieldConfigurationName
+          : null;
       
-      // Usa solo il nome della permission (permissionType come nome)
-      const permissionName = perm.permissionType || 'N/A';
-      const itemTypeSetName = escapeCSV(perm.itemTypeSetName || 'N/A');
-      const fieldName = escapeCSV(perm.fieldName || perm.fieldConfigurationName || '');
-      const statusName = escapeCSV(perm.statusName || perm.workflowStatusName || '');
+      return {
+        permissionId: perm.permissionId,
+        permissionType: perm.permissionType || 'N/A',
+        itemTypeSetName: perm.itemTypeSetName || 'N/A',
+        fieldName,
+        statusName: perm.statusName || perm.workflowStatusName || null,
+        assignedRoles: perm.assignedRoles || [],
+        grantId: perm.grantId,
+        roleId: perm.roleId,
+        projectGrants: perm.projectGrants,
+        canBePreserved: perm.canBePreserved
+      };
+    });
 
-      // Righe base per ruoli assegnati (senza grant)
-      if (perm.assignedRoles && perm.assignedRoles.length > 0) {
-        perm.assignedRoles.forEach((roleName: string) => {
-          rows.push([
-            escapeCSV(permissionName),
-            itemTypeSetName,
-            action,
-            fieldName,
-            statusName,
-            escapeCSV(roleName),
-            'No',
-            '',
-            '',
-            '',
-            '',
-            ''
-          ].join(','));
-        });
-      }
+    // Funzioni per estrarre i nomi (specifiche per FieldSet report)
+    // Usa fieldName se disponibile e non vuoto, altrimenti usa fallback
+    const getFieldName = (perm: PermissionData) => {
+      const fieldName = perm.fieldName?.trim();
+      return escapeCSV(fieldName && fieldName.length > 0 ? fieldName : '');
+    };
+    const getStatusName = (perm: PermissionData) => escapeCSV(perm.statusName || '');
+    const getTransitionName = () => ''; // FieldSet non ha informazioni sulle transition
 
-      // Grant globale
-      if (perm.grantId && perm.roleId) {
-        try {
-          const grantResponse = await api.get(`/itemtypeset-roles/${perm.roleId}/grant-details`);
-          const grantDetails = grantResponse.data;
-
-          // Riga base senza utenti/gruppi se non ci sono
-          if ((!grantDetails.users || grantDetails.users.length === 0) &&
-              (!grantDetails.groups || grantDetails.groups.length === 0) &&
-              (!grantDetails.negatedUsers || grantDetails.negatedUsers.length === 0) &&
-              (!grantDetails.negatedGroups || grantDetails.negatedGroups.length === 0)) {
-            rows.push([
-              escapeCSV(permissionName),
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              '',
-              'Yes',
-              '',
-              '',
-              '',
-              '',
-              ''
-            ].join(','));
-          } else {
-            // Utenti
-            if (grantDetails.users && grantDetails.users.length > 0) {
-              grantDetails.users.forEach((user: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  escapeCSV(user.username || user.email || `User #${user.id}`),
-                  '',
-                  '',
-                  ''
-                ].join(','));
-              });
-            }
-
-            // Gruppi
-            if (grantDetails.groups && grantDetails.groups.length > 0) {
-              grantDetails.groups.forEach((group: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  '',
-                  escapeCSV(group.name || `Group #${group.id}`),
-                  ''
-                ].join(','));
-              });
-            }
-
-            // Utenti negati
-            if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
-              grantDetails.negatedUsers.forEach((user: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  escapeCSV(user.username || user.email || `User #${user.id}`),
-                  '',
-                  ''
-                ].join(','));
-              });
-            }
-
-            // Gruppi negati
-            if (grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0) {
-              grantDetails.negatedGroups.forEach((group: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  '',
-                  '',
-                  escapeCSV(group.name || `Group #${group.id}`)
-                ].join(','));
-              });
-            }
-          }
-        } catch (error) {
-          // Aggiungi comunque una riga con grant globale ma senza dettagli
-          rows.push([
-            escapeCSV(permissionName),
-            itemTypeSetName,
-            action,
-            fieldName,
-            statusName,
-            '',
-            'Yes',
-            '',
-            '',
-            '',
-            '',
-            ''
-          ].join(','));
-        }
-      }
-
-      // Grant di progetto
-      if (perm.projectGrants && perm.projectGrants.length > 0) {
-        for (const projectGrant of perm.projectGrants) {
-          try {
-            const projectGrantResponse = await api.get(
-              `/project-itemtypeset-role-grants/project/${projectGrant.projectId}/role/${projectGrant.roleId}`
-            );
-            const projectGrantDetails = projectGrantResponse.data;
-            const projectName = escapeCSV(projectGrant.projectName);
-
-            // Riga base senza utenti/gruppi se non ci sono
-            if ((!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
-                (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
-                (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
-                (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
-              rows.push([
-                escapeCSV(permissionName),
-                itemTypeSetName,
-                action,
-                fieldName,
-                statusName,
-                '',
-                'No',
-                projectName,
-                '',
-                '',
-                '',
-                ''
-              ].join(','));
-            } else {
-              // Utenti
-              if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
-                projectGrantDetails.users.forEach((user: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    escapeCSV(user.username || user.email || `User #${user.id}`),
-                    '',
-                    '',
-                    ''
-                  ].join(','));
-                });
-              }
-
-              // Gruppi
-              if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
-                projectGrantDetails.groups.forEach((group: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    '',
-                    escapeCSV(group.name || `Group #${group.id}`),
-                    ''
-                  ].join(','));
-                });
-              }
-
-              // Utenti negati
-              if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
-                projectGrantDetails.negatedUsers.forEach((user: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    escapeCSV(user.username || user.email || `User #${user.id}`),
-                    '',
-                    ''
-                  ].join(','));
-                });
-              }
-
-              // Gruppi negati
-              if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
-                projectGrantDetails.negatedGroups.forEach((group: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    '',
-                    '',
-                    escapeCSV(group.name || `Group #${group.id}`)
-                  ].join(','));
-                });
-              }
-            }
-          } catch (error) {
-            // Aggiungi comunque una riga con grant di progetto ma senza dettagli
-            rows.push([
-              escapeCSV(permissionName),
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              '',
-              'No',
-              escapeCSV(projectGrant.projectName),
-              '',
-              '',
-              '',
-              ''
-            ].join(','));
-          }
-        }
-      }
-
-      // Se non ci sono né ruoli né grant, aggiungi almeno una riga base
-      if ((!perm.assignedRoles || perm.assignedRoles.length === 0) &&
-          !perm.grantId &&
-          (!perm.projectGrants || perm.projectGrants.length === 0)) {
-        rows.push([
-          escapeCSV(permissionName),
-          itemTypeSetName,
-          action,
-          fieldName,
-          statusName,
-          '',
-          'No',
-          '',
-          '',
-          '',
-          '',
-          ''
-        ].join(','));
-      }
-    }
-    
-    // Converti in CSV
-    const csvContent = rows.join('\n');
-    
-    // Crea e scarica il file
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM per Excel
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `fieldset_impact_report_${impact.fieldSetId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    // Usa la utility unificata
+    await exportImpactReportToCSV({
+      permissions: allPermissions,
+      preservedPermissionIds,
+      getFieldName,
+      getStatusName,
+      getTransitionName,
+      fileName: `fieldset_impact_report_${impact.fieldSetId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`
+    });
   };
 
   return (

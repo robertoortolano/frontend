@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ItemTypeConfigurationRemovalImpactDto, ProjectGrantInfo } from '../types/itemtypeconfiguration-impact.types';
 import form from '../styles/common/Forms.module.css';
 import api from '../api/api';
+import { exportImpactReportToCSV, escapeCSV, PermissionData } from '../utils/csvExportUtils';
 
 interface ItemTypeConfigurationEnhancedImpactReportModalProps {
   isOpen: boolean;
@@ -96,7 +97,12 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
       case 'VIEWERS':
         return `Viewer - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${perm.statusName || perm.workflowStatusName || 'N/A'}`;
       case 'EXECUTORS':
-        return `Executor - ${perm.transitionName || 'N/A'}`;
+        // Formato: Executor - <stato_partenza> -> <stato_arrivo> (<nome_transition>)
+        const fromStatus = perm.fromStatusName || 'N/A';
+        const toStatus = perm.toStatusName || 'N/A';
+        const transitionName = perm.transitionName;
+        const transitionPart = transitionName ? ` (${transitionName})` : '';
+        return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
       case 'ITEMTYPESET_ROLE':
         return perm.roleName || 'ItemTypeSet Role';
       default:
@@ -119,358 +125,47 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
     return (getPermissionName(a)).localeCompare(getPermissionName(b));
   });
 
-  // Funzione per esportare il report completo in CSV (simile a FieldSetEnhancedImpactReportModal)
+  // Funzione per esportare il report completo in CSV
   const handleExportFullReport = async () => {
     if (!impact) return;
 
-    const escapeCSV = (value: any): string => {
-      if (value === null || value === undefined) return '';
-      const str = String(value);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    const header = [
-      'Permission',
-      'Item Type Set',
-      'Azione',
-      'Field',
-      'Status',
-      'Transition',
-      'Ruolo',
-      'Grant Globale',
-      'Grant di progetto',
-      'Utente',
-      'Utente negato',
-      'Gruppo',
-      'Gruppo negato'
-    ];
-
-    const rows: string[] = [header.map(escapeCSV).join(',')];
+    // Raccogli tutte le permission con assegnazioni
     const allPermissions = [
       ...(impact.fieldOwnerPermissions || []).filter(p => p.hasAssignments),
       ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments),
       ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments),
       ...(impact.executorPermissions || []).filter(p => p.hasAssignments),
       ...(impact.itemTypeSetRoles || []).filter(p => p.hasAssignments)
-    ];
+    ].map(perm => ({
+      permissionId: perm.permissionId,
+      permissionType: perm.permissionType || 'N/A',
+      itemTypeSetName: perm.itemTypeSetName || 'N/A',
+      fieldName: perm.fieldName || perm.fieldConfigurationName || null,
+      statusName: perm.statusName || perm.workflowStatusName || null,
+      fromStatusName: perm.fromStatusName || null,
+      toStatusName: perm.toStatusName || null,
+      transitionName: perm.transitionName || null,
+      assignedRoles: perm.assignedRoles || [],
+      grantId: perm.grantId,
+      roleId: perm.roleId,
+      projectGrants: perm.projectGrants,
+      canBePreserved: perm.canBePreserved
+    }));
 
-    for (const perm of allPermissions) {
-      const isSelected = perm.permissionId != null && preservedPermissionIds.has(perm.permissionId);
-      const action = isSelected && (perm.canBePreserved ?? false) ? 'Mantenuta' : 'Rimossa';
-      
-      const permissionName = perm.permissionType || 'N/A';
-      const itemTypeSetName = escapeCSV(perm.itemTypeSetName || 'N/A');
-      const fieldName = escapeCSV(perm.fieldName || perm.fieldConfigurationName || '');
-      const statusName = escapeCSV(perm.statusName || perm.workflowStatusName || '');
-      const transitionName = escapeCSV(perm.transitionName || '');
+    // Funzioni per estrarre i nomi (specifiche per ItemTypeConfiguration report)
+    const getFieldName = (perm: PermissionData) => escapeCSV(perm.fieldName || '');
+    const getStatusName = (perm: PermissionData) => escapeCSV(perm.statusName || '');
+    const getTransitionName = () => ''; // La formattazione viene gestita automaticamente dalla utility usando fromStatusName/toStatusName
 
-      if (perm.assignedRoles && perm.assignedRoles.length > 0) {
-        perm.assignedRoles.forEach((roleName: string) => {
-          rows.push([
-            escapeCSV(permissionName),
-            itemTypeSetName,
-            action,
-            fieldName,
-            statusName,
-            transitionName,
-            escapeCSV(roleName),
-            'No',
-            '',
-            '',
-            '',
-            '',
-            ''
-          ].join(','));
-        });
-      }
-
-      if (perm.grantId && perm.roleId) {
-        try {
-          const grantResponse = await api.get(`/itemtypeset-roles/${perm.roleId}/grant-details`);
-          const grantDetails = grantResponse.data;
-
-          if ((!grantDetails.users || grantDetails.users.length === 0) &&
-              (!grantDetails.groups || grantDetails.groups.length === 0) &&
-              (!grantDetails.negatedUsers || grantDetails.negatedUsers.length === 0) &&
-              (!grantDetails.negatedGroups || grantDetails.negatedGroups.length === 0)) {
-            rows.push([
-              escapeCSV(permissionName),
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              transitionName,
-              '',
-              'Yes',
-              '',
-              '',
-              '',
-              '',
-              ''
-            ].join(','));
-          } else {
-            if (grantDetails.users && grantDetails.users.length > 0) {
-              grantDetails.users.forEach((user: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  transitionName,
-                  '',
-                  'Yes',
-                  '',
-                  escapeCSV(user.username || user.email || `User #${user.id}`),
-                  '',
-                  '',
-                  ''
-                ].join(','));
-              });
-            }
-
-            if (grantDetails.groups && grantDetails.groups.length > 0) {
-              grantDetails.groups.forEach((group: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  transitionName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  '',
-                  escapeCSV(group.name || `Group #${group.id}`),
-                  ''
-                ].join(','));
-              });
-            }
-
-            if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
-              grantDetails.negatedUsers.forEach((user: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  transitionName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  escapeCSV(user.username || user.email || `User #${user.id}`),
-                  '',
-                  ''
-                ].join(','));
-              });
-            }
-
-            if (grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0) {
-              grantDetails.negatedGroups.forEach((group: any) => {
-                rows.push([
-                  escapeCSV(permissionName),
-                  itemTypeSetName,
-                  action,
-                  fieldName,
-                  statusName,
-                  transitionName,
-                  '',
-                  'Yes',
-                  '',
-                  '',
-                  '',
-                  '',
-                  escapeCSV(group.name || `Group #${group.id}`)
-                ].join(','));
-              });
-            }
-          }
-        } catch (error) {
-          rows.push([
-            escapeCSV(permissionName),
-            itemTypeSetName,
-            action,
-            fieldName,
-            statusName,
-            transitionName,
-            '',
-            'Yes',
-            '',
-            '',
-            '',
-            '',
-            ''
-          ].join(','));
-        }
-      }
-
-      if (perm.projectGrants && perm.projectGrants.length > 0) {
-        for (const projectGrant of perm.projectGrants) {
-          try {
-            const projectGrantResponse = await api.get(
-              `/project-itemtypeset-role-grants/project/${projectGrant.projectId}/role/${projectGrant.roleId}`
-            );
-            const projectGrantDetails = projectGrantResponse.data;
-            const projectName = escapeCSV(projectGrant.projectName);
-
-            if ((!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
-                (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
-                (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
-                (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
-              rows.push([
-                escapeCSV(permissionName),
-                itemTypeSetName,
-                action,
-                fieldName,
-                statusName,
-                transitionName,
-                '',
-                'No',
-                projectName,
-                '',
-                '',
-                '',
-                ''
-              ].join(','));
-            } else {
-              if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
-                projectGrantDetails.users.forEach((user: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    transitionName,
-                    '',
-                    'No',
-                    projectName,
-                    escapeCSV(user.username || user.email || `User #${user.id}`),
-                    '',
-                    '',
-                    ''
-                  ].join(','));
-                });
-              }
-
-              if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
-                projectGrantDetails.groups.forEach((group: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    transitionName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    '',
-                    escapeCSV(group.name || `Group #${group.id}`),
-                    ''
-                  ].join(','));
-                });
-              }
-
-              if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
-                projectGrantDetails.negatedUsers.forEach((user: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    transitionName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    escapeCSV(user.username || user.email || `User #${user.id}`),
-                    '',
-                    ''
-                  ].join(','));
-                });
-              }
-
-              if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
-                projectGrantDetails.negatedGroups.forEach((group: any) => {
-                  rows.push([
-                    escapeCSV(permissionName),
-                    itemTypeSetName,
-                    action,
-                    fieldName,
-                    statusName,
-                    transitionName,
-                    '',
-                    'No',
-                    projectName,
-                    '',
-                    '',
-                    '',
-                    escapeCSV(group.name || `Group #${group.id}`)
-                  ].join(','));
-                });
-              }
-            }
-          } catch (error) {
-            rows.push([
-              escapeCSV(permissionName),
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              transitionName,
-              '',
-              'No',
-              escapeCSV(projectGrant.projectName),
-              '',
-              '',
-              '',
-              ''
-            ].join(','));
-          }
-        }
-      }
-
-      if ((!perm.assignedRoles || perm.assignedRoles.length === 0) &&
-          !perm.grantId &&
-          (!perm.projectGrants || perm.projectGrants.length === 0)) {
-        rows.push([
-          escapeCSV(permissionName),
-          itemTypeSetName,
-          action,
-          fieldName,
-          statusName,
-          transitionName,
-          '',
-          'No',
-          '',
-          '',
-          '',
-          '',
-          ''
-        ].join(','));
-      }
-    }
-    
-    const csvContent = rows.join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `itemtypeconfiguration_impact_report_${impact.itemTypeSetId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    // Usa la utility unificata
+    await exportImpactReportToCSV({
+      permissions: allPermissions,
+      preservedPermissionIds,
+      getFieldName,
+      getStatusName,
+      getTransitionName,
+      fileName: `itemtypeconfiguration_impact_report_${impact.itemTypeSetId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`
+    });
   };
 
   return (
@@ -503,15 +198,17 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}
       >
+        {/* Header */}
         <div style={{ marginBottom: '24px', borderBottom: '2px solid #e5e7eb', paddingBottom: '16px' }}>
           <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>
-            📊 Report Impatto Rimozione ItemTypeConfiguration
+            📊 Report Impatto Modifica ItemTypeSet
           </h2>
           <p style={{ margin: '8px 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
             {impact.itemTypeSetName}
           </p>
         </div>
 
+        {/* Riepilogo Impatto - Tabella con una riga per permission */}
         <div style={{
           backgroundColor: '#f0fdf4',
           border: '1px solid #10b981',
@@ -761,6 +458,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
           </div>
         )}
 
+        {/* Footer con pulsanti */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
           <button
             onClick={handleExportFullReport}
@@ -943,6 +641,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
               <div style={{ textAlign: 'center', padding: '20px' }}>Caricamento...</div>
             ) : selectedGrantDetails.details ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                {/* Utenti */}
                 <div>
                   <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
                     Utenti ({selectedGrantDetails.details.users?.length || 0})
@@ -965,6 +664,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
                   </div>
                 </div>
                 
+                {/* Gruppi */}
                 <div>
                   <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
                     Gruppi ({selectedGrantDetails.details.groups?.length || 0})
@@ -987,6 +687,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
                   </div>
                 </div>
                 
+                {/* Utenti negati */}
                 <div>
                   <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
                     Utenti negati ({selectedGrantDetails.details.negatedUsers?.length || 0})
@@ -1009,6 +710,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
                   </div>
                 </div>
                 
+                {/* Gruppi negati */}
                 <div>
                   <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
                     Gruppi negati ({selectedGrantDetails.details.negatedGroups?.length || 0})
@@ -1060,4 +762,5 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
     </div>
   );
 };
+
 

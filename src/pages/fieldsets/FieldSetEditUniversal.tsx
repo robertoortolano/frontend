@@ -25,7 +25,6 @@ import {
   FieldSetCreateDto,
 } from "../../types/field.types";
 import { FieldSetRemovalImpactDto } from "../../types/fieldset-impact.types";
-import { FieldSetImpactReportModal } from "../../components/FieldSetImpactReportModal";
 import { FieldSetEnhancedImpactReportModal } from "../../components/FieldSetEnhancedImpactReportModal";
 import { Toast } from "../../components/Toast";
 
@@ -133,12 +132,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const [impactReport, setImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
   const [analyzingImpact, setAnalyzingImpact] = useState(false);
   const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
-  
-  // Provisional removal states (for immediate removal confirmation)
-  const [showProvisionalReport, setShowProvisionalReport] = useState(false);
-  const [provisionalImpactReport, setProvisionalImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
-  const [pendingRemovedConfigurations, setPendingRemovedConfigurations] = useState<number[]>([]);
-  const [removalToConfirm, setRemovalToConfirm] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
 
   const sensors = useSensors(
@@ -232,92 +225,10 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
 
-  const removeConfiguration = async (configId: number) => {
-    // Check if this configuration was in the original FieldSet (for impact analysis)
-    const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
-      entry.fieldConfiguration?.id || entry.fieldConfigurationId
-    ) || [];
-    
-    const wasInOriginal = originalConfigIds.includes(configId);
-    
-    if (wasInOriginal) {
-      // This is an existing configuration being removed - analyze impact
-      setRemovalToConfirm(configId);
-      await analyzeProvisionalRemovalImpact([configId]);
-    } else {
-      // This is a newly added configuration - remove directly without impact analysis
-      setSelectedConfigurations(prev => prev.filter(id => id !== configId));
-    }
-  };
-  
-  const analyzeProvisionalRemovalImpact = async (removedConfigIds: number[]) => {
-    setAnalyzingImpact(true);
-    setError(null);
-
-    try {
-      const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
-        entry.fieldConfiguration?.id || entry.fieldConfigurationId
-      ) || [];
-      
-      const addedConfigIds = selectedConfigurations.filter(id => 
-        !originalConfigIds.includes(id)
-      );
-
-      const request = {
-        removedFieldConfigIds: removedConfigIds,
-        addedFieldConfigIds: addedConfigIds,
-      };
-
-      const response = await api.post(`/field-sets/${id}/analyze-removal-impact`, request, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const impact: FieldSetRemovalImpactDto = response.data;
-      
-      // Verifica se ci sono permission con assegnazioni
-      const hasPopulatedPermissions = 
-        impact.fieldOwnerPermissions?.some(p => p.hasAssignments) ||
-        impact.fieldStatusPermissions?.some(p => p.hasAssignments) ||
-        impact.itemTypeSetRoles?.some(p => p.hasAssignments);
-      
-      if (hasPopulatedPermissions) {
-        setProvisionalImpactReport(impact);
-        setShowProvisionalReport(true);
-      } else {
-        confirmProvisionalRemoval(removedConfigIds);
-        setToast({ 
-          message: 'Configurazione rimossa. Nessun impatto rilevato sulle permission.', 
-          type: 'info' 
-        });
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
-      setRemovalToConfirm(null);
-    } finally {
-      setAnalyzingImpact(false);
-    }
-  };
-  
-  const confirmProvisionalRemoval = (configIds: number[], preservedPermissionIds?: number[]) => {
-    // TODO: Gestire le permission preservate anche per le rimozioni provvisorie se necessario
-    setSelectedConfigurations(prev => prev.filter(id => !configIds.includes(id)));
-    setPendingRemovedConfigurations(prev => [...prev, ...configIds]);
-    setShowProvisionalReport(false);
-    setProvisionalImpactReport(null);
-    setRemovalToConfirm(null);
-  };
-  
-  const cancelProvisionalRemoval = () => {
-    setSelectedConfigurations(prev => {
-      if (removalToConfirm !== null && !prev.includes(removalToConfirm)) {
-        return [...prev, removalToConfirm];
-      }
-      return prev;
-    });
-    
-    setShowProvisionalReport(false);
-    setProvisionalImpactReport(null);
-    setRemovalToConfirm(null);
+  const removeConfiguration = (configId: number) => {
+    // Rimuove solo visivamente la configurazione (rimozione "fittizia")
+    // L'analisi dell'impatto avverrà solo al salvataggio, come nel workflow
+    setSelectedConfigurations(prev => prev.filter(id => id !== configId));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -340,10 +251,8 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       entry.fieldConfiguration?.id || entry.fieldConfigurationId
     ) || [];
     
-    const allRemovedConfigIds = [
-      ...originalConfigIds.filter(id => !selectedConfigurations.includes(id)),
-      ...pendingRemovedConfigurations
-    ].filter((id, index, self) => self.indexOf(id) === index);
+    // Calcola tutte le configurazioni rimosse (quelle originali che non sono più selezionate)
+    const allRemovedConfigIds = originalConfigIds.filter(id => !selectedConfigurations.includes(id));
 
     if (allRemovedConfigIds.length > 0) {
       await analyzeRemovalImpact(allRemovedConfigIds);
@@ -492,36 +401,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     setShowImpactReport(false);
     setImpactReport(null);
     setPendingSave(null);
-  };
-
-  const handleExportReport = async () => {
-    if (!impactReport) return;
-
-    try {
-      const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
-        entry.fieldConfiguration?.id || entry.fieldConfigurationId
-      ) || [];
-      
-      const removedConfigIds = originalConfigIds.filter(id => 
-        !selectedConfigurations.includes(id)
-      );
-
-      const response = await api.post(`/field-sets/${id}/export-removal-impact-csv`, removedConfigIds, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `fieldset_removal_impact_${id}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Errore durante l'esportazione del report");
-    }
   };
 
   const handleInputChange = (field: keyof FieldSetViewDto, value: any) => {
@@ -776,28 +655,13 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       </form>
 
       {/* Summary Impact Report Modal (before saving) */}
-      <FieldSetImpactReportModal
+      <FieldSetEnhancedImpactReportModal
         isOpen={showImpactReport}
         onClose={handleCancelSave}
         onConfirm={handleConfirmSave}
-        onExport={handleExportReport}
         impact={impactReport}
         loading={analyzingImpact || saving}
         isProvisional={false}
-      />
-      
-      {/* Provisional Impact Report Modal (immediate removal confirmation) - ENHANCED VERSION FOR TESTING */}
-      <FieldSetEnhancedImpactReportModal
-        isOpen={showProvisionalReport}
-        onClose={cancelProvisionalRemoval}
-        onConfirm={(preservedPermissionIds) => {
-          if (removalToConfirm !== null) {
-            confirmProvisionalRemoval([removalToConfirm], preservedPermissionIds);
-          }
-        }}
-        impact={provisionalImpactReport}
-        loading={analyzingImpact}
-        isProvisional={true}
       />
       
       {/* Toast Notification */}

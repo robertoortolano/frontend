@@ -7,12 +7,13 @@ import form from '../styles/common/Forms.module.css';
 import layout from '../styles/common/Layout.module.css';
 import buttons from '../styles/common/Buttons.module.css';
 import alert from '../styles/common/Alerts.module.css';
+import api from '../api/api';
+import { exportImpactReportToCSV, escapeCSV, PermissionData } from '../utils/csvExportUtils';
 
 interface ItemTypeConfigurationMigrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (preservePermissionIdsMap: Map<number, number[]>) => void;
-  onExport?: () => void;
   impacts: ItemTypeConfigurationMigrationImpactDto[];
   loading?: boolean;
 }
@@ -21,12 +22,22 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
   isOpen,
   onClose,
   onConfirm,
-  onExport,
   impacts,
   loading = false,
 }) => {
   // Stato per le permission selezionate (preservate) per ogni configurazione
   const [preservedPermissionIdsMap, setPreservedPermissionIdsMap] = useState<Map<number, Set<number>>>(new Map());
+  const [selectedGrantDetails, setSelectedGrantDetails] = useState<{
+    projectId: number;
+    projectName: string;
+    roleId: number;
+    details: any;
+  } | null>(null);
+  const [loadingGrantDetails, setLoadingGrantDetails] = useState(false);
+  const [selectedRolesDetails, setSelectedRolesDetails] = useState<{
+    permissionName: string;
+    roles: string[];
+  } | null>(null);
 
   // Raggruppa tutte le permission da tutti gli impatti
   const getAllPermissionsFromAllImpacts = (): Array<{ impact: ItemTypeConfigurationMigrationImpactDto; permission: SelectablePermissionImpact }> => {
@@ -179,6 +190,104 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
     };
   }, [impacts, preservedPermissionIdsMap]);
 
+  // Funzione helper per generare il nome della permission
+  const getPermissionName = (perm: SelectablePermissionImpact): string => {
+    switch (perm.permissionType) {
+      case 'FIELD_OWNERS':
+        return `Field Owner - ${perm.fieldName || perm.entityName || 'N/A'}`;
+      case 'STATUS_OWNERS':
+        return `Status Owner - ${perm.entityName || 'N/A'}`;
+      case 'EDITORS':
+        return `Editor - ${perm.fieldName || 'N/A'} @ ${perm.workflowStatusName || 'N/A'}`;
+      case 'VIEWERS':
+        return `Viewer - ${perm.fieldName || 'N/A'} @ ${perm.workflowStatusName || 'N/A'}`;
+      case 'EXECUTORS':
+        // Formato: Executor - <stato_partenza>-><stato_arrivo> (<nome_transition>)
+        const fromStatus = perm.fromStatusName || 'N/A';
+        const toStatus = perm.toStatusName || 'N/A';
+        const transitionName = perm.transitionName;
+        const transitionPart = transitionName ? ` (${transitionName})` : '';
+        return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
+      default:
+        return `${perm.permissionType} - ${perm.itemTypeSetName || 'N/A'}`;
+    }
+  };
+
+  // Funzione per esportare il report completo in CSV
+  const handleExportFullReport = async () => {
+    if (impacts.length === 0) return;
+
+    // Raccogli tutte le permission con assegnazioni da tutti gli impatti
+    const allPermissions: PermissionData[] = [];
+    
+    impacts.forEach(impact => {
+      const allImpactPermissions = [
+        ...(impact.fieldOwnerPermissions || []).filter(p => p.hasAssignments),
+        ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments),
+        ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments),
+        ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
+      ].map(perm => {
+        // Per FIELD_OWNERS: il backend popola entityName con il nome del Field, non fieldName
+        // Per EDITORS/VIEWERS: il backend popola fieldName
+        let fieldName: string | null = null;
+        if (perm.permissionType === 'FIELD_OWNERS') {
+          fieldName = perm.fieldName || perm.entityName || null;
+        } else if (perm.permissionType === 'EDITORS' || perm.permissionType === 'VIEWERS') {
+          fieldName = perm.fieldName || null;
+        }
+        
+        return {
+          permissionId: perm.permissionId,
+          permissionType: perm.permissionType || 'N/A',
+          itemTypeSetName: perm.itemTypeSetName || 'N/A',
+          fieldName,
+          statusName: perm.entityName && perm.permissionType === 'STATUS_OWNERS' ? perm.entityName : null,
+          workflowStatusName: perm.workflowStatusName || null,
+          fromStatusName: perm.fromStatusName || null,
+          toStatusName: perm.toStatusName || null,
+          transitionName: perm.transitionName || null,
+          assignedRoles: perm.assignedRoles || [],
+          grantId: perm.grantId || null,
+          roleId: perm.roleId || null,
+          projectGrants: perm.projectGrants || [],
+          canBePreserved: perm.canBePreserved
+        };
+      });
+      
+      allPermissions.push(...allImpactPermissions);
+    });
+
+    // Funzioni per estrarre i nomi (specifiche per Migration report)
+    // Usa fieldName se disponibile e non vuoto
+    const getFieldName = (perm: PermissionData) => {
+      const fieldName = perm.fieldName?.trim();
+      return escapeCSV(fieldName && fieldName.length > 0 ? fieldName : '');
+    };
+    const getStatusName = (perm: PermissionData) => escapeCSV(perm.statusName || perm.workflowStatusName || '');
+    const getTransitionName = (perm: PermissionData) => {
+      // La formattazione viene gestita automaticamente dalla utility usando fromStatusName/toStatusName
+      return '';
+    };
+
+    // Raccogli tutti gli ID delle permission preservate da tutti gli impatti
+    const allPreservedPermissionIds = new Set<number>();
+    preservedPermissionIdsMap.forEach((preservedSet) => {
+      preservedSet.forEach((permissionId) => {
+        allPreservedPermissionIds.add(permissionId);
+      });
+    });
+
+    // Usa la utility unificata
+    await exportImpactReportToCSV({
+      permissions: allPermissions,
+      preservedPermissionIds: allPreservedPermissionIds,
+      getFieldName,
+      getStatusName,
+      getTransitionName,
+      fileName: `itemtypeconfiguration_migration_report_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`
+    });
+  };
+
   // Renderizza una sezione di permission (solo quelle con ruoli) per una configurazione specifica
   const renderPermissionSection = (
     title: string,
@@ -199,41 +308,72 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
     const selectedInSection = permissionsWithRoles.filter(p => preservedSet.has(p.permissionId)).length;
 
     return (
-      <div className={layout.section} style={{ marginTop: '1.5rem' }}>
+      <div style={{
+        backgroundColor: '#f0fdf4',
+        border: '1px solid #10b981',
+        borderRadius: '6px',
+        padding: '16px',
+        marginTop: '1.5rem',
+        marginBottom: '24px'
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <h3 className={layout.sectionTitle}>
-            {icon} {title} ({permissionsWithRoles.length} con ruoli)
+          <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>
+            {title} ({permissionsWithRoles.length} con ruoli)
           </h3>
           <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
             {selectedInSection} / {canPreserveCount} preservabili selezionate
           </div>
         </div>
-        <div className={form.tableContainer} style={{ maxHeight: '400px', overflowY: 'auto' }}>
-          <table className={form.table}>
+        <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto' }}>
+          <table style={{ 
+            width: '100%', 
+            borderCollapse: 'collapse',
+            fontSize: '0.875rem'
+          }}>
             <thead>
-              <tr>
-                <th style={{ width: '120px' }}>Azione</th>
-                <th>Entity</th>
-                <th>Match nel nuovo stato</th>
-                <th>Ruoli assegnati</th>
+              <tr style={{ backgroundColor: '#f0fdf4', color: '#1f2937' }}>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981', width: '120px' }}>
+                  Azione
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
+                  Permission
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
+                  ItemTypeSet
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
+                  Match nel nuovo stato
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
+                  Ruoli
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
+                  Grant Globali
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
+                  Grant di Progetto
+                </th>
               </tr>
             </thead>
             <tbody>
-              {permissionsWithRoles.map((perm) => {
+              {permissionsWithRoles.map((perm, idx) => {
                 const preservedSet = preservedPermissionIdsMap.get(impact.itemTypeConfigurationId) || new Set<number>();
                 const isSelected = preservedSet.has(perm.permissionId);
                 const canPreserve = perm.canBePreserved;
-                const hasRoles = perm.hasAssignments;
+                const rolesCount = perm.assignedRoles?.length || 0;
+                const hasGlobalGrant = perm.grantId != null;
+                const projectGrantsCount = perm.projectGrants?.length || 0;
 
                 return (
                   <tr
                     key={`${impact.itemTypeConfigurationId}-${perm.permissionId}`}
                     style={{
-                      backgroundColor: isSelected && canPreserve ? '#f0fdf4' : 'transparent',
+                      borderBottom: '1px solid #d1fae5',
+                      backgroundColor: isSelected && canPreserve ? '#dcfce7' : (idx % 2 === 0 ? '#ffffff' : '#f0fdf4'),
                       opacity: !canPreserve ? 0.7 : 1,
                     }}
                   >
-                    <td>
+                    <td style={{ padding: '10px 12px' }}>
                       <span
                         onClick={() => {
                           if (canPreserve && !loading) {
@@ -266,31 +406,131 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
                         {isSelected && canPreserve ? '✓ Preserva' : '✗ Rimuovi'}
                       </span>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {renderEntityInfo(perm)}
+                    <td style={{ padding: '10px 12px', fontWeight: '500', color: '#1f2937' }}>
+                      {getPermissionName(perm)}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 12px', color: '#4b5563' }}>
+                      {perm.itemTypeSetName || 'N/A'}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#4b5563' }}>
                       {canPreserve && perm.matchingEntityName ? (
-                        <span style={{ color: '#059669' }}>
+                        <span style={{ color: '#059669', fontSize: '0.875rem' }}>
                           ✓ {perm.matchingEntityName}
                         </span>
                       ) : (
-                        <span style={{ color: '#dc2626' }}>✗ Rimosso</span>
+                        <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>✗ Rimosso</span>
                       )}
                     </td>
-                    <td style={{ whiteSpace: 'normal' }}>
-                      {hasRoles ? (
-                        <div>
-                          {perm.assignedRoles.length > 0 ? (
-                            <span style={{ color: '#dc2626', fontWeight: 'bold' }}>
-                              {perm.assignedRoles.join(', ')}
+                    <td style={{ padding: '10px 12px', color: '#4b5563' }}>
+                      {rolesCount > 0 ? (
+                        <span
+                          onClick={() => setSelectedRolesDetails({
+                            permissionName: getPermissionName(perm),
+                            roles: perm.assignedRoles || []
+                          })}
+                          style={{
+                            cursor: 'pointer',
+                            color: '#2563eb',
+                            textDecoration: 'underline',
+                            fontWeight: '500'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = '0.7';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = '1';
+                          }}
+                        >
+                          {rolesCount} {rolesCount === 1 ? 'ruolo' : 'ruoli'}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#4b5563' }}>
+                      {hasGlobalGrant && perm.roleId ? (
+                        <span
+                          onClick={async () => {
+                            setLoadingGrantDetails(true);
+                            try {
+                              const response = await api.get(
+                                `/itemtypeset-roles/${perm.roleId}/grant-details`
+                              );
+                              setSelectedGrantDetails({
+                                projectId: 0, // 0 indica grant globale
+                                projectName: 'Globale',
+                                roleId: perm.roleId,
+                                details: response.data
+                              });
+                            } catch (error) {
+                              alert('Errore nel recupero dei dettagli della grant globale');
+                            } finally {
+                              setLoadingGrantDetails(false);
+                            }
+                          }}
+                          style={{
+                            fontWeight: '500',
+                            color: '#2563eb',
+                            textDecoration: 'underline',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = '0.7';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = '1';
+                          }}
+                        >
+                          Grant globale
+                        </span>
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#4b5563' }}>
+                      {projectGrantsCount > 0 && perm.projectGrants ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {perm.projectGrants.map((pg, pgIdx) => (
+                            <span
+                              key={pgIdx}
+                              onClick={async () => {
+                                setLoadingGrantDetails(true);
+                                try {
+                                  const response = await api.get(
+                                    `/project-itemtypeset-role-grants/project/${pg.projectId}/role/${pg.roleId}`
+                                  );
+                                  setSelectedGrantDetails({
+                                    projectId: pg.projectId,
+                                    projectName: pg.projectName,
+                                    roleId: pg.roleId,
+                                    details: response.data
+                                  });
+                                } catch (error) {
+                                  alert('Errore nel recupero dei dettagli della grant');
+                                } finally {
+                                  setLoadingGrantDetails(false);
+                                }
+                              }}
+                              style={{
+                                fontSize: '0.75rem',
+                                cursor: 'pointer',
+                                color: '#2563eb',
+                                textDecoration: 'underline',
+                                fontWeight: '500'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.opacity = '0.7';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                              }}
+                            >
+                              {pg.projectName}: 1 grant
                             </span>
-                          ) : (
-                            <span style={{ color: '#9ca3af' }}>Nessuno</span>
-                          )}
+                          ))}
                         </div>
                       ) : (
-                        <span style={{ color: '#9ca3af' }}>Nessuno</span>
+                        <span style={{ color: '#9ca3af' }}>—</span>
                       )}
                     </td>
                   </tr>
@@ -353,32 +593,67 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
   if (!isOpen || impacts.length === 0) return null;
 
   return (
-    <div className={form.modalOverlay}>
-      <div className={form.modal} style={{ maxWidth: '1200px', maxHeight: '90vh', overflow: 'auto' }}>
+    <div 
+      className={form.modalOverlay}
+      onClick={onClose}
+      style={{ 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        zIndex: 1000
+      }}
+    >
+      <div 
+        className={form.modalContent}
+        onClick={(e) => e.stopPropagation()}
+        style={{ 
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          padding: '24px',
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          position: 'relative'
+        }}
+      >
         {/* Header */}
-        <div className={form.modalHeader}>
-          <div>
-            <h2 className={form.modalTitle}>
-              📊 Gestione Permission - Migrazione Intelligente
-            </h2>
-            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-              {impacts.length === 1 ? (
-                <>
-                  ItemTypeSet: <strong>{impacts[0].itemTypeSetName || 'N/A'}</strong> | 
-                  ItemType: <strong>{impacts[0].itemTypeName}</strong>
-                </>
-              ) : (
-                <>
-                  <strong>{impacts.length} configurazioni</strong> modificate
-                </>
-              )}
-            </div>
-          </div>
+        <div style={{ marginBottom: '24px', borderBottom: '2px solid #e5e7eb', paddingBottom: '16px' }}>
+          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>
+            📊 Report Impatto Modifica ItemTypeSet
+          </h2>
+          <p style={{ margin: '8px 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
+            {impacts.length === 1 ? (
+              <>
+                {impacts[0].itemTypeSetName || 'N/A'} - {impacts[0].itemTypeName}
+              </>
+            ) : (
+              <>
+                <strong>{impacts.length} configurazioni</strong> modificate
+              </>
+            )}
+          </p>
           <button
             type="button"
-            className={form.closeButton}
             onClick={onClose}
             disabled={loading}
+            style={{
+              position: 'absolute',
+              top: '24px',
+              right: '24px',
+              background: 'none',
+              border: 'none',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              color: '#6b7280',
+              padding: '4px 8px'
+            }}
           >
             ✕
           </button>
@@ -445,7 +720,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
               
               {renderPermissionSection(
                 'Permission Field Owner',
-                '👑',
+                '',
                 impact,
                 impact.fieldOwnerPermissions,
                 renderFieldOwnerInfo
@@ -453,7 +728,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
 
               {renderPermissionSection(
                 'Permission Status Owner',
-                '🔐',
+                '',
                 impact,
                 impact.statusOwnerPermissions,
                 renderStatusOwnerInfo
@@ -461,7 +736,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
 
               {renderPermissionSection(
                 'Permission Field Status',
-                '🔒',
+                '',
                 impact,
                 impact.fieldStatusPermissions,
                 renderFieldStatusInfo
@@ -469,7 +744,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
 
               {renderPermissionSection(
                 'Permission Executor',
-                '⚡',
+                '',
                 impact,
                 impact.executorPermissions,
                 renderExecutorInfo
@@ -488,38 +763,65 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
             </div>
           )}
 
-          {/* Warning se ci sono permission con ruoli che verranno rimosse */}
+          {/* Warning */}
           {stats.withRoles > 0 && stats.selectedWithRoles < stats.withRoles && (
-            <div className={alert.warningContainer} style={{ marginTop: '1.5rem' }}>
-              <h4>⚠️ Attenzione!</h4>
-              <p>
-                Alcune permission con ruoli assegnati verranno rimosse. Assicurati di aver verificato le selezioni prima di confermare.
+            <div style={{
+              backgroundColor: '#fee2e2',
+              border: '1px solid #fca5a5',
+              borderRadius: '6px',
+              padding: '12px',
+              marginBottom: '20px'
+            }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: '#991b1b' }}>
+                ⚠️ <strong>Attenzione:</strong> Confermando questa modifica, le permission elencate verranno cancellate definitivamente.
               </p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className={form.modalFooter}>
-          {onExport && (
-            <button
-              className={`${buttons.button} ${buttons.buttonSecondary}`}
-              onClick={onExport}
-              disabled={loading}
-            >
-              📥 Esporta CSV
-            </button>
-          )}
+        {/* Footer con pulsanti */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
           <button
-            className={`${buttons.button} ${buttons.buttonSecondary}`}
-            onClick={onClose}
-            disabled={loading}
+            onClick={handleExportFullReport}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#f3f4f6',
+              color: '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500'
+            }}
           >
-            ❌ Annulla
+            📥 Esporta Report
           </button>
           <button
-            className={`${buttons.button} ${buttons.buttonPrimary}`}
-            onClick={() => {
+            onClick={onClose}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#f3f4f6',
+              color: '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500'
+            }}
+          >
+            Annulla
+          </button>
+          <button
+            onClick={async () => {
+              // Chiedi se esportare il report prima di confermare
+              const shouldExport = window.confirm(
+                'Vuoi esportare il report prima di confermare la modifica?'
+              );
+              
+              if (shouldExport) {
+                await handleExportFullReport();
+              }
+              
               // Converti Map<number, Set<number>> in Map<number, number[]>
               // IMPORTANTE: Includi tutte le configurazioni con modifiche, anche se non hanno permission selezionate
               const mapForConfirm = new Map<number, number[]>();
@@ -536,12 +838,261 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
               onConfirm(mapForConfirm);
             }}
             disabled={loading}
-            style={{ backgroundColor: '#00ddd4' }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: (stats.withRoles > 0 && stats.selectedWithRoles < stats.withRoles) ? '#dc2626' : '#059669',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              opacity: loading ? 0.6 : 1
+            }}
           >
-            {loading ? '⏳ Elaborazione...' : '✓ Conferma Migrazione e Salva'}
+            {loading ? 'Elaborazione...' : 'Conferma e Salva'}
           </button>
         </div>
       </div>
+
+      {/* Modal for roles details */}
+      {selectedRolesDetails && (
+        <div 
+          className={form.modalOverlay}
+          onClick={() => setSelectedRolesDetails(null)}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            zIndex: 10001
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}
+          >
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>
+              Dettagli Ruoli - {selectedRolesDetails.permissionName}
+            </h2>
+            
+            <div>
+              {selectedRolesDetails.roles && selectedRolesDetails.roles.length > 0 ? (
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                    Ruoli Assegnati ({selectedRolesDetails.roles.length})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {selectedRolesDetails.roles.map((role: string, idx: number) => (
+                      <span key={idx} style={{
+                        padding: '4px 8px',
+                        backgroundColor: '#dbeafe',
+                        borderRadius: '4px',
+                        fontSize: '0.875rem',
+                        fontWeight: '500'
+                      }}>
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                  Nessun ruolo assegnato
+                </div>
+              )}
+            </div>
+            
+            <div style={{ marginTop: '24px', textAlign: 'right' }}>
+              <button
+                onClick={() => setSelectedRolesDetails(null)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for grant details */}
+      {selectedGrantDetails && (
+        <div 
+          className={form.modalOverlay}
+          onClick={() => setSelectedGrantDetails(null)}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            zIndex: 10001
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}
+          >
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>
+              Dettagli Grant - {selectedGrantDetails.projectName}
+            </h2>
+            
+            {loadingGrantDetails ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>Caricamento...</div>
+            ) : selectedGrantDetails.details ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                {/* Utenti */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                    Utenti ({selectedGrantDetails.details.users?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.users && selectedGrantDetails.details.users.length > 0 ? (
+                      selectedGrantDetails.details.users.map((user: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#dbeafe',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {user.username || user.email || `User #${user.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Gruppi */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                    Gruppi ({selectedGrantDetails.details.groups?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.groups && selectedGrantDetails.details.groups.length > 0 ? (
+                      selectedGrantDetails.details.groups.map((group: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#d1fae5',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {group.name || `Group #${group.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Utenti negati */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
+                    Utenti negati ({selectedGrantDetails.details.negatedUsers?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.negatedUsers && selectedGrantDetails.details.negatedUsers.length > 0 ? (
+                      selectedGrantDetails.details.negatedUsers.map((user: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#fee2e2',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {user.username || user.email || `User #${user.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Gruppi negati */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
+                    Gruppi negati ({selectedGrantDetails.details.negatedGroups?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.negatedGroups && selectedGrantDetails.details.negatedGroups.length > 0 ? (
+                      selectedGrantDetails.details.negatedGroups.map((group: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#fee2e2',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {group.name || `Group #${group.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#dc2626' }}>
+                Errore nel caricamento dei dettagli
+              </div>
+            )}
+            
+            <div style={{ marginTop: '24px', textAlign: 'right' }}>
+              <button
+                onClick={() => setSelectedGrantDetails(null)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

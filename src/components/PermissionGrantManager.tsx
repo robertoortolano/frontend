@@ -262,81 +262,85 @@ export default function PermissionGrantManager({
         return;
       }
 
-      // Gestione Grant diretto - crea Grant e assegnalo
-      const hasGrantDirect = grantUsers.length > 0 || grantGroups.length > 0 || 
-                             grantNegatedUsers.length > 0 || grantNegatedGroups.length > 0;
-      
-      if (hasGrantDirect) {
-        // Prepara il payload - includi solo campi non vuoti
-        const payload: any = {
-          itemTypeSetRoleId: itemTypeSetRoleId
-        };
+      // Gestione Grant diretto GLOBALE - solo se NON siamo in scope 'project'
+      // In scope 'project', le grant globali sono solo di lettura e non possono essere modificate
+      if (scope !== 'project') {
+        const hasGrantDirect = grantUsers.length > 0 || grantGroups.length > 0 || 
+                               grantNegatedUsers.length > 0 || grantNegatedGroups.length > 0;
         
-        // Aggiungi informazioni sulla permission per permettere la creazione automatica dell'ItemTypeSetRole se non esiste
-        if (itemTypeSetId) {
-          payload.itemTypeSetId = itemTypeSetId;
-        }
-        
-        const permissionType = getPermissionType(permission.name);
-        if (permissionType) {
-          payload.permissionType = permissionType;
-        }
-        
-        // Aggiungi informazioni sulle entità correlate in base al tipo di permission
-        if (permission.itemType?.id) {
-          payload.itemTypeId = permission.itemType.id;
-        }
-        if (permission.workflow?.id) {
-          payload.workflowId = permission.workflow.id;
-        }
-        if (permission.workflowStatus?.id) {
-          payload.workflowStatusId = permission.workflowStatus.id;
-        }
-        if (permission.fieldConfiguration?.id) {
-          payload.fieldConfigurationId = permission.fieldConfiguration.id;
-        }
-        if (permission.transition?.id) {
-          payload.transitionId = permission.transition.id;
-        }
-        
-        if (grantUsers.length > 0) {
-          payload.userIds = grantUsers.map(u => u.id);
-        }
-        
-        if (grantGroups.length > 0) {
-          payload.groupIds = grantGroups.map(g => g.id);
-        }
-        
-        if (grantNegatedUsers.length > 0) {
-          payload.negatedUserIds = grantNegatedUsers.map(u => u.id);
-        }
-        
-        if (grantNegatedGroups.length > 0) {
-          payload.negatedGroupIds = grantNegatedGroups.map(g => g.id);
-        }
-        
-        try {
-          // Se c'è già un Grant, aggiornalo invece di crearne uno nuovo
-          if (permission.grantId) {
-            await api.put('/itemtypeset-roles/update-grant', payload);
-          } else {
-            // Crea nuovo Grant e assegnalo
-            await api.post('/itemtypeset-roles/create-and-assign-grant', payload);
+        if (hasGrantDirect) {
+          // Prepara il payload - includi solo campi non vuoti
+          const payload: any = {
+            itemTypeSetRoleId: itemTypeSetRoleId
+          };
+          
+          // Aggiungi informazioni sulla permission per permettere la creazione automatica dell'ItemTypeSetRole se non esiste
+          if (itemTypeSetId) {
+            payload.itemTypeSetId = itemTypeSetId;
           }
-        } catch (err: any) {
-          const errorMessage = err.response?.data?.message || err.response?.data || err.message || 'Errore sconosciuto';
-          console.error('Full error response:', err.response); // Debug
-          throw new Error(`Errore nella ${permission.grantId ? 'modifica' : 'creazione'} e assegnazione Grant: ${errorMessage}`);
-        }
-      } else if (permission.grantId) {
-        // Se prima c'era un Grant ma ora non c'è, rimuovilo
-        try {
-          await api.delete('/itemtypeset-roles/remove-assignment', {
-            params: { roleId: itemTypeSetRoleId }
-          });
-        } catch (err: any) {
-          // Non bloccare se la rimozione fallisce (potrebbe essere già rimosso)
-          console.warn('Warning removing grant assignment:', err);
+          
+          const permissionType = getPermissionType(permission.name);
+          if (permissionType) {
+            payload.permissionType = permissionType;
+          }
+          
+          // Aggiungi informazioni sulle entità correlate in base al tipo di permission
+          if (permission.itemType?.id) {
+            payload.itemTypeId = permission.itemType.id;
+          }
+          if (permission.workflow?.id) {
+            payload.workflowId = permission.workflow.id;
+          }
+          if (permission.workflowStatus?.id) {
+            payload.workflowStatusId = permission.workflowStatus.id;
+          }
+          if (permission.fieldConfiguration?.id) {
+            payload.fieldConfigurationId = permission.fieldConfiguration.id;
+          }
+          if (permission.transition?.id) {
+            payload.transitionId = permission.transition.id;
+          }
+          
+          if (grantUsers.length > 0) {
+            payload.userIds = grantUsers.map(u => u.id);
+          }
+          
+          if (grantGroups.length > 0) {
+            payload.groupIds = grantGroups.map(g => g.id);
+          }
+          
+          if (grantNegatedUsers.length > 0) {
+            payload.negatedUserIds = grantNegatedUsers.map(u => u.id);
+          }
+          
+          if (grantNegatedGroups.length > 0) {
+            payload.negatedGroupIds = grantNegatedGroups.map(g => g.id);
+          }
+          
+          try {
+            // Se c'è già un Grant, aggiornalo invece di crearne uno nuovo
+            if (permission.grantId) {
+              await api.put('/itemtypeset-roles/update-grant', payload);
+            } else {
+              // Crea nuovo Grant e assegnalo
+              await api.post('/itemtypeset-roles/create-and-assign-grant', payload);
+            }
+          } catch (err: any) {
+            const errorMessage = err.response?.data?.message || err.response?.data || err.message || 'Errore sconosciuto';
+            console.error('Full error response:', err.response); // Debug
+            throw new Error(`Errore nella ${permission.grantId ? 'modifica' : 'creazione'} e assegnazione Grant: ${errorMessage}`);
+          }
+        } else if (permission.grantId) {
+          // Se prima c'era un Grant ma ora non c'è, rimuovilo
+          // IMPORTANTE: Questo viene eseguito solo se NON siamo in scope 'project'
+          try {
+            await api.delete('/itemtypeset-roles/remove-assignment', {
+              params: { roleId: itemTypeSetRoleId }
+            });
+          } catch (err: any) {
+            // Non bloccare se la rimozione fallisce (potrebbe essere già rimosso)
+            console.warn('Warning removing grant assignment:', err);
+          }
         }
       }
       

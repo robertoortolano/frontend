@@ -7,6 +7,8 @@
 
 import { StatusCategory } from './common.types';
 import { StatusViewDto } from './workflow.types';
+import { StatusRemovalImpactDto } from './status-impact.types';
+import { TransitionRemovalImpactDto } from './transition-impact.types';
 
 /**
  * Unified Node Data - Combines WorkflowNodeDto + WorkflowStatusViewDto
@@ -230,6 +232,7 @@ export interface UseWorkflowEditorReturn {
   
   // Impact report
   impactReport: ImpactReportData | null;
+  enhancedImpactDto: StatusRemovalImpactDto | TransitionRemovalImpactDto | null;
   showImpactReport: boolean;
   
   // Additional data
