@@ -10,7 +10,7 @@ import { ItemTypeConfigurationMigrationImpactDto } from "../../types/item-type-c
 import { ItemTypeConfigurationMigrationModal } from "../../components/ItemTypeConfigurationMigrationModal";
 import { ItemTypeConfigurationRemovalImpactDto } from "../../types/itemtypeconfiguration-impact.types";
 import { ItemTypeConfigurationEnhancedImpactReportModal } from "../../components/ItemTypeConfigurationEnhancedImpactReportModal";
-import { Toast } from "../../components/Toast";
+import { useToast } from "../../context/ToastContext";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -58,7 +58,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   const [showRemovalImpactModal, setShowRemovalImpactModal] = useState(false);
   const [removalImpact, setRemovalImpact] = useState<ItemTypeConfigurationRemovalImpactDto | null>(null);
   const [removalImpactLoading, setRemovalImpactLoading] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
+  const { showToast } = useToast();
   const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
   
   // Store delle configurazioni originali per il confronto
@@ -407,10 +407,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
           await analyzeMigrationImpact(configurationsWithChanges);
         } else {
           await performSaveWithRemoval(removedConfigIds, undefined);
-          setToast({ 
-            message: 'ItemTypeSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 
-            type: 'success' 
-          });
+          showToast('ItemTypeSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');
         }
       }
     } catch (err: any) {
@@ -451,9 +448,26 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         }
       }
       
-      setMigrationImpacts(impacts);
-      setShowMigrationModal(true);
-      setSaving(false);
+      // Verifica se ci sono permission con assegnazioni in almeno un impatto
+      const hasPopulatedPermissions = impacts.some(impact => {
+        const allPermissions = [
+          ...(impact.fieldOwnerPermissions || []),
+          ...(impact.statusOwnerPermissions || []),
+          ...(impact.executorPermissions || [])
+        ];
+        return allPermissions.some((p: any) => p.hasAssignments);
+      });
+      
+      if (hasPopulatedPermissions) {
+        setMigrationImpacts(impacts);
+        setShowMigrationModal(true);
+        setSaving(false);
+      } else {
+        // Nessuna permission con assegnazioni: salva direttamente senza mostrare il modal
+        await performSave();
+        setSaving(false);
+        showToast('ItemTypeSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');
+      }
     } catch (err: any) {
       console.error("Errore durante l'analisi della migrazione", err);
       setError(err.response?.data?.message || "Errore durante l'analisi della migrazione");
@@ -737,15 +751,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         impact={removalImpact}
         loading={removalImpactLoading}
       />
-      
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   );
 }

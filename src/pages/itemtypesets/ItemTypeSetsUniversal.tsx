@@ -218,25 +218,32 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
       <ul className={layout.verticalList}>
         {itemTypeSets.map((set) => (
           <li key={set.id} className={layout.block}>
-            <div className="flex items-center gap-2">
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
               <button
                 type="button"
-                className={`${layout.blockHeader} cursor-pointer flex items-center justify-between flex-grow`}
+                className={`${layout.blockHeader} cursor-pointer flex items-center justify-between`}
+                style={{ flex: '0 0 auto' }}
                 onClick={() => handleToggleExpand(set.id)}
               >
                 <h2 className={layout.blockTitleBlue}>{set.name}</h2>
                 {expandedItemTypeSets[set.id] ? <ChevronDown /> : <ChevronRight />}
               </button>
 
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem', flexShrink: 0, flexWrap: 'nowrap' }}>
                 <button
                   className={buttons.button}
                   style={{ 
-                    padding: "0.25rem 0.5rem", 
-                    fontSize: "0.75rem",
-                    backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0"
+                    padding: "0.5rem 0.75rem", 
+                    fontSize: "0.875rem",
+                    backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0",
+                    height: "36px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    whiteSpace: "nowrap"
                   }}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (showRoles && selectedSetForRoles?.id === set.id) {
                       setShowRoles(false);
                       setSelectedSetForRoles(null);
@@ -262,7 +269,16 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
                 </button>
                 {!set.defaultItemTypeSet && (
                   <button
-                    className={`${buttons.button} ${buttons.buttonSmall}`}
+                    className={buttons.button}
+                    style={{ 
+                      padding: "0.5rem 0.75rem", 
+                      fontSize: "0.875rem",
+                      height: "36px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      whiteSpace: "nowrap"
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEdit(set.id, set.defaultItemTypeSet);
@@ -273,6 +289,33 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
                     Edit
                   </button>
                 )}
+                <button
+                  className={buttons.button}
+                  style={{ 
+                    padding: "0.5rem 0.75rem", 
+                    fontSize: "0.875rem",
+                    height: "36px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    whiteSpace: "nowrap"
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(set.id);
+                  }}
+                  disabled={set.defaultItemTypeSet || (set.projectsAssociation && set.projectsAssociation.length > 0)}
+                  title={
+                    set.defaultItemTypeSet
+                      ? "Item Type Set di default non eliminabile"
+                      : set.projectsAssociation && set.projectsAssociation.length > 0
+                      ? `Non puoi eliminare: usato in ${set.projectsAssociation.length} progetto/i`
+                      : "Elimina Item Type Set"
+                  }
+                  type="button"
+                >
+                  Delete
+                </button>
               </div>
             </div>
 
@@ -317,41 +360,10 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
                       onPermissionGrantClick={setSelectedPermissionForGrants}
                       refreshTrigger={refreshTrigger}
                       projectId={projectId}
+                      showOnlyProjectGrants={scope === 'project'}
                     />
                   </div>
                 )}
-
-                <div className="flex gap-2 mt-4">
-                  {!set.defaultItemTypeSet && (
-                    <button
-                      className={buttons.button}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(set.id, set.defaultItemTypeSet);
-                      }}
-                      title="Modifica Item Type Set"
-                    >
-                      ✎ Edit
-                    </button>
-                  )}
-                  <button
-                    className={buttons.button}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(set.id);
-                    }}
-                    disabled={set.defaultItemTypeSet || (set.projectsAssociation && set.projectsAssociation.length > 0)}
-                    title={
-                      set.defaultItemTypeSet
-                        ? "Item Type Set di default non eliminabile"
-                        : set.projectsAssociation && set.projectsAssociation.length > 0
-                        ? `Non puoi eliminare: usato in ${set.projectsAssociation.length} progetto/i`
-                        : "Elimina Item Type Set"
-                    }
-                  >
-                    Delete
-                  </button>
-                </div>
               </div>
             )}
           </li>

@@ -2,7 +2,7 @@
  * ItemTypeSetRoleManager - Complex permission management component
  * Using pragmatic typing with 'any' for complex nested structures
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Users, Shield, Edit, Eye, Plus } from "lucide-react";
 import api from "../api/api";
 import PermissionFilters, { FilterValues } from "./PermissionFilters";
@@ -44,6 +44,8 @@ export default function ItemTypeSetRoleManager({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [grantDetailsMap, setGrantDetailsMap] = useState<Map<number, any>>(new Map());
+  const [loadingGrantDetails, setLoadingGrantDetails] = useState<Set<number>>(new Set());
+  const loadedGrantDetailsRef = useRef<Set<number>>(new Set());
   const [filters, setFilters] = useState<FilterValues>({
     permission: "All",
     itemTypes: ["All"],
@@ -58,6 +60,71 @@ export default function ItemTypeSetRoleManager({
       fetchRoles();
     }
   }, [itemTypeSetId, refreshTrigger, projectId]);
+
+  // useEffect per caricare i dettagli delle grant di progetto on-demand quando showOnlyProjectGrants è true
+  useEffect(() => {
+    if (!showOnlyProjectGrants || !projectId || !roles) return;
+
+    // Trova tutte le permission che hanno roleId ma non hanno ancora i dettagli caricati
+    const allPermissions: any[] = [];
+    Object.values(roles).forEach((permissionList: any) => {
+      if (Array.isArray(permissionList)) {
+        allPermissions.push(...permissionList);
+      }
+    });
+
+    const missingDetails: number[] = [];
+    allPermissions.forEach((perm: any) => {
+      const roleId = perm.itemTypeSetRoleId;
+      if (roleId && typeof roleId === 'number') {
+        // Usa il ref per verificare se abbiamo già tentato di caricare questo roleId
+        if (!loadedGrantDetailsRef.current.has(roleId)) {
+          missingDetails.push(roleId);
+        }
+      }
+    });
+
+    // Carica i dettagli mancanti
+    if (missingDetails.length > 0) {
+      missingDetails.forEach((roleId) => {
+        // Segna che stiamo tentando di caricare questo roleId
+        loadedGrantDetailsRef.current.add(roleId);
+        setLoadingGrantDetails((prev) => new Set(prev).add(roleId));
+        
+        api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`)
+          .then((response) => {
+            const newGrantDetails = response.data;
+            newGrantDetails.isProjectGrant = true;
+            setGrantDetailsMap((prev) => {
+              const newMap = new Map(prev);
+              newMap.set(roleId, newGrantDetails);
+              return newMap;
+            });
+          })
+          .catch((err: any) => {
+            if (err.response?.status === 404) {
+              // Grant non esiste, settiamo isProjectGrant a false
+              setGrantDetailsMap((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(roleId, { isProjectGrant: false });
+                return newMap;
+              });
+            } else {
+              console.error(`Error fetching project grant details for role ${roleId}:`, err);
+              // In caso di errore diverso da 404, rimuovi dal ref per permettere un retry
+              loadedGrantDetailsRef.current.delete(roleId);
+            }
+          })
+          .finally(() => {
+            setLoadingGrantDetails((prev) => {
+              const newSet = new Set(prev);
+              newSet.delete(roleId);
+              return newSet;
+            });
+          });
+      });
+    }
+  }, [showOnlyProjectGrants, projectId, roles]);
 
   const fetchRoles = async () => {
     try {
@@ -84,11 +151,32 @@ export default function ItemTypeSetRoleManager({
       const detailsMap = new Map<number, any>();
       const fetchPromises = allPermissions
         .filter((perm: any) => {
-          const roleId = perm.itemTypeSetRoleId || perm.id;
-          return roleId && typeof roleId === 'number' && (perm.grantId || perm.hasProjectGrant);
+          // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
+          // perm.id è l'ID della permission (StatusOwnerPermission, ExecutorPermission, ecc.)
+          // itemTypeSetRoleId è l'ID dell'ItemTypeSetRole che contiene il grant
+          const roleId = perm.itemTypeSetRoleId;
+          if (!roleId || typeof roleId !== 'number') {
+            return false;
+          }
+          // Se showOnlyProjectGrants è true, includiamo solo se ha hasProjectGrant
+          // NOTA: anche se hasProjectGrant potrebbe non essere ancora aggiornato dopo il salvataggio,
+          // tentiamo comunque di caricare i dettagli per tutte le permission con roleId valido
+          // quando showOnlyProjectGrants è true, così possiamo verificare se esiste una grant di progetto
+          if (showOnlyProjectGrants) {
+            // Includiamo tutte le permission con roleId valido, così possiamo verificare se hanno grant di progetto
+            // Questo permette di caricare i dettagli anche se hasProjectGrant non è ancora aggiornato
+            return true;
+          }
+          // Comportamento normale: include se ha grantId o hasProjectGrant
+          return perm.grantId != null || perm.hasProjectGrant === true;
         })
         .map(async (perm: any) => {
-          const roleId = perm.itemTypeSetRoleId || perm.id;
+          // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
+          const roleId = perm.itemTypeSetRoleId;
+          if (!roleId || typeof roleId !== 'number') {
+            console.warn('Permission senza itemTypeSetRoleId:', perm);
+            return;
+          }
           const grantDetails: any = {};
           
           // Carica grant globale se presente (solo se non siamo in modalità showOnlyProjectGrants)
@@ -101,48 +189,47 @@ export default function ItemTypeSetRoleManager({
             }
           }
           
-          // Carica grant di progetto se presente e se abbiamo projectId
-          if (perm.hasProjectGrant && projectId) {
+          // Carica grant di progetto SOLO se showOnlyProjectGrants è true
+          // Quando showOnlyProjectGrants è false, mostriamo solo le grant globali
+          // NOTA: Tentiamo sempre di caricare la grant di progetto quando showOnlyProjectGrants è true,
+          // anche se hasProjectGrant non è ancora settato, così possiamo verificare se esiste
+          if (showOnlyProjectGrants && projectId) {
+            console.log(`[fetchRoles] Attempting to load project grant for roleId ${roleId}, projectId ${projectId}`);
             try {
               const projectGrantResponse = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
-              // Se showOnlyProjectGrants è true, carica solo i grant di progetto senza combinare con quelli globali
-              if (showOnlyProjectGrants) {
-                Object.assign(grantDetails, projectGrantResponse.data);
-                grantDetails.isProjectGrant = true;
+              // Pulisce i dettagli prima di assegnare quelli del progetto
+              Object.keys(grantDetails).forEach(key => delete grantDetails[key]);
+              Object.assign(grantDetails, projectGrantResponse.data);
+              grantDetails.isProjectGrant = true;
+              console.log(`[fetchRoles] Successfully loaded project grant for roleId ${roleId}:`, grantDetails);
+            } catch (err: any) {
+              // Se l'errore è 404, significa che la grant non esiste ancora
+              // Se è un altro errore, loggiamolo ma non blocchiamo il rendering
+              if (err.response?.status === 404) {
+                // Grant non esiste, settiamo isProjectGrant a false per indicare che non c'è grant
+                grantDetails.isProjectGrant = false;
+                console.log(`[fetchRoles] Project grant not found (404) for roleId ${roleId}`);
               } else {
-                // Combina i dettagli del grant di progetto con quelli globali
-                if (grantDetails.users || grantDetails.groups) {
-                  // Se ci sono già grant globali, combina le liste
-                  grantDetails.users = [...(grantDetails.users || []), ...(projectGrantResponse.data.users || [])];
-                  grantDetails.groups = [...(grantDetails.groups || []), ...(projectGrantResponse.data.groups || [])];
-                  grantDetails.negatedUsers = [...(grantDetails.negatedUsers || []), ...(projectGrantResponse.data.negatedUsers || [])];
-                  grantDetails.negatedGroups = [...(grantDetails.negatedGroups || []), ...(projectGrantResponse.data.negatedGroups || [])];
-                } else {
-                  Object.assign(grantDetails, projectGrantResponse.data);
-                }
-                grantDetails.isProjectGrant = true;
+                console.error(`[fetchRoles] Error fetching project grant details for role ${roleId}:`, err);
+                // Per altri errori, non settiamo isProjectGrant per permettere un retry
               }
-            } catch (err) {
-              console.error(`Error fetching project grant details for role ${roleId}:`, err);
             }
           }
           
-          // Se showOnlyProjectGrants è true, non caricare i grant globali
-          if (showOnlyProjectGrants && perm.grantId) {
-            // Resetta i grant globali se esistono
-            delete grantDetails.users;
-            delete grantDetails.groups;
-            delete grantDetails.negatedUsers;
-            delete grantDetails.negatedGroups;
-          }
-          
-          if (Object.keys(grantDetails).length > 0) {
+          // Salva i dettagli se abbiamo almeno isProjectGrant settato o se ci sono dati
+          // Questo permette di distinguere tra "non ancora caricato" e "non ha grant"
+          if (grantDetails.isProjectGrant !== undefined || Object.keys(grantDetails).length > 0) {
             detailsMap.set(roleId, grantDetails);
           }
         });
       
       await Promise.all(fetchPromises);
       setGrantDetailsMap(detailsMap);
+      
+      // Reset il ref quando vengono ricaricate le roles
+      if (showOnlyProjectGrants) {
+        loadedGrantDetailsRef.current.clear();
+      }
     } catch (err: any) {
       if (err.response?.status === 500) {
         try {
@@ -164,11 +251,25 @@ export default function ItemTypeSetRoleManager({
           const detailsMap = new Map<number, any>();
           const fetchPromises = allPermissions
             .filter((perm: any) => {
-              const roleId = perm.itemTypeSetRoleId || perm.id;
-              return roleId && typeof roleId === 'number' && (perm.grantId || perm.hasProjectGrant);
+              // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
+              const roleId = perm.itemTypeSetRoleId;
+              if (!roleId || typeof roleId !== 'number') {
+                return false;
+              }
+              // Se showOnlyProjectGrants è true, includiamo solo se ha hasProjectGrant
+              if (showOnlyProjectGrants) {
+                return perm.hasProjectGrant === true;
+              }
+              // Comportamento normale: include se ha grantId o hasProjectGrant
+              return perm.grantId != null || perm.hasProjectGrant === true;
             })
             .map(async (perm: any) => {
-              const roleId = perm.itemTypeSetRoleId || perm.id;
+              // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
+              const roleId = perm.itemTypeSetRoleId;
+              if (!roleId || typeof roleId !== 'number') {
+                console.warn('Permission senza itemTypeSetRoleId (retry):', perm);
+                return;
+              }
               const grantDetails: any = {};
               
               // Carica grant globale se presente (solo se non siamo in modalità showOnlyProjectGrants)
@@ -181,42 +282,25 @@ export default function ItemTypeSetRoleManager({
                 }
               }
               
-              // Carica grant di progetto se presente e se abbiamo projectId
-              if (perm.hasProjectGrant && projectId) {
+              // Carica grant di progetto SOLO se showOnlyProjectGrants è true
+              // Quando showOnlyProjectGrants è false, mostriamo solo le grant globali
+              if (showOnlyProjectGrants && perm.hasProjectGrant && projectId) {
                 try {
                   const projectGrantResponse = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
-                  // Se showOnlyProjectGrants è true, carica solo i grant di progetto senza combinare con quelli globali
-                  if (showOnlyProjectGrants) {
-                    Object.assign(grantDetails, projectGrantResponse.data);
-                    grantDetails.isProjectGrant = true;
-                  } else {
-                    // Combina i dettagli del grant di progetto con quelli globali
-                    if (grantDetails.users || grantDetails.groups) {
-                      // Se ci sono già grant globali, combina le liste
-                      grantDetails.users = [...(grantDetails.users || []), ...(projectGrantResponse.data.users || [])];
-                      grantDetails.groups = [...(grantDetails.groups || []), ...(projectGrantResponse.data.groups || [])];
-                      grantDetails.negatedUsers = [...(grantDetails.negatedUsers || []), ...(projectGrantResponse.data.negatedUsers || [])];
-                      grantDetails.negatedGroups = [...(grantDetails.negatedGroups || []), ...(projectGrantResponse.data.negatedGroups || [])];
-                    } else {
-                      Object.assign(grantDetails, projectGrantResponse.data);
-                    }
-                    grantDetails.isProjectGrant = true;
-                  }
+                  // Pulisce i dettagli prima di assegnare quelli del progetto
+                  Object.keys(grantDetails).forEach(key => delete grantDetails[key]);
+                  Object.assign(grantDetails, projectGrantResponse.data);
+                  grantDetails.isProjectGrant = true;
                 } catch (err) {
                   console.error(`Error fetching project grant details for role ${roleId}:`, err);
+                  // Anche in caso di errore, settiamo isProjectGrant per indicare che abbiamo tentato di caricare
+                  grantDetails.isProjectGrant = false;
                 }
               }
               
-              // Se showOnlyProjectGrants è true, non caricare i grant globali
-              if (showOnlyProjectGrants && perm.grantId) {
-                // Resetta i grant globali se esistono
-                delete grantDetails.users;
-                delete grantDetails.groups;
-                delete grantDetails.negatedUsers;
-                delete grantDetails.negatedGroups;
-              }
-              
-              if (Object.keys(grantDetails).length > 0) {
+              // Salva i dettagli se abbiamo almeno isProjectGrant settato o se ci sono dati
+              // Questo permette di distinguere tra "non ancora caricato" e "non ha grant"
+              if (grantDetails.isProjectGrant !== undefined || Object.keys(grantDetails).length > 0) {
                 detailsMap.set(roleId, grantDetails);
               }
             });
@@ -271,7 +355,15 @@ export default function ItemTypeSetRoleManager({
       }
     } else if (filters.status !== "All") {
       // Valore specifico = mostra solo con questo status
-      if (!permission.workflowStatus || permission.workflowStatus.id.toString() !== filters.status) {
+      // Usa il nome invece dell'ID per includere stati con stesso nome da workflow diversi
+      // Il filtro può contenere o un ID o un nome
+      if (!permission.workflowStatus) {
+        return false;
+      }
+      // Controlla sia per ID che per nome (per compatibilità)
+      const statusId = permission.workflowStatus.id.toString();
+      const statusName = permission.workflowStatus.name;
+      if (statusId !== filters.status && statusName !== filters.status) {
         return false;
       }
     }
@@ -458,33 +550,94 @@ export default function ItemTypeSetRoleManager({
                         </td>
                         <td>
                           {(() => {
-                            const roleId = role.itemTypeSetRoleId || role.id;
-                            const grantDetails = roleId ? grantDetailsMap.get(roleId) : null;
+                            // IMPORTANTE: usiamo solo itemTypeSetRoleId, non role.id come fallback
+                            // role.id è l'ID della permission, non dell'ItemTypeSetRole
+                            const roleId = role.itemTypeSetRoleId;
+                            console.log(`Rendering assignments for permission:`, role.name, `roleId:`, roleId, `showOnlyProjectGrants:`, showOnlyProjectGrants, `projectId:`, projectId);
+                            
+                            if (!roleId || typeof roleId !== 'number') {
+                              // Se non abbiamo itemTypeSetRoleId, non possiamo mostrare i dettagli del grant
+                              console.log(`No roleId for permission:`, role.name);
+                              return (
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
+                                  N/A
+                                </span>
+                              );
+                            }
+                            const grantDetails = grantDetailsMap.get(roleId);
+                            console.log(`Grant details from map for roleId ${roleId}:`, grantDetails);
                             
                             // Se showOnlyProjectGrants è true, mostra solo grant di progetto
                             if (showOnlyProjectGrants) {
-                              if (!role.hasProjectGrant) {
+                              console.log(`Entering showOnlyProjectGrants branch for roleId ${roleId}`);
+                              // Quando showOnlyProjectGrants è true, i dettagli vengono caricati via useEffect
+                              // Se non abbiamo ancora i dettagli, mostriamo un messaggio di caricamento
+                              if (!grantDetails || grantDetails.isProjectGrant !== true) {
+                                // Se stiamo caricando, mostriamo un messaggio
+                                if (loadingGrantDetails.has(roleId)) {
+                                  return (
+                                    <div className="text-xs text-gray-500 italic">
+                                      Caricamento dettagli grant di progetto...
+                                    </div>
+                                  );
+                                }
+                                
+                                // Se abbiamo tentato di caricare ma non c'è grant (404), mostriamo "N"
+                                if (grantDetails && grantDetails.isProjectGrant === false) {
+                                  return (
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
+                                      N
+                                    </span>
+                                  );
+                                }
+                                
+                                // Se non abbiamo ancora tentato di caricare, mostriamo un messaggio
+                                // (il useEffect dovrebbe caricarli a breve)
                                 return (
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
-                                    N
+                                  <div className="text-xs text-gray-500 italic">
+                                    Caricamento dettagli grant di progetto...
+                                  </div>
+                                );
+                              }
+                              
+                              // Debug: log per verificare che i dettagli siano disponibili
+                              console.log(`Rendering grant details for roleId ${roleId}, showOnlyProjectGrants: ${showOnlyProjectGrants}, grantDetails:`, grantDetails);
+                              
+                              // Se abbiamo i dettagli ma sono vuoti (nessun utente/gruppo), mostriamo comunque qualcosa
+                              const hasUsers = grantDetails.users && grantDetails.users.length > 0;
+                              const hasGroups = grantDetails.groups && grantDetails.groups.length > 0;
+                              const hasNegatedUsers = grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0;
+                              const hasNegatedGroups = grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0;
+                              
+                              if (!hasUsers && !hasGroups && !hasNegatedUsers && !hasNegatedGroups) {
+                                // Grant di progetto esiste ma è vuoto
+                                return (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700`}>
+                                    Grant vuota
                                   </span>
                                 );
                               }
                               
-                              // Carica solo i dettagli del grant di progetto (senza combinare con quelli globali)
-                              // I dettagli dovrebbero essere già caricati separatamente se isProjectGrant è true
-                              if (!grantDetails || !grantDetails.isProjectGrant) {
-                                return (
-                                  <div className="text-xs text-gray-500 italic">Caricamento dettagli grant di progetto...</div>
-                                );
-                              }
+                              // Mostra ruoli e dettagli del grant di progetto
+                              // Ordine: Ruoli → Utenti Autorizzati → Gruppi Autorizzati → Utenti Negati → Gruppi Negati
+                              const hasRoles = role.hasAssignments === true || (role.assignedRoles && role.assignedRoles.length > 0);
                               
-                              // Mostra solo i dettagli del grant di progetto
                               return (
                                 <div className="text-sm space-y-1">
+                                  {/* Ruoli assegnati - sempre mostrati anche quando showOnlyProjectGrants è true */}
+                                  {hasRoles && role.assignedRoles && role.assignedRoles.length > 0 && (
+                                    <div>
+                                      <span className="text-xs font-semibold text-gray-700">Ruoli: </span>
+                                      <span className="text-xs text-gray-600">
+                                        {role.assignedRoles.map((r: any) => r.name || r).join(', ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Dettagli Grant di progetto */}
                                   {grantDetails.users && grantDetails.users.length > 0 && (
                                     <div>
-                                      <span className="text-xs font-semibold text-green-700">Utenti: </span>
+                                      <span className="text-xs font-semibold text-green-700">Utenti Autorizzati: </span>
                                       <span className="text-xs text-gray-600">
                                         {grantDetails.users.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
                                       </span>
@@ -492,7 +645,7 @@ export default function ItemTypeSetRoleManager({
                                   )}
                                   {grantDetails.groups && grantDetails.groups.length > 0 && (
                                     <div>
-                                      <span className="text-xs font-semibold text-green-700">Gruppi: </span>
+                                      <span className="text-xs font-semibold text-green-700">Gruppi Autorizzati: </span>
                                       <span className="text-xs text-gray-600">
                                         {grantDetails.groups.map((g: any) => g.name).join(', ')}
                                       </span>
@@ -518,10 +671,11 @@ export default function ItemTypeSetRoleManager({
                               );
                             }
                             
-                            // Comportamento normale: mostra tutte le assegnazioni
-                            // Controlla se ci sono assegnazioni: ruoli O grant (globali O di progetto)
+                            // Comportamento normale: mostra solo grant globali (non quelle di progetto)
+                            // Controlla se ci sono assegnazioni: ruoli O grant globali (non di progetto)
                             const hasRoles = role.hasAssignments === true || (role.assignedRoles && role.assignedRoles.length > 0);
-                            const hasGrant = role.grantId != null || role.assignmentType === 'GRANT' || role.hasProjectGrant;
+                            // Solo grant globali, non quelle di progetto
+                            const hasGrant = role.grantId != null || role.assignmentType === 'GRANT';
                             const hasAssignments = hasRoles || hasGrant;
                             
                             if (!hasAssignments) {
@@ -544,12 +698,14 @@ export default function ItemTypeSetRoleManager({
                                   </div>
                                 )}
                                 
-                                {/* Dettagli Grant - mostra sia grant globali che di progetto */}
-                                {hasGrant && grantDetails && (
+                                {/* Dettagli Grant - mostra SOLO grant globali (non quelle di progetto) */}
+                                {/* Ordine: Utenti Autorizzati → Gruppi Autorizzati → Utenti Negati → Gruppi Negati */}
+                                {/* Mostra solo se grantDetails non è una grant di progetto */}
+                                {hasGrant && grantDetails && !grantDetails.isProjectGrant && (
                                   <>
                                     {grantDetails.users && grantDetails.users.length > 0 && (
                                       <div>
-                                        <span className="text-xs font-semibold text-green-700">Utenti: </span>
+                                        <span className="text-xs font-semibold text-green-700">Utenti Autorizzati: </span>
                                         <span className="text-xs text-gray-600">
                                           {grantDetails.users.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
                                         </span>
@@ -557,7 +713,7 @@ export default function ItemTypeSetRoleManager({
                                     )}
                                     {grantDetails.groups && grantDetails.groups.length > 0 && (
                                       <div>
-                                        <span className="text-xs font-semibold text-green-700">Gruppi: </span>
+                                        <span className="text-xs font-semibold text-green-700">Gruppi Autorizzati: </span>
                                         <span className="text-xs text-gray-600">
                                           {grantDetails.groups.map((g: any) => g.name).join(', ')}
                                         </span>

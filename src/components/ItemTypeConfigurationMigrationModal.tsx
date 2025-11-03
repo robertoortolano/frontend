@@ -813,13 +813,17 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
           </button>
           <button
             onClick={async () => {
-              // Chiedi se esportare il report prima di confermare
-              const shouldExport = window.confirm(
-                'Vuoi esportare il report prima di confermare la modifica?'
-              );
+              // Chiedi se esportare il report prima di confermare solo se ci sono permission con assegnazioni
+              const hasPermissionsWithAssignments = stats.withRoles > 0;
               
-              if (shouldExport) {
-                await handleExportFullReport();
+              if (hasPermissionsWithAssignments) {
+                const shouldExport = window.confirm(
+                  'Vuoi esportare il report prima di confermare la modifica?'
+                );
+                
+                if (shouldExport) {
+                  await handleExportFullReport();
+                }
               }
               
               // Converti Map<number, Set<number>> in Map<number, number[]>

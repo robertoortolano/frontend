@@ -580,7 +580,15 @@ export default function PermissionGrantManager({
             </p>
             
             <div className="grid grid-cols-1 gap-6">
-              {/* Sezione Grant di Progetto - Utenti Autorizzati */}
+              {/* 1. Sezione Ruoli (Role template) - disponibile anche per progetti */}
+              <RoleAssignmentSection
+                selectedRoles={selectedRoles}
+                availableRoles={availableRoles}
+                onAddRole={addRole}
+                onRemoveRole={removeRole}
+              />
+
+              {/* 2. Sezione Grant di Progetto - Utenti Autorizzati */}
               <div style={{ 
                 border: '1px solid #e5e7eb', 
                 borderRadius: '0.5rem', 
@@ -601,31 +609,6 @@ export default function PermissionGrantManager({
                   onRemoveUser={handleRemoveProjectUser}
                   label="Aggiungi Utente Autorizzato"
                   placeholder="Cerca utente per nome o email..."
-                />
-              </div>
-
-              {/* Sezione Grant di Progetto - Utenti Negati */}
-              <div style={{ 
-                border: '1px solid #e5e7eb', 
-                borderRadius: '0.5rem', 
-                padding: '1rem', 
-                backgroundColor: 'white' 
-              }}>
-                <h4 style={{ 
-                  fontSize: '1rem', 
-                  fontWeight: '600', 
-                  color: '#1e3a8a',
-                  marginBottom: '1rem'
-                }}>
-                  Utenti Negati
-                </h4>
-                <UserAutocomplete
-                  selectedUsers={projectGrantNegatedUsers}
-                  onAddUser={handleAddProjectNegatedUser}
-                  onRemoveUser={handleRemoveProjectNegatedUser}
-                  label="Aggiungi Utente Negato"
-                  placeholder="Cerca utente per nome o email..."
-                  variant="negated"
                 />
               </div>
 
@@ -739,6 +722,31 @@ export default function PermissionGrantManager({
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Sezione Grant di Progetto - Utenti Negati */}
+              <div style={{ 
+                border: '1px solid #e5e7eb', 
+                borderRadius: '0.5rem', 
+                padding: '1rem', 
+                backgroundColor: 'white' 
+              }}>
+                <h4 style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '600', 
+                  color: '#1e3a8a',
+                  marginBottom: '1rem'
+                }}>
+                  Utenti Negati
+                </h4>
+                <UserAutocomplete
+                  selectedUsers={projectGrantNegatedUsers}
+                  onAddUser={handleAddProjectNegatedUser}
+                  onRemoveUser={handleRemoveProjectNegatedUser}
+                  label="Aggiungi Utente Negato"
+                  placeholder="Cerca utente per nome o email..."
+                  variant="negated"
+                />
               </div>
 
               {/* Sezione Grant di Progetto - Gruppi Negati */}
@@ -891,32 +899,7 @@ export default function PermissionGrantManager({
               />
             </div>
 
-            {/* 3. Sezione Grant - Utenti Negati */}
-            <div style={{ 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '0.5rem', 
-              padding: '1rem', 
-              backgroundColor: 'white' 
-            }}>
-              <h3 style={{ 
-                fontSize: '1rem', 
-                fontWeight: '600', 
-                color: '#1e3a8a',
-                marginBottom: '1rem'
-              }}>
-                Utenti Negati
-              </h3>
-              <UserAutocomplete
-                selectedUsers={grantNegatedUsers}
-                onAddUser={handleAddNegatedUser}
-                onRemoveUser={handleRemoveNegatedUser}
-                label="Aggiungi Utente Negato"
-                placeholder="Cerca utente per nome o email..."
-                variant="negated"
-              />
-            </div>
-
-            {/* 4. Sezione Grant - Gruppi Autorizzati */}
+            {/* 3. Sezione Grant - Gruppi Autorizzati */}
             <div style={{ 
               border: '1px solid #e5e7eb', 
               borderRadius: '0.5rem', 
@@ -1027,6 +1010,31 @@ export default function PermissionGrantManager({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* 4. Sezione Grant - Utenti Negati */}
+            <div style={{ 
+              border: '1px solid #e5e7eb', 
+              borderRadius: '0.5rem', 
+              padding: '1rem', 
+              backgroundColor: 'white' 
+            }}>
+              <h3 style={{ 
+                fontSize: '1rem', 
+                fontWeight: '600', 
+                color: '#1e3a8a',
+                marginBottom: '1rem'
+              }}>
+                Utenti Negati
+              </h3>
+              <UserAutocomplete
+                selectedUsers={grantNegatedUsers}
+                onAddUser={handleAddNegatedUser}
+                onRemoveUser={handleRemoveNegatedUser}
+                label="Aggiungi Utente Negato"
+                placeholder="Cerca utente per nome o email..."
+                variant="negated"
+              />
             </div>
 
             {/* 5. Sezione Grant - Gruppi Negati */}

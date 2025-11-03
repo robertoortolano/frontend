@@ -26,7 +26,7 @@ import {
 } from "../../types/field.types";
 import { FieldSetRemovalImpactDto } from "../../types/fieldset-impact.types";
 import { FieldSetEnhancedImpactReportModal } from "../../components/FieldSetEnhancedImpactReportModal";
-import { Toast } from "../../components/Toast";
+import { useToast } from "../../context/ToastContext";
 
 import layout from "../../styles/common/Layout.module.css";
 import form from "../../styles/common/Forms.module.css";
@@ -132,7 +132,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const [impactReport, setImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
   const [analyzingImpact, setAnalyzingImpact] = useState(false);
   const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
+  const { showToast } = useToast();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -257,7 +257,40 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     if (allRemovedConfigIds.length > 0) {
       await analyzeRemovalImpact(allRemovedConfigIds);
     } else {
-      await performSave();
+      // Nessuna rimozione: salva direttamente e naviga
+      setSaving(true);
+      setError(null);
+      
+      try {
+        const dto: FieldSetCreateDto = {
+          name: fieldSet.name.trim(),
+          description: fieldSet.description?.trim() || null,
+          entries: selectedConfigurations.map((configId, index) => ({
+            fieldConfigurationId: configId,
+            orderIndex: index
+          })),
+        };
+
+        await api.put(`/field-sets/${id}`, dto, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        // Mostra toast
+        showToast('FieldSet aggiornato con successo.', 'success');
+        
+        // Naviga dopo un breve delay per permettere al toast di essere visualizzato
+        setTimeout(() => {
+          if (scope === 'tenant') {
+            navigate("/tenant/field-sets");
+          } else if (scope === 'project' && projectId) {
+            navigate(`/projects/${projectId}/field-sets`);
+          }
+        }, 500);
+      } catch (err: any) {
+        setError(err.response?.data?.message || "Errore nel salvataggio");
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -296,11 +329,18 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         setShowImpactReport(true);
         setPendingSave(() => performSave);
       } else {
-        await performSave();
-        setToast({ 
-          message: 'FieldSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 
-          type: 'success' 
-        });
+        // Salva senza mostrare il report
+        await performSave(true);
+        // Mostra toast
+        showToast('FieldSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');
+        // Naviga dopo un breve delay per permettere al toast di essere visualizzato
+        setTimeout(() => {
+          if (scope === 'tenant') {
+            navigate("/tenant/field-sets");
+          } else if (scope === 'project' && projectId) {
+            navigate(`/projects/${projectId}/field-sets`);
+          }
+        }, 500);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
@@ -309,7 +349,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
 
-  const performSave = async () => {
+  const performSave = async (skipNavigation: boolean = false) => {
     if (!fieldSet) return;
 
     setSaving(true);
@@ -331,10 +371,12 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       
       setPendingRemovedConfigurations([]);
       
-      if (scope === 'tenant') {
-        navigate("/tenant/field-sets");
-      } else if (scope === 'project' && projectId) {
-        navigate(`/projects/${projectId}/field-sets`);
+      if (!skipNavigation) {
+        if (scope === 'tenant') {
+          navigate("/tenant/field-sets");
+        } else if (scope === 'project' && projectId) {
+          navigate(`/projects/${projectId}/field-sets`);
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore nel salvataggio");
@@ -663,15 +705,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         loading={analyzingImpact || saving}
         isProvisional={false}
       />
-      
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   );
 }

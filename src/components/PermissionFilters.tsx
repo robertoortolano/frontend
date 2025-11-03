@@ -71,31 +71,42 @@ export default function PermissionFilters({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Estrai opzioni disponibili dalle permissions
-  useEffect(() => {
-    const permissionTypes = new Set<string>();
-    const itemTypesMap = new Map<string, string>();
-    const statusesMap = new Map<string, string>();
-    const fieldsMap = new Map<string, string>();
-    const workflowsMap = new Map<string, string>();
+    // Estrai opzioni disponibili dalle permissions
+    useEffect(() => {
+      const permissionTypes = new Set<string>();
+      const itemTypesMap = new Map<string, string>();
+      // Usa un Set per i nomi degli stati per evitare duplicati anche se appartengono a workflow diversi
+      const statusNamesSet = new Set<string>();
+      const statusIdToNameMap = new Map<string, string>();
+      const fieldsMap = new Map<string, string>();
+      const workflowsMap = new Map<string, string>();
 
-    permissions.forEach((perm: any) => {
-      // Usa il nome esatto dal backend
-      permissionTypes.add(perm.name);
+      permissions.forEach((perm: any) => {
+        // Usa il nome esatto dal backend
+        permissionTypes.add(perm.name);
 
-      if (perm.itemType) {
-        itemTypesMap.set(perm.itemType.id.toString(), perm.itemType.name);
-      }
-      if (perm.workflowStatus) {
-        statusesMap.set(perm.workflowStatus.id.toString(), perm.workflowStatus.name);
-      }
-      if (perm.fieldConfiguration) {
-        fieldsMap.set(perm.fieldConfiguration.id.toString(), perm.fieldConfiguration.name);
-      }
-      if (perm.workflow) {
-        workflowsMap.set(perm.workflow.id.toString(), perm.workflow.name);
-      }
-    });
+        if (perm.itemType) {
+          itemTypesMap.set(perm.itemType.id.toString(), perm.itemType.name);
+        }
+        if (perm.workflowStatus) {
+          // Usa il nome come chiave per evitare duplicati (stati con stesso nome in workflow diversi)
+          const statusName = perm.workflowStatus.name;
+          const statusId = perm.workflowStatus.id.toString();
+          if (!statusNamesSet.has(statusName)) {
+            statusNamesSet.add(statusName);
+            // Mantieni anche la mappa ID->nome per il filtro, usando il primo ID trovato per questo nome
+            if (!statusIdToNameMap.has(statusId)) {
+              statusIdToNameMap.set(statusId, statusName);
+            }
+          }
+        }
+        if (perm.fieldConfiguration) {
+          fieldsMap.set(perm.fieldConfiguration.id.toString(), perm.fieldConfiguration.name);
+        }
+        if (perm.workflow) {
+          workflowsMap.set(perm.workflow.id.toString(), perm.workflow.name);
+        }
+      });
 
     // Ordine predefinito per le permissions
     const permOrder = ["Workers", "Creators", "Status Owners", "Executors", "Field Owners", "Editors", "Viewers"];
@@ -119,9 +130,10 @@ export default function PermissionFilters({
       statuses: [
         { id: "All", name: "All" },
         { id: "None", name: "None" },
-        ...Array.from(statusesMap.entries())
-          .map(([id, name]) => ({ id, name }))
-          .sort((a, b) => a.name.localeCompare(b.name)),
+        // Usa i nomi unici come ID e nome (così filtriamo per nome, non per ID)
+        ...Array.from(statusNamesSet)
+          .sort((a, b) => a.localeCompare(b))
+          .map((name) => ({ id: name, name })),
       ],
       fields: [
         { id: "All", name: "All" },
@@ -163,19 +175,36 @@ export default function PermissionFilters({
     const hasWorkflow = filteredPerms.some((p: any) => p.workflow);
 
     // Estrai valori validi dalle permissions filtrate
-    const validStatuses = new Map<string, string>();
+    // Usa Set per i nomi degli stati per evitare duplicati anche se appartengono a workflow diversi
+    const validStatusNamesSet = new Set<string>();
+    const validStatusIdToNameMap = new Map<string, string>();
     const validFields = new Map<string, string>();
     const validWorkflows = new Map<string, string>();
 
     filteredPerms.forEach((p: any) => {
       if (p.workflowStatus) {
-        validStatuses.set(p.workflowStatus.id.toString(), p.workflowStatus.name);
+        // Usa il nome come chiave per evitare duplicati (stati con stesso nome in workflow diversi)
+        const statusName = p.workflowStatus.name;
+        const statusId = p.workflowStatus.id.toString();
+        if (!validStatusNamesSet.has(statusName)) {
+          validStatusNamesSet.add(statusName);
+          // Mantieni anche la mappa ID->nome per il filtro, usando il primo ID trovato per questo nome
+          if (!validStatusIdToNameMap.has(statusId)) {
+            validStatusIdToNameMap.set(statusId, statusName);
+          }
+        }
       }
       if (p.fieldConfiguration) {
-        validFields.set(p.fieldConfiguration.id.toString(), p.fieldConfiguration.name);
+        const fieldId = p.fieldConfiguration.id.toString();
+        if (!validFields.has(fieldId)) {
+          validFields.set(fieldId, p.fieldConfiguration.name);
+        }
       }
       if (p.workflow) {
-        validWorkflows.set(p.workflow.id.toString(), p.workflow.name);
+        const workflowId = p.workflow.id.toString();
+        if (!validWorkflows.has(workflowId)) {
+          validWorkflows.set(workflowId, p.workflow.name);
+        }
       }
     });
 
@@ -183,9 +212,10 @@ export default function PermissionFilters({
       statuses: hasStatus
         ? [
             { id: "All", name: "All" },
-            ...Array.from(validStatuses.entries())
-              .map(([id, name]) => ({ id, name }))
-              .sort((a, b) => a.name.localeCompare(b.name)),
+            // Usa i nomi unici come ID e nome (così filtriamo per nome, non per ID)
+            ...Array.from(validStatusNamesSet)
+              .sort((a, b) => a.localeCompare(b))
+              .map((name) => ({ id: name, name })),
           ]
         : [{ id: "All", name: "All" }, { id: "None", name: "None" }],
       fields: hasField
