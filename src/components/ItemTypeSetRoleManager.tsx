@@ -46,6 +46,20 @@ export default function ItemTypeSetRoleManager({
   const [grantDetailsMap, setGrantDetailsMap] = useState<Map<number, any>>(new Map());
   const [loadingGrantDetails, setLoadingGrantDetails] = useState<Set<number>>(new Set());
   const loadedGrantDetailsRef = useRef<Set<number>>(new Set());
+  
+  // Stati per i modals dei popup
+  const [selectedRolesDetails, setSelectedRolesDetails] = useState<{
+    permissionName: string;
+    roles: string[];
+  } | null>(null);
+  const [selectedGrantDetails, setSelectedGrantDetails] = useState<{
+    projectId: number;
+    projectName: string;
+    roleId: number;
+    details: any;
+    isProjectGrant: boolean;
+  } | null>(null);
+  const [loadingGrantPopup, setLoadingGrantPopup] = useState(false);
   const [filters, setFilters] = useState<FilterValues>({
     permission: "All",
     itemTypes: ["All"],
@@ -462,6 +476,26 @@ export default function ItemTypeSetRoleManager({
     return allPerms;
   };
 
+  // Funzione helper per generare il nome della permission
+  const getPermissionName = (role: any): string => {
+    if (role.name) return role.name;
+    
+    // Costruisci il nome basandoti sul tipo di ruolo
+    const parts: string[] = [];
+    
+    if (role.itemType) parts.push(`ItemType: ${role.itemType.name}`);
+    if (role.workflowStatus) parts.push(`Status: ${role.workflowStatus.name}`);
+    if (role.transition) {
+      const from = role.fromStatus?.name || 'N/A';
+      const to = role.toStatus?.name || 'N/A';
+      const transName = role.transition.name && role.transition.name !== 'N/A' ? ` (${role.transition.name})` : '';
+      parts.push(`Transition: ${from} → ${to}${transName}`);
+    }
+    if (role.fieldConfiguration) parts.push(`Field: ${role.fieldConfiguration.name}`);
+    
+    return parts.length > 0 ? parts.join(', ') : 'Permission';
+  };
+
   if (loading) {
     return <div className={layout.loading}>Caricamento permissions...</div>;
   }
@@ -621,49 +655,77 @@ export default function ItemTypeSetRoleManager({
                               // Mostra ruoli e dettagli del grant di progetto
                               // Ordine: Ruoli → Utenti Autorizzati → Gruppi Autorizzati → Utenti Negati → Gruppi Negati
                               const hasRoles = role.hasAssignments === true || (role.assignedRoles && role.assignedRoles.length > 0);
+                              const rolesCount = role.assignedRoles?.length || 0;
+                              const hasGrant = hasUsers || hasGroups || hasNegatedUsers || hasNegatedGroups;
                               
                               return (
                                 <div className="text-sm space-y-1">
-                                  {/* Ruoli assegnati - sempre mostrati anche quando showOnlyProjectGrants è true */}
-                                  {hasRoles && role.assignedRoles && role.assignedRoles.length > 0 && (
+                                  {/* Ruoli assegnati - cliccabile per popup */}
+                                  {hasRoles && rolesCount > 0 && (
                                     <div>
-                                      <span className="text-xs font-semibold text-gray-700">Ruoli: </span>
-                                      <span className="text-xs text-gray-600">
-                                        {role.assignedRoles.map((r: any) => r.name || r).join(', ')}
+                                      <span
+                                        onClick={() => setSelectedRolesDetails({
+                                          permissionName: getPermissionName(role),
+                                          roles: role.assignedRoles.map((r: any) => r.name || r)
+                                        })}
+                                        style={{
+                                          cursor: 'pointer',
+                                          color: '#2563eb',
+                                          textDecoration: 'underline',
+                                          fontWeight: '500',
+                                          fontSize: '0.75rem'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.opacity = '0.7';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.opacity = '1';
+                                        }}
+                                      >
+                                        {rolesCount} {rolesCount === 1 ? 'ruolo' : 'ruoli'}
                                       </span>
                                     </div>
                                   )}
                                   
-                                  {/* Dettagli Grant di progetto */}
-                                  {grantDetails.users && grantDetails.users.length > 0 && (
+                                  {/* Grant di progetto - cliccabile per popup */}
+                                  {hasGrant && (
                                     <div>
-                                      <span className="text-xs font-semibold text-green-700">Utenti Autorizzati: </span>
-                                      <span className="text-xs text-gray-600">
-                                        {grantDetails.users.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {grantDetails.groups && grantDetails.groups.length > 0 && (
-                                    <div>
-                                      <span className="text-xs font-semibold text-green-700">Gruppi Autorizzati: </span>
-                                      <span className="text-xs text-gray-600">
-                                        {grantDetails.groups.map((g: any) => g.name).join(', ')}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0 && (
-                                    <div>
-                                      <span className="text-xs font-semibold text-red-700">Utenti Negati: </span>
-                                      <span className="text-xs text-gray-600">
-                                        {grantDetails.negatedUsers.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0 && (
-                                    <div>
-                                      <span className="text-xs font-semibold text-red-700">Gruppi Negati: </span>
-                                      <span className="text-xs text-gray-600">
-                                        {grantDetails.negatedGroups.map((g: any) => g.name).join(', ')}
+                                      <span
+                                        onClick={async () => {
+                                          if (!roleId || !projectId) return;
+                                          setLoadingGrantPopup(true);
+                                          try {
+                                            const response = await api.get(
+                                              `/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`
+                                            );
+                                            setSelectedGrantDetails({
+                                              projectId: Number(projectId),
+                                              projectName: 'Progetto',
+                                              roleId: roleId,
+                                              details: response.data,
+                                              isProjectGrant: true
+                                            });
+                                          } catch (error) {
+                                            window.alert('Errore nel recupero dei dettagli della grant di progetto');
+                                          } finally {
+                                            setLoadingGrantPopup(false);
+                                          }
+                                        }}
+                                        style={{
+                                          cursor: 'pointer',
+                                          color: '#2563eb',
+                                          textDecoration: 'underline',
+                                          fontWeight: '500',
+                                          fontSize: '0.75rem'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.opacity = '0.7';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.opacity = '1';
+                                        }}
+                                      >
+                                        Grant di progetto
                                       </span>
                                     </div>
                                   )}
@@ -686,56 +748,81 @@ export default function ItemTypeSetRoleManager({
                               );
                             }
                             
+                            const rolesCount = role.assignedRoles?.length || 0;
+                            
                             return (
                               <div className="text-sm space-y-1">
-                                {/* Ruoli assegnati */}
-                                {hasRoles && role.assignedRoles && role.assignedRoles.length > 0 && (
+                                {/* Ruoli assegnati - cliccabile per popup */}
+                                {hasRoles && rolesCount > 0 && (
                                   <div>
-                                    <span className="text-xs font-semibold text-gray-700">Ruoli: </span>
-                                    <span className="text-xs text-gray-600">
-                                      {role.assignedRoles.map((r: any) => r.name || r).join(', ')}
+                                    <span
+                                      onClick={() => setSelectedRolesDetails({
+                                        permissionName: getPermissionName(role),
+                                        roles: role.assignedRoles.map((r: any) => r.name || r)
+                                      })}
+                                      style={{
+                                        cursor: 'pointer',
+                                        color: '#2563eb',
+                                        textDecoration: 'underline',
+                                        fontWeight: '500',
+                                        fontSize: '0.75rem'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.opacity = '0.7';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.opacity = '1';
+                                      }}
+                                    >
+                                      {rolesCount} {rolesCount === 1 ? 'ruolo' : 'ruoli'}
                                     </span>
                                   </div>
                                 )}
                                 
-                                {/* Dettagli Grant - mostra SOLO grant globali (non quelle di progetto) */}
-                                {/* Ordine: Utenti Autorizzati → Gruppi Autorizzati → Utenti Negati → Gruppi Negati */}
-                                {/* Mostra solo se grantDetails non è una grant di progetto */}
+                                {/* Grant globali - cliccabile per popup */}
                                 {hasGrant && grantDetails && !grantDetails.isProjectGrant && (
-                                  <>
-                                    {grantDetails.users && grantDetails.users.length > 0 && (
-                                      <div>
-                                        <span className="text-xs font-semibold text-green-700">Utenti Autorizzati: </span>
-                                        <span className="text-xs text-gray-600">
-                                          {grantDetails.users.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {grantDetails.groups && grantDetails.groups.length > 0 && (
-                                      <div>
-                                        <span className="text-xs font-semibold text-green-700">Gruppi Autorizzati: </span>
-                                        <span className="text-xs text-gray-600">
-                                          {grantDetails.groups.map((g: any) => g.name).join(', ')}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0 && (
-                                      <div>
-                                        <span className="text-xs font-semibold text-red-700">Utenti Negati: </span>
-                                        <span className="text-xs text-gray-600">
-                                          {grantDetails.negatedUsers.map((u: any) => u.fullName || u.username || 'Utente').join(', ')}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0 && (
-                                      <div>
-                                        <span className="text-xs font-semibold text-red-700">Gruppi Negati: </span>
-                                        <span className="text-xs text-gray-600">
-                                          {grantDetails.negatedGroups.map((g: any) => g.name).join(', ')}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </>
+                                  <div>
+                                    <span
+                                      onClick={roleId ? async () => {
+                                        setLoadingGrantPopup(true);
+                                        try {
+                                          const response = await api.get(
+                                            `/itemtypeset-roles/${roleId}/grant-details`
+                                          );
+                                          setSelectedGrantDetails({
+                                            projectId: 0,
+                                            projectName: 'Globale',
+                                            roleId: roleId,
+                                            details: response.data,
+                                            isProjectGrant: false
+                                          });
+                                        } catch (error) {
+                                          window.alert('Errore nel recupero dei dettagli della grant globale');
+                                        } finally {
+                                          setLoadingGrantPopup(false);
+                                        }
+                                      } : undefined}
+                                      style={{
+                                        fontWeight: '500',
+                                        color: roleId ? '#2563eb' : '#1f2937',
+                                        textDecoration: roleId ? 'underline' : 'none',
+                                        cursor: roleId ? 'pointer' : 'default',
+                                        fontSize: '0.75rem'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        if (roleId) {
+                                          e.currentTarget.style.opacity = '0.7';
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (roleId) {
+                                          e.currentTarget.style.opacity = '1';
+                                        }
+                                      }}
+                                    >
+                                      Grant globale
+                                    </span>
+                                  </div>
                                 )}
                                 
                                 {/* Fallback se grant esiste ma dettagli non ancora caricati */}
@@ -773,6 +860,243 @@ export default function ItemTypeSetRoleManager({
             </div>
           )}
         </>
+      )}
+
+      {/* Modal for roles details */}
+      {selectedRolesDetails && (
+        <div 
+          onClick={() => setSelectedRolesDetails(null)}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            zIndex: 10001
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}
+          >
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>
+              Dettagli Ruoli - {selectedRolesDetails.permissionName}
+            </h2>
+            
+            <div>
+              {selectedRolesDetails.roles && selectedRolesDetails.roles.length > 0 ? (
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                    Ruoli Assegnati ({selectedRolesDetails.roles.length})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {selectedRolesDetails.roles.map((role: string, idx: number) => (
+                      <span key={idx} style={{
+                        padding: '4px 8px',
+                        backgroundColor: '#dbeafe',
+                        borderRadius: '4px',
+                        fontSize: '0.875rem',
+                        fontWeight: '500'
+                      }}>
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                  Nessun ruolo assegnato
+                </div>
+              )}
+            </div>
+            
+            <div style={{ marginTop: '24px', textAlign: 'right' }}>
+              <button
+                onClick={() => setSelectedRolesDetails(null)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for grant details */}
+      {selectedGrantDetails && (
+        <div 
+          onClick={() => setSelectedGrantDetails(null)}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            zIndex: 10001
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}
+          >
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>
+              Dettagli Grant - {selectedGrantDetails.projectName}
+            </h2>
+            
+            {loadingGrantPopup ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>Caricamento...</div>
+            ) : selectedGrantDetails.details ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                {/* Utenti */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                    Utenti ({selectedGrantDetails.details.users?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.users && selectedGrantDetails.details.users.length > 0 ? (
+                      selectedGrantDetails.details.users.map((user: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#dbeafe',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {user.fullName || user.username || user.email || `User #${user.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Gruppi */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                    Gruppi ({selectedGrantDetails.details.groups?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.groups && selectedGrantDetails.details.groups.length > 0 ? (
+                      selectedGrantDetails.details.groups.map((group: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#d1fae5',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {group.name || `Group #${group.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Utenti negati */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
+                    Utenti negati ({selectedGrantDetails.details.negatedUsers?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.negatedUsers && selectedGrantDetails.details.negatedUsers.length > 0 ? (
+                      selectedGrantDetails.details.negatedUsers.map((user: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#fee2e2',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {user.fullName || user.username || user.email || `User #${user.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Gruppi negati */}
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
+                    Gruppi negati ({selectedGrantDetails.details.negatedGroups?.length || 0})
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '40px' }}>
+                    {selectedGrantDetails.details.negatedGroups && selectedGrantDetails.details.negatedGroups.length > 0 ? (
+                      selectedGrantDetails.details.negatedGroups.map((group: any, idx: number) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#fee2e2',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {group.name || `Group #${group.id}`}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Nessuno</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#dc2626' }}>
+                Errore nel caricamento dei dettagli
+              </div>
+            )}
+            
+            <div style={{ marginTop: '24px', textAlign: 'right' }}>
+              <button
+                onClick={() => setSelectedGrantDetails(null)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

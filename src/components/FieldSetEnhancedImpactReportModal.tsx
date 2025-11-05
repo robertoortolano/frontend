@@ -603,6 +603,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
               
               if (shouldExport) {
                 await handleExportFullReport();
+                // Dopo l'esportazione, procedi comunque con la conferma
               }
               
               const preservedIds = Array.from(preservedPermissionIds);

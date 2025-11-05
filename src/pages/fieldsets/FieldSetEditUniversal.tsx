@@ -329,7 +329,18 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         setShowImpactReport(true);
         setPendingSave(() => performSave);
       } else {
-        // Salva senza mostrare il report
+        // Se non ci sono impatti, rimuovi automaticamente le permission orfane senza assegnazioni
+        // PRIMA di salvare il FieldSet
+        try {
+          await api.post(`/field-sets/${id}/remove-orphaned-permissions-without-assignments`, request, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (removeError: any) {
+          console.warn("Errore nella rimozione automatica delle permission orfane:", removeError);
+          // Continua comunque con il salvataggio
+        }
+        
+        // Poi salva il FieldSet
         await performSave(true);
         // Mostra toast
         showToast('FieldSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');

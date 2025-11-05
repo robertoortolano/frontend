@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ProjectDto } from "../../types/project.types";
-import { CheckCircle, Loader2, AlertCircle, Check, Home, Settings, Users, Shield, Eye } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle, Check, Home, Settings, Users, Shield, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 import ProjectMembersPanel from "../../components/ProjectMembersPanel";
 import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
 import PermissionGrantManager from "../../components/PermissionGrantManager";
@@ -150,6 +151,21 @@ function ItemTypeSetDetails({
   error,
   projectId
 }: ItemTypeSetDetailsProps) {
+  const auth = useAuth() as any;
+  const roles = auth?.roles || [];
+  
+  // Verifica se l'utente è tenant admin
+  const isTenantAdmin = roles.some((role: any) => 
+    role.name === "ADMIN" && role.scope === "TENANT"
+  );
+  
+  // Verifica se l'utente è project admin del progetto specifico
+  const isProjectAdmin = projectId && roles.some((role: any) => 
+    role.name === "ADMIN" && 
+    role.scope === "PROJECT" && 
+    role.projectId === Number(projectId)
+  );
+  
   const [isChanging, setIsChanging] = useState(false);
   const [availableItemTypeSets, setAvailableItemTypeSets] = useState<any[]>([]);
   const [selectedItemTypeSet, setSelectedItemTypeSet] = useState<any | null>(null);
@@ -158,6 +174,8 @@ function ItemTypeSetDetails({
   const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [selectedPermissionForProjectGrant, setSelectedPermissionForProjectGrant] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isGlobalPermissionsExpanded, setIsGlobalPermissionsExpanded] = useState(false);
+  const [isProjectGrantsExpanded, setIsProjectGrantsExpanded] = useState(false);
 
   const hasEntries = itemTypeSet.itemTypeConfigurations?.length > 0;
   const isGlobal = itemTypeSet.scope === 'TENANT';
@@ -172,7 +190,7 @@ function ItemTypeSetDetails({
     if (itemTypeSet?.id) {
       fetchGlobalPermissions();
     }
-  }, [itemTypeSet?.id]);
+  }, [itemTypeSet?.id, isTenantAdmin, isProjectAdmin, projectId]);
 
   // Ricarica le permission quando cambia il trigger
   useEffect(() => {
@@ -184,10 +202,39 @@ function ItemTypeSetDetails({
   const fetchAvailableItemTypeSets = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/projects/available-item-type-sets');
-      setAvailableItemTypeSets(response.data);
+      
+      if (isTenantAdmin) {
+        // Tenant admin: carica sia globali che di progetto
+        try {
+          const [globalResponse, projectResponse] = await Promise.all([
+            api.get('/projects/available-item-type-sets'),
+            api.get('/item-type-sets/project')
+          ]);
+          // Combina entrambi gli array
+          const allSets = [...(globalResponse.data || []), ...(projectResponse.data || [])];
+          setAvailableItemTypeSets(allSets);
+        } catch (err: any) {
+          // Se fallisce il caricamento dei globali, prova solo quelli di progetto
+          console.warn("Error fetching global ItemTypeSets, trying project only:", err);
+          try {
+            const projectResponse = await api.get('/item-type-sets/project');
+            setAvailableItemTypeSets(projectResponse.data || []);
+          } catch (projectErr: any) {
+            console.error("Error fetching project ItemTypeSets:", projectErr);
+            setAvailableItemTypeSets([]);
+          }
+        }
+      } else if (isProjectAdmin) {
+        // Project admin del progetto specifico: carica solo quelli di progetto
+        const response = await api.get('/item-type-sets/project');
+        setAvailableItemTypeSets(response.data || []);
+      } else {
+        // Utente senza permessi: nessun ItemTypeSet disponibile
+        setAvailableItemTypeSets([]);
+      }
     } catch (err: any) {
       console.error("Error fetching ItemTypeSets:", err);
+      setAvailableItemTypeSets([]);
     } finally {
       setLoading(false);
     }
@@ -324,41 +371,55 @@ function ItemTypeSetDetails({
             padding: '1.5rem', 
             backgroundColor: '#f0f9ff'
           }}>
-            <div className="flex items-center justify-between mb-4">
+            <div 
+              className="flex items-center justify-between mb-4 cursor-pointer"
+              onClick={() => setIsGlobalPermissionsExpanded(!isGlobalPermissionsExpanded)}
+              style={{ userSelect: 'none' }}
+            >
               <div className="flex items-center gap-2">
                 <Shield size={20} color="#1e40af" />
                 <h3 className={layout.sectionTitle} style={{ color: '#1e40af' }}>
                   Permission Globali (Sola Lettura)
                 </h3>
               </div>
+              {isGlobalPermissionsExpanded ? (
+                <ChevronUp size={20} color="#1e40af" />
+              ) : (
+                <ChevronDown size={20} color="#1e40af" />
+              )}
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Queste sono le permission configurate a livello globale per questo ItemTypeSet. 
-              Si applicano a tutti i progetti che usano questo ITS. Per modificarle, vai alla sezione ItemTypeSets globale.
-            </p>
             
-            {loadingPermissions ? (
-              <div className="flex items-center gap-2 text-gray-500">
-                <Loader2 size={16} className="animate-spin" />
-                <span>Caricamento permission globali...</span>
-              </div>
-            ) : globalPermissions ? (
-              <div style={{ 
-                backgroundColor: 'white', 
-                borderRadius: '0.5rem', 
-                padding: '1rem',
-                border: '1px solid #e5e7eb'
-              }}>
-                <ItemTypeSetRoleManager
-                  itemTypeSetId={itemTypeSet.id}
-                  refreshTrigger={refreshTrigger}
-                  projectId={projectId}
-                  showOnlyWithAssignments={true}
-                  // Non passiamo onPermissionGrantClick così non è possibile modificare (sola lettura)
-                />
-              </div>
-            ) : (
-              <p className={alert.muted}>Nessuna permission configurata.</p>
+            {isGlobalPermissionsExpanded && (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  Queste sono le permission configurate a livello globale per questo ItemTypeSet. 
+                  Si applicano a tutti i progetti che usano questo ITS. Per modificarle, vai alla sezione ItemTypeSets globale.
+                </p>
+                
+                {loadingPermissions ? (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Caricamento permission globali...</span>
+                  </div>
+                ) : globalPermissions ? (
+                  <div style={{ 
+                    backgroundColor: 'white', 
+                    borderRadius: '0.5rem', 
+                    padding: '1rem',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <ItemTypeSetRoleManager
+                      itemTypeSetId={itemTypeSet.id}
+                      refreshTrigger={refreshTrigger}
+                      projectId={projectId}
+                      showOnlyWithAssignments={true}
+                      // Non passiamo onPermissionGrantClick così non è possibile modificare (sola lettura)
+                    />
+                  </div>
+                ) : (
+                  <p className={alert.muted}>Nessuna permission configurata.</p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -370,45 +431,59 @@ function ItemTypeSetDetails({
           padding: '1.5rem', 
           backgroundColor: '#ecfdf5'
         }}>
-          <div className="flex items-center justify-between mb-4">
+          <div 
+            className="flex items-center justify-between mb-4 cursor-pointer"
+            onClick={() => setIsProjectGrantsExpanded(!isProjectGrantsExpanded)}
+            style={{ userSelect: 'none' }}
+          >
             <div className="flex items-center gap-2">
               <Eye size={20} color="#047857" />
               <h3 className={layout.sectionTitle} style={{ color: '#047857' }}>
                 Grant Specifiche del Progetto
               </h3>
             </div>
+            {isProjectGrantsExpanded ? (
+              <ChevronUp size={20} color="#047857" />
+            ) : (
+              <ChevronDown size={20} color="#047857" />
+            )}
           </div>
-          <p className="text-sm text-gray-600 mb-4">
-            Gestisci le grant aggiuntive specifiche per questo progetto. 
-            Queste grant si aggiungono alle permission globali sopra.
-          </p>
           
-          {loadingPermissions ? (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 size={16} className="animate-spin" />
-              <span>Caricamento grant di progetto...</span>
-            </div>
-          ) : globalPermissions ? (
-            <div style={{ 
-              backgroundColor: 'white', 
-              borderRadius: '0.5rem', 
-              padding: '1rem',
-              border: '1px solid #e5e7eb'
-            }}>
-              <ItemTypeSetRoleManager
-                itemTypeSetId={itemTypeSet.id}
-                refreshTrigger={refreshTrigger}
-                projectId={projectId}
-                showOnlyWithAssignments={false}
-                showOnlyProjectGrants={true}
-                onPermissionGrantClick={(permission: any) => {
-                  // Apri il modal per gestire la grant di progetto di questa permission
-                  setSelectedPermissionForProjectGrant(permission);
-                }}
-              />
-            </div>
-          ) : (
-            <p className={alert.muted}>Nessuna permission disponibile.</p>
+          {isProjectGrantsExpanded && (
+            <>
+              <p className="text-sm text-gray-600 mb-4">
+                Gestisci le grant aggiuntive specifiche per questo progetto. 
+                Queste grant si aggiungono alle permission globali sopra.
+              </p>
+              
+              {loadingPermissions ? (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Caricamento grant di progetto...</span>
+                </div>
+              ) : globalPermissions ? (
+                <div style={{ 
+                  backgroundColor: 'white', 
+                  borderRadius: '0.5rem', 
+                  padding: '1rem',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <ItemTypeSetRoleManager
+                    itemTypeSetId={itemTypeSet.id}
+                    refreshTrigger={refreshTrigger}
+                    projectId={projectId}
+                    showOnlyWithAssignments={false}
+                    showOnlyProjectGrants={true}
+                    onPermissionGrantClick={(permission: any) => {
+                      // Apri il modal per gestire la grant di progetto di questa permission
+                      setSelectedPermissionForProjectGrant(permission);
+                    }}
+                  />
+                </div>
+              ) : (
+                <p className={alert.muted}>Nessuna permission disponibile.</p>
+              )}
+            </>
           )}
 
           {selectedPermissionForProjectGrant && (

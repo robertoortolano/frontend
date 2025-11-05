@@ -249,7 +249,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       ? `/item-type-sets/project/${projectId}/${id}`
       : `/item-type-sets/${id}`;
 
-    await api.put(updateEndpoint, dto, {
+    const response = await api.put(updateEndpoint, dto, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -259,6 +259,21 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       await api.post(`/itemtypeset-roles/create-for-itemtypeset/${id}`);
     } catch (roleError) {
       console.warn("Errore nell'aggiornamento automatico dei ruoli:", roleError);
+    }
+
+    // Aggiorna originalConfigurationsRef con lo stato salvato dal backend
+    // Questo è importante perché quando si modifica un FieldSet, le permission vengono ricreate
+    // e dobbiamo riflettere lo stato aggiornato per rilevare correttamente le rimozioni successive
+    const savedData = response.data;
+    if (savedData && savedData.itemTypeConfigurations) {
+      const configs = savedData.itemTypeConfigurations.map((conf: any) => ({
+        id: conf.id,
+        itemTypeId: conf.itemType?.id || conf.itemTypeId,
+        category: conf.category,
+        fieldSetId: conf.fieldSet?.id || conf.fieldSetId,
+        workflowId: conf.workflow?.id || conf.workflowId,
+      }));
+      originalConfigurationsRef.current = [...configs];
     }
 
     if (scope === 'tenant') {
@@ -509,6 +524,10 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         // Continua comunque con il salvataggio
       }
     }
+    
+    // Aggiorna originalConfigurationsRef prima di chiamare performSave
+    // per riflettere le configurazioni dopo la rimozione
+    originalConfigurationsRef.current = [...itemTypeConfigurations];
     
     await performSave();
   };
