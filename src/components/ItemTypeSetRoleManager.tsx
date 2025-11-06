@@ -575,7 +575,7 @@ export default function ItemTypeSetRoleManager({
                               <div>
                                 <strong>Transizione:</strong> {role.fromStatus?.name || 'N/A'} → {role.toStatus?.name || 'N/A'}
                                 {role.transition.name && role.transition.name !== 'N/A' && (
-                                  <span className="ml-1 text-xs text-gray-500">({role.transition.name})</span>
+                                  <span className="ml-1 text-xs text-gray-500"> ({role.transition.name})</span>
                                 )}
                               </div>
                             )}
