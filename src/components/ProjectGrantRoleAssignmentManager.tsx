@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Plus } from 'lucide-react';
 import api from '../api/api';
+import { extractErrorMessage } from '../utils/errorUtils';
 
 import buttons from '../styles/common/Buttons.module.css';
 import alert from '../styles/common/Alerts.module.css';
@@ -110,7 +111,7 @@ export default function ProjectGrantRoleAssignmentManager({
       // Ricarica le assegnazioni
       await fetchAssignments();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Errore nella creazione dell\'assegnazione');
+      setError(extractErrorMessage(err, 'Errore nella creazione dell\'assegnazione'));
       console.error('Error creating grant role assignment:', err);
     } finally {
       setLoading(false);
@@ -131,7 +132,7 @@ export default function ProjectGrantRoleAssignmentManager({
       // Ricarica le assegnazioni
       await fetchAssignments();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Errore nella rimozione dell\'assegnazione');
+      setError(extractErrorMessage(err, 'Errore nella rimozione dell\'assegnazione'));
       console.error('Error deleting grant role assignment:', err);
     } finally {
       setLoading(false);

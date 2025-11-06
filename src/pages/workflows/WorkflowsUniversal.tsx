@@ -13,6 +13,7 @@ import { StatusCategory } from "../../types/common.types";
 import UsedInItemTypeSetsPopup from "../../components/shared/UsedInItemTypeSetsPopup";
 import { convertToReactFlowNode } from "../../utils/workflow-converters";
 import { getCategoryColor } from "./components/workflowUtils";
+import { extractErrorMessage } from "../../utils/errorUtils";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -118,7 +119,7 @@ export default function WorkflowsUniversal({ scope, projectId }: WorkflowsUniver
         setWorkflows(workflowsWithDetails);
       } catch (err: any) {
         console.error("Errore nel caricamento dei workflow", err);
-        setError(err.response?.data?.message || "Errore nel caricamento dei workflow");
+        setError(extractErrorMessage(err, "Errore nel caricamento dei workflow"));
       } finally {
         setLoading(false);
       }
@@ -150,7 +151,7 @@ export default function WorkflowsUniversal({ scope, projectId }: WorkflowsUniver
       setWorkflows((prev) => prev.filter((wf) => wf.id !== id));
     } catch (err: any) {
       console.error("Errore durante l'eliminazione", err);
-      window.alert(err.response?.data?.message || "Errore durante l'eliminazione");
+      window.alert(extractErrorMessage(err, "Errore durante l'eliminazione"));
     }
   };
 

@@ -10,6 +10,7 @@ import alert from '../styles/common/Alerts.module.css';
 
 import PermissionHeader from './permissions/PermissionHeader';
 import RoleAssignmentSection from './permissions/RoleAssignmentSection';
+import { extractErrorMessage } from '../utils/errorUtils';
 
 
 interface Role {
@@ -332,7 +333,7 @@ export default function PermissionGrantManager({
               await api.post('/itemtypeset-roles/create-and-assign-grant', payload);
             }
           } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.response?.data || err.message || 'Errore sconosciuto';
+            const errorMessage = extractErrorMessage(err, 'Errore sconosciuto');
             throw new Error(`Errore nella ${permission.grantId ? 'modifica' : 'creazione'} e assegnazione Grant: ${errorMessage}`);
           }
         } else if (permission.grantId) {
@@ -379,7 +380,7 @@ export default function PermissionGrantManager({
             // Crea o aggiorna Grant di progetto
             await api.post(`/project-itemtypeset-role-grants/project/${projectId}`, projectPayload);
           } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.response?.data || err.message || 'Errore sconosciuto';
+            const errorMessage = extractErrorMessage(err, 'Errore sconosciuto');
             throw new Error(`Errore nella creazione/modifica Grant di progetto: ${errorMessage}`);
           }
         } else if ((permission as any).hasProjectGrant) {

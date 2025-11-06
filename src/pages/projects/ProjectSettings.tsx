@@ -15,6 +15,7 @@ import table from "../../styles/common/Tables.module.css";
 import alert from "../../styles/common/Alerts.module.css";
 import utilities from "../../styles/common/Utilities.module.css";
 import form from "../../styles/common/Forms.module.css";
+import { extractErrorMessage } from "../../utils/errorUtils";
 
 // Stili per i tab - usando classi Tailwind più specifiche
 const tabStyles = {
@@ -693,7 +694,7 @@ export default function ProjectSettings() {
         setMembers(membersRes.data);
       } catch (err: any) {
         console.error("Errore nel caricamento del progetto:", err);
-        setError(err.response?.data?.message || "Error loading project. Please try again.");
+        setError(extractErrorMessage(err, "Error loading project. Please try again."));
       } finally {
         setLoading(false);
       }
@@ -734,7 +735,7 @@ export default function ProjectSettings() {
       
     } catch (err: any) {
       console.error("Errore nell'aggiornamento dell'ItemTypeSet:", err);
-      setError(err.response?.data?.message || "Errore nell'aggiornamento dell'ItemTypeSet");
+      setError(extractErrorMessage(err, "Errore nell'aggiornamento dell'ItemTypeSet"));
       setSuccessMessage(null);
     } finally {
       setIsUpdatingItemTypeSet(false);

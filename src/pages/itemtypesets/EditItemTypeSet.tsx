@@ -17,6 +17,7 @@ import buttons from "../../styles/common/Buttons.module.css";
 import form from "../../styles/common/Forms.module.css";
 import alert from "../../styles/common/Alerts.module.css";
 import utilities from "../../styles/common/Utilities.module.css";
+import { extractErrorMessage } from "../../utils/errorUtils";
 
 interface EditItemTypeSetProps {
   scope?: 'tenant' | 'project';
@@ -220,7 +221,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       setMigrationImpacts([]);
     } catch (err: any) {
       console.error("Errore nell'applicazione della migrazione:", err);
-      setError(err.response?.data?.message || "Errore nell'applicazione della migrazione");
+      setError(extractErrorMessage(err, "Errore nell'applicazione della migrazione"));
     } finally {
       setMigrationLoading(false);
     }
@@ -377,7 +378,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       setSaving(false);
     } catch (err: any) {
       console.error("Errore durante l'aggiornamento", err);
-      setError(err.response?.data?.message || "Errore durante l'aggiornamento");
+      setError(extractErrorMessage(err, "Errore durante l'aggiornamento"));
       setSaving(false);
     }
   };
@@ -427,7 +428,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       }
     } catch (err: any) {
       console.error("Errore nell'analisi dell'impatto della rimozione:", err);
-      setError(err.response?.data?.message || "Errore nell'analisi dell'impatto della rimozione");
+      setError(extractErrorMessage(err, "Errore nell'analisi dell'impatto della rimozione"));
     } finally {
       setRemovalImpactLoading(false);
       setSaving(false);
@@ -456,7 +457,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
           impacts.push(response.data);
         } catch (err: any) {
           console.error(`Errore nell'analisi dell'impatto per configurazione ${config.id}:`, err);
-          setError(err.response?.data?.message || "Errore nell'analisi dell'impatto della migrazione");
+          setError(extractErrorMessage(err, "Errore nell'analisi dell'impatto della migrazione"));
           setMigrationLoading(false);
           setSaving(false);
           return;
@@ -485,7 +486,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       }
     } catch (err: any) {
       console.error("Errore durante l'analisi della migrazione", err);
-      setError(err.response?.data?.message || "Errore durante l'analisi della migrazione");
+      setError(extractErrorMessage(err, "Errore durante l'analisi della migrazione"));
       setSaving(false);
     } finally {
       setMigrationLoading(false);

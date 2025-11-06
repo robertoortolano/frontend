@@ -471,7 +471,7 @@ export default function WorkflowEdit() {
       navigate(-1);
     } catch (err: any) {
       console.error("Errore salvataggio workflow", err);
-      setError(err.response?.data?.message || "Errore durante il salvataggio del workflow");
+      setError(extractErrorMessage(err, "Errore durante il salvataggio del workflow"));
     } finally {
       setSaving(false);
     }
@@ -717,7 +717,7 @@ export default function WorkflowEdit() {
       }
     } catch (err: any) {
       console.error("❌ Errore durante l'analisi degli impatti status", err);
-      setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
+      setError(extractErrorMessage(err, "Errore durante l'analisi degli impatti"));
     } finally {
       setAnalyzingStatusImpact(false);
     }
