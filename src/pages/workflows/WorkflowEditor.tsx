@@ -164,7 +164,6 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     );
     
     if (existingLocalEdge) {
-      console.warn('Edge already exists in localEdges');
       return;
     }
 
@@ -211,7 +210,6 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
   const handleEdgeUpdate = useCallback((oldEdge: any, newConnection: Connection) => {
     if (!newConnection.source || !newConnection.target) return;
     
-    console.log('handleEdgeUpdate called with:', { oldEdge: oldEdge.id, newConnection });
     
     // Mark this edge as recently updated to prevent onEdgesChange from reverting it
     recentlyUpdatedEdgesRef.current.add(oldEdge.id);
@@ -248,7 +246,6 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     const filteredChanges = changes.filter(change => {
       // If this change affects an edge we just updated, ignore it
       if (change.id && recentlyUpdatedEdgesRef.current.has(change.id)) {
-        console.log('Ignoring change for recently updated edge:', change.id);
         return false;
       }
       return true;

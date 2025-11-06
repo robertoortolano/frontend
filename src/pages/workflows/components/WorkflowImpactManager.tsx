@@ -29,7 +29,6 @@ export const WorkflowImpactManager: React.FC<WorkflowImpactManagerProps> = ({
 
   // Il DTO enhanced deve essere sempre disponibile
   if (!enhancedImpactDto) {
-    console.error('Enhanced impact DTO not available, cannot display report');
     return null;
   }
 
@@ -58,12 +57,7 @@ export const WorkflowImpactManager: React.FC<WorkflowImpactManagerProps> = ({
     );
   }
 
-  // Se il tipo non corrisponde, log errore e non mostra nulla
-  console.error('Unknown impact report type or DTO structure mismatch:', { 
-    type: impactReport.type, 
-    hasStatusOwner: 'statusOwnerPermissions' in enhancedImpactDto,
-    hasExecutor: 'executorPermissions' in enhancedImpactDto
-  });
+  // Se il tipo non corrisponde, non mostra nulla
   return null;
 };
 

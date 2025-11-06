@@ -208,21 +208,18 @@ export default function ItemTypeSetRoleManager({
           // NOTA: Tentiamo sempre di caricare la grant di progetto quando showOnlyProjectGrants è true,
           // anche se hasProjectGrant non è ancora settato, così possiamo verificare se esiste
           if (showOnlyProjectGrants && projectId) {
-            console.log(`[fetchRoles] Attempting to load project grant for roleId ${roleId}, projectId ${projectId}`);
             try {
               const projectGrantResponse = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
               // Pulisce i dettagli prima di assegnare quelli del progetto
               Object.keys(grantDetails).forEach(key => delete grantDetails[key]);
               Object.assign(grantDetails, projectGrantResponse.data);
               grantDetails.isProjectGrant = true;
-              console.log(`[fetchRoles] Successfully loaded project grant for roleId ${roleId}:`, grantDetails);
             } catch (err: any) {
               // Se l'errore è 404, significa che la grant non esiste ancora
               // Se è un altro errore, loggiamolo ma non blocchiamo il rendering
               if (err.response?.status === 404) {
                 // Grant non esiste, settiamo isProjectGrant a false per indicare che non c'è grant
                 grantDetails.isProjectGrant = false;
-                console.log(`[fetchRoles] Project grant not found (404) for roleId ${roleId}`);
               } else {
                 console.error(`[fetchRoles] Error fetching project grant details for role ${roleId}:`, err);
                 // Per altri errori, non settiamo isProjectGrant per permettere un retry
@@ -587,11 +584,9 @@ export default function ItemTypeSetRoleManager({
                             // IMPORTANTE: usiamo solo itemTypeSetRoleId, non role.id come fallback
                             // role.id è l'ID della permission, non dell'ItemTypeSetRole
                             const roleId = role.itemTypeSetRoleId;
-                            console.log(`Rendering assignments for permission:`, role.name, `roleId:`, roleId, `showOnlyProjectGrants:`, showOnlyProjectGrants, `projectId:`, projectId);
                             
                             if (!roleId || typeof roleId !== 'number') {
                               // Se non abbiamo itemTypeSetRoleId, non possiamo mostrare i dettagli del grant
-                              console.log(`No roleId for permission:`, role.name);
                               return (
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
                                   N/A
@@ -599,11 +594,9 @@ export default function ItemTypeSetRoleManager({
                               );
                             }
                             const grantDetails = grantDetailsMap.get(roleId);
-                            console.log(`Grant details from map for roleId ${roleId}:`, grantDetails);
                             
                             // Se showOnlyProjectGrants è true, mostra solo grant di progetto
                             if (showOnlyProjectGrants) {
-                              console.log(`Entering showOnlyProjectGrants branch for roleId ${roleId}`);
                               // Quando showOnlyProjectGrants è true, i dettagli vengono caricati via useEffect
                               // Se non abbiamo ancora i dettagli, mostriamo un messaggio di caricamento
                               if (!grantDetails || grantDetails.isProjectGrant !== true) {
@@ -633,9 +626,6 @@ export default function ItemTypeSetRoleManager({
                                   </div>
                                 );
                               }
-                              
-                              // Debug: log per verificare che i dettagli siano disponibili
-                              console.log(`Rendering grant details for roleId ${roleId}, showOnlyProjectGrants: ${showOnlyProjectGrants}, grantDetails:`, grantDetails);
                               
                               // Se abbiamo i dettagli ma sono vuoti (nessun utente/gruppo), mostriamo comunque qualcosa
                               const hasUsers = grantDetails.users && grantDetails.users.length > 0;

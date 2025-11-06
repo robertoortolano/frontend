@@ -1103,7 +1103,7 @@ export function useWorkflowEditor({
         combinedDto = transitionDto;
       }
       
-      // Memorizza sempre il DTO, anche se non ci sono role assignments (per debug/consistenza)
+      // Memorizza sempre il DTO, anche se non ci sono role assignments (per consistenza)
       if (combinedDto) {
         setEnhancedImpactDto(combinedDto);
       }

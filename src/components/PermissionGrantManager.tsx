@@ -333,7 +333,6 @@ export default function PermissionGrantManager({
             }
           } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.response?.data || err.message || 'Errore sconosciuto';
-            console.error('Full error response:', err.response); // Debug
             throw new Error(`Errore nella ${permission.grantId ? 'modifica' : 'creazione'} e assegnazione Grant: ${errorMessage}`);
           }
         } else if (permission.grantId) {

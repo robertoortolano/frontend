@@ -37,7 +37,6 @@ export function convertToUnifiedNodes(
     );
 
     if (!workflowStatus) {
-      console.warn(`WorkflowStatus not found for statusId: ${nodeDto.statusId}`);
       // Return a minimal node data - this should not happen in normal operation
       return {
         nodeId: nodeDto.id,

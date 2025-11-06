@@ -160,11 +160,11 @@ export default function WorkflowCreate() {
     api
       .get("/statuses")
       .then((res) => setAvailableStatuses(res.data))
-      .catch(console.error);
+      .catch(() => {});
     api
       .get("/statuses/categories")
       .then((res) => setStatusCategories(res.data))
-      .catch(console.error);
+      .catch(() => {});
   }, []);
 
   // 🔹 Aggiorna flag isInitial sui nodi
