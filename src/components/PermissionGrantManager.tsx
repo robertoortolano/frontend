@@ -109,7 +109,13 @@ export default function PermissionGrantManager({
       fetchAvailableGroups();
       
       // Inizializza con i dati esistenti
-      setSelectedRoles(permission.assignedRoles || []);
+      // Per scope 'project', i ruoli devono essere aggiuntivi e separati da quelli globali
+      // quindi inizializziamo come array vuoto
+      if (scope === 'project') {
+        setSelectedRoles([]);
+      } else {
+        setSelectedRoles(permission.assignedRoles || []);
+      }
       
       // Se c'è già un Grant globale assegnato, carica i suoi dettagli
       // MA solo se NON siamo in modalità progetto (dove le globali sono già visibili in sola lettura)

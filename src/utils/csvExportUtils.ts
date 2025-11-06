@@ -59,8 +59,7 @@ export const CSV_HEADER = [
   'Status',
   'Transition',
   'Ruolo',
-  'Grant Globale',
-  'Grant di progetto',
+  'Grant',
   'Utente',
   'Utente negato',
   'Gruppo',
@@ -99,8 +98,7 @@ const createBaseRow = (
   statusName: string,
   transitionName: string,
   roleName: string,
-  hasGlobalGrant: 'Yes' | 'No',
-  projectName: string,
+  grant: string, // "Global" per grant globale, nome progetto per grant di progetto, "" per nessuna grant
   userName: string,
   negatedUserName: string,
   groupName: string,
@@ -114,8 +112,7 @@ const createBaseRow = (
     statusName,
     transitionName,
     escapeCSV(roleName),
-    hasGlobalGrant,
-    escapeCSV(projectName),
+    escapeCSV(grant),
     escapeCSV(userName),
     escapeCSV(negatedUserName),
     escapeCSV(groupName),
@@ -149,25 +146,31 @@ const processPermissionRows = async (
     transitionName = formatTransition(perm.fromStatusName, perm.toStatusName, perm.transitionName);
   }
 
-  // Righe base per ruoli assegnati (senza grant)
+  // Righe base per ruoli assegnati (senza grant di progetto)
+  // Questi ruoli vengono esportati se non ci sono grant di progetto
+  // Se ci sono grant di progetto, i ruoli vengono esportati insieme alle grant di progetto
   if (perm.assignedRoles && perm.assignedRoles.length > 0) {
-    perm.assignedRoles.forEach((roleName: string) => {
-      rows.push(createBaseRow(
-        permissionName,
-        itemTypeSetName,
-        action,
-        fieldName,
-        statusName,
-        transitionName,
-        roleName,
-        'No',
-        '',
-        '',
-        '',
-        '',
-        ''
-      ));
-    });
+    // Se non ci sono grant di progetto, esporta i ruoli qui
+    if (!perm.projectGrants || perm.projectGrants.length === 0) {
+      perm.assignedRoles.forEach((roleName: string) => {
+        rows.push(createBaseRow(
+          permissionName,
+          itemTypeSetName,
+          action,
+          fieldName,
+          statusName,
+          transitionName,
+          roleName,
+          'Global', // Ruolo globale = Grant = Global
+          '',
+          '',
+          '',
+          '',
+          ''
+        ));
+      });
+    }
+    // Se ci sono grant di progetto, i ruoli verranno esportati insieme alle grant di progetto
   }
 
   // Grant globale
@@ -189,7 +192,7 @@ const processPermissionRows = async (
           statusName,
           transitionName,
           '',
-          'Yes',
+          'Global',
           '',
           '',
           '',
@@ -208,8 +211,7 @@ const processPermissionRows = async (
               statusName,
               transitionName,
               '',
-              'Yes',
-              '',
+              'Global',
               user.username || user.email || `User #${user.id}`,
               '',
               '',
@@ -229,8 +231,7 @@ const processPermissionRows = async (
               statusName,
               transitionName,
               '',
-              'Yes',
-              '',
+              'Global',
               '',
               '',
               group.name || `Group #${group.id}`,
@@ -250,8 +251,7 @@ const processPermissionRows = async (
               statusName,
               transitionName,
               '',
-              'Yes',
-              '',
+              'Global',
               '',
               user.username || user.email || `User #${user.id}`,
               '',
@@ -271,8 +271,7 @@ const processPermissionRows = async (
               statusName,
               transitionName,
               '',
-              'Yes',
-              '',
+              'Global',
               '',
               '',
               '',
@@ -291,7 +290,7 @@ const processPermissionRows = async (
         statusName,
         transitionName,
         '',
-        'Yes',
+        'Global',
         '',
         '',
         '',
@@ -301,8 +300,33 @@ const processPermissionRows = async (
     }
   }
 
-  // Grant di progetto
+  // Grant di progetto - gestito come le grant globali: prima i ruoli (se ci sono), poi la grant
   if (perm.projectGrants && perm.projectGrants.length > 0) {
+    // Prima esporta i ruoli (con nome progetto nella colonna Grant) se ci sono
+    // Nota: se ci sono più grant di progetto, esportiamo i ruoli per ogni progetto
+    if (perm.assignedRoles && perm.assignedRoles.length > 0) {
+      for (const projectGrant of perm.projectGrants) {
+        const projectName = escapeCSV(projectGrant.projectName);
+        perm.assignedRoles.forEach((roleName: string) => {
+          rows.push(createBaseRow(
+            permissionName,
+            itemTypeSetName,
+            action,
+            fieldName,
+            statusName,
+            transitionName,
+            roleName,
+            projectName, // Nome progetto nella colonna Grant
+            '',
+            '',
+            '',
+            ''
+          ));
+        });
+      }
+    }
+
+    // Poi esporta le grant di progetto (senza ruoli nella colonna ruolo)
     for (const projectGrant of perm.projectGrants) {
       try {
         const projectGrantResponse = await api.get(
@@ -324,7 +348,6 @@ const processPermissionRows = async (
             statusName,
             transitionName,
             '',
-            'No',
             projectName,
             '',
             '',
@@ -343,7 +366,6 @@ const processPermissionRows = async (
                 statusName,
                 transitionName,
                 '',
-                'No',
                 projectName,
                 user.username || user.email || `User #${user.id}`,
                 '',
@@ -364,7 +386,6 @@ const processPermissionRows = async (
                 statusName,
                 transitionName,
                 '',
-                'No',
                 projectName,
                 '',
                 '',
@@ -385,7 +406,6 @@ const processPermissionRows = async (
                 statusName,
                 transitionName,
                 '',
-                'No',
                 projectName,
                 '',
                 user.username || user.email || `User #${user.id}`,
@@ -406,7 +426,6 @@ const processPermissionRows = async (
                 statusName,
                 transitionName,
                 '',
-                'No',
                 projectName,
                 '',
                 '',
@@ -426,8 +445,7 @@ const processPermissionRows = async (
           statusName,
           transitionName,
           '',
-          'No',
-          projectGrant.projectName,
+          escapeCSV(projectGrant.projectName),
           '',
           '',
           '',
@@ -449,7 +467,6 @@ const processPermissionRows = async (
       statusName,
       transitionName,
       '',
-      'No',
       '',
       '',
       '',
