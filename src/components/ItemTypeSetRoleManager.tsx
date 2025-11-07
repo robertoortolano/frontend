@@ -412,17 +412,21 @@ export default function ItemTypeSetRoleManager({
     // Nota: showOnlyProjectGrants non filtra le permission (mostra tutte), ma modifica solo cosa viene mostrato nella colonna Assegnazioni
     // Se showOnlyWithAssignments è true, mostra solo quelle con assegnazioni (ruoli O grant globali O di progetto)
     if (showOnlyWithAssignments || filters.grant !== "All") {
-      // Se showOnlyProjectGrants è true, il filtro controlla solo le assegnazioni di progetto
+      // Se showOnlyProjectGrants è true, il filtro controlla solo le assegnazioni di progetto (grant O ruoli)
       if (showOnlyProjectGrants && filters.grant !== "All") {
-        if (filters.grant === "Y" && !permission.hasProjectGrant) {
+        const hasProjectAssignments = permission.hasProjectGrant || permission.hasProjectRoles || 
+                                      (permission.projectAssignedRoles && permission.projectAssignedRoles.length > 0);
+        if (filters.grant === "Y" && !hasProjectAssignments) {
           return false;
         }
-        if (filters.grant === "N" && permission.hasProjectGrant) {
+        if (filters.grant === "N" && hasProjectAssignments) {
           return false;
         }
       } else {
-        // Comportamento normale: controlla tutte le assegnazioni (ruoli O grant globali O di progetto)
-        const hasRoles = permission.hasAssignments === true || (permission.assignedRoles && permission.assignedRoles.length > 0);
+        // Comportamento normale: controlla tutte le assegnazioni (ruoli globali O ruoli di progetto O grant globali O di progetto)
+        const hasGlobalRoles = permission.hasAssignments === true || (permission.assignedRoles && permission.assignedRoles.length > 0);
+        const hasProjectRoles = permission.hasProjectRoles === true || (permission.projectAssignedRoles && permission.projectAssignedRoles.length > 0);
+        const hasRoles = hasGlobalRoles || hasProjectRoles;
         const hasGrant = permission.grantId != null || permission.assignmentType === 'GRANT' || permission.hasProjectGrant;
         const hasAssignments = hasRoles || hasGrant;
         
@@ -593,14 +597,25 @@ export default function ItemTypeSetRoleManager({
                                 </span>
                               );
                             }
-                            const grantDetails = grantDetailsMap.get(roleId);
                             
                             // Se showOnlyProjectGrants è true, mostra solo grant di progetto
                             if (showOnlyProjectGrants) {
-                              // Quando showOnlyProjectGrants è true, i dettagli vengono caricati via useEffect
-                              // Se non abbiamo ancora i dettagli, mostriamo un messaggio di caricamento
-                              if (!grantDetails || grantDetails.isProjectGrant !== true) {
-                                // Se stiamo caricando, mostriamo un messaggio
+                              // Prima controlla se ci sono ruoli di progetto (questi sono sempre disponibili)
+                              const projectRoles = role.projectAssignedRoles || [];
+                              const projectRolesCount = projectRoles.length;
+                              const hasProjectRoles = projectRolesCount > 0;
+                              
+                              // Poi controlla i dettagli delle grant (che vengono caricati via useEffect)
+                              const grantDetails = grantDetailsMap.get(roleId);
+                              const hasUsers = grantDetails?.users && grantDetails.users.length > 0;
+                              const hasGroups = grantDetails?.groups && grantDetails.groups.length > 0;
+                              const hasNegatedUsers = grantDetails?.negatedUsers && grantDetails.negatedUsers.length > 0;
+                              const hasNegatedGroups = grantDetails?.negatedGroups && grantDetails.negatedGroups.length > 0;
+                              const hasGrant = hasUsers || hasGroups || hasNegatedUsers || hasNegatedGroups;
+                              
+                              // Se non ci sono né ruoli né grant, controlla se stiamo caricando o se non c'è nulla
+                              if (!hasProjectRoles && !hasGrant) {
+                                // Se stiamo caricando i dettagli delle grant, mostra messaggio di caricamento
                                 if (loadingGrantDetails.has(roleId)) {
                                   return (
                                     <div className="text-xs text-gray-500 italic">
@@ -618,23 +633,18 @@ export default function ItemTypeSetRoleManager({
                                   );
                                 }
                                 
-                                // Se non abbiamo ancora tentato di caricare, mostriamo un messaggio
-                                // (il useEffect dovrebbe caricarli a breve)
+                                // Se non abbiamo ancora tentato di caricare e non ci sono ruoli di progetto,
+                                // significa che non ci sono assegnazioni (i ruoli di progetto sono sempre disponibili nei dati)
+                                // Mostriamo "N" invece di "Caricamento..." perché i ruoli sono già stati controllati
                                 return (
-                                  <div className="text-xs text-gray-500 italic">
-                                    Caricamento dettagli grant di progetto...
-                                  </div>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
+                                    N
+                                  </span>
                                 );
                               }
                               
-                              // Se abbiamo i dettagli ma sono vuoti (nessun utente/gruppo), mostriamo comunque qualcosa
-                              const hasUsers = grantDetails.users && grantDetails.users.length > 0;
-                              const hasGroups = grantDetails.groups && grantDetails.groups.length > 0;
-                              const hasNegatedUsers = grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0;
-                              const hasNegatedGroups = grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0;
-                              
-                              if (!hasUsers && !hasGroups && !hasNegatedUsers && !hasNegatedGroups) {
-                                // Grant di progetto esiste ma è vuoto
+                              // Se abbiamo i dettagli delle grant ma sono vuoti (nessun utente/gruppo), mostriamo comunque i ruoli se presenti
+                              if (grantDetails && grantDetails.isProjectGrant === true && !hasGrant && !hasProjectRoles) {
                                 return (
                                   <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700`}>
                                     Grant vuota
@@ -644,19 +654,17 @@ export default function ItemTypeSetRoleManager({
                               
                               // Mostra ruoli e dettagli del grant di progetto
                               // Ordine: Ruoli → Utenti Autorizzati → Gruppi Autorizzati → Utenti Negati → Gruppi Negati
-                              const hasRoles = role.hasAssignments === true || (role.assignedRoles && role.assignedRoles.length > 0);
-                              const rolesCount = role.assignedRoles?.length || 0;
-                              const hasGrant = hasUsers || hasGroups || hasNegatedUsers || hasNegatedGroups;
+                              // Per showOnlyProjectGrants, mostra solo i ruoli di progetto
                               
                               return (
                                 <div className="text-sm space-y-1">
-                                  {/* Ruoli assegnati - cliccabile per popup */}
-                                  {hasRoles && rolesCount > 0 && (
+                                  {/* Ruoli di progetto assegnati - cliccabile per popup */}
+                                  {hasProjectRoles && projectRolesCount > 0 && (
                                     <div>
                                       <span
                                         onClick={() => setSelectedRolesDetails({
                                           permissionName: getPermissionName(role),
-                                          roles: role.assignedRoles.map((r: any) => r.name || r)
+                                          roles: projectRoles.map((r: any) => r.name || r)
                                         })}
                                         style={{
                                           cursor: 'pointer',
@@ -672,7 +680,7 @@ export default function ItemTypeSetRoleManager({
                                           e.currentTarget.style.opacity = '1';
                                         }}
                                       >
-                                        {rolesCount} {rolesCount === 1 ? 'ruolo' : 'ruoli'}
+                                        {projectRolesCount} {projectRolesCount === 1 ? 'ruolo' : 'ruoli'} di progetto
                                       </span>
                                     </div>
                                   )}
@@ -723,12 +731,14 @@ export default function ItemTypeSetRoleManager({
                               );
                             }
                             
-                            // Comportamento normale: mostra solo grant globali (non quelle di progetto)
-                            // Controlla se ci sono assegnazioni: ruoli O grant globali (non di progetto)
-                            const hasRoles = role.hasAssignments === true || (role.assignedRoles && role.assignedRoles.length > 0);
+                            // Comportamento normale: mostra grant globali e ruoli globali
+                            // Controlla se ci sono assegnazioni: ruoli globali O grant globali
+                            const globalRoles = role.assignedRoles || [];
+                            const globalRolesCount = globalRoles.length;
+                            const hasGlobalRoles = globalRolesCount > 0;
                             // Solo grant globali, non quelle di progetto
                             const hasGrant = role.grantId != null || role.assignmentType === 'GRANT';
-                            const hasAssignments = hasRoles || hasGrant;
+                            const hasAssignments = hasGlobalRoles || hasGrant;
                             
                             if (!hasAssignments) {
                               return (
@@ -738,17 +748,15 @@ export default function ItemTypeSetRoleManager({
                               );
                             }
                             
-                            const rolesCount = role.assignedRoles?.length || 0;
-                            
                             return (
                               <div className="text-sm space-y-1">
-                                {/* Ruoli assegnati - cliccabile per popup */}
-                                {hasRoles && rolesCount > 0 && (
+                                {/* Ruoli globali assegnati - cliccabile per popup */}
+                                {hasGlobalRoles && globalRolesCount > 0 && (
                                   <div>
                                     <span
                                       onClick={() => setSelectedRolesDetails({
                                         permissionName: getPermissionName(role),
-                                        roles: role.assignedRoles.map((r: any) => r.name || r)
+                                        roles: globalRoles.map((r: any) => r.name || r)
                                       })}
                                       style={{
                                         cursor: 'pointer',
@@ -764,7 +772,7 @@ export default function ItemTypeSetRoleManager({
                                         e.currentTarget.style.opacity = '1';
                                       }}
                                     >
-                                      {rolesCount} {rolesCount === 1 ? 'ruolo' : 'ruoli'}
+                                      {globalRolesCount} {globalRolesCount === 1 ? 'ruolo' : 'ruoli'} globale{globalRolesCount !== 1 ? 'i' : ''}
                                     </span>
                                   </div>
                                 )}

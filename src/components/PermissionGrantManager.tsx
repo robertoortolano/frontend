@@ -110,17 +110,23 @@ export default function PermissionGrantManager({
       fetchAvailableGroups();
       
       // Inizializza con i dati esistenti
-      // Per scope 'project', i ruoli devono essere aggiuntivi e separati da quelli globali
-      // quindi inizializziamo come array vuoto
+      const itemTypeSetRoleId = (permission as any).itemTypeSetRoleId || permission.id;
+      
       if (scope === 'project') {
-        setSelectedRoles([]);
+        // Per scope 'project', i ruoli devono essere aggiuntivi e separati da quelli globali
+        // Carica i ruoli di progetto se disponibili
+        if (projectId && itemTypeSetRoleId && typeof itemTypeSetRoleId === 'number') {
+          fetchProjectRoles(itemTypeSetRoleId, Number(projectId));
+        } else {
+          setSelectedRoles([]);
+        }
       } else {
+        // Per scope 'tenant', usa i ruoli globali
         setSelectedRoles(permission.assignedRoles || []);
       }
       
       // Se c'è già un Grant globale assegnato, carica i suoi dettagli
       // MA solo se NON siamo in modalità progetto (dove le globali sono già visibili in sola lettura)
-      const itemTypeSetRoleId = (permission as any).itemTypeSetRoleId || permission.id;
       if (scope !== 'project' && permission.grantId && itemTypeSetRoleId && typeof itemTypeSetRoleId === 'number') {
         fetchGrantDetails(itemTypeSetRoleId);
       } else {
@@ -244,6 +250,19 @@ export default function PermissionGrantManager({
     } catch (err) {
       console.error('Error fetching groups:', err);
       setAvailableGroups([]);
+    }
+  };
+  
+  const fetchProjectRoles = async (itemTypeSetRoleId: number, projectId: number) => {
+    try {
+      const response = await api.get(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}`);
+      setSelectedRoles(response.data || []);
+    } catch (err: any) {
+      // Se i ruoli di progetto non esistono, è normale
+      if (err.response?.status !== 404) {
+        console.error('Error fetching project roles:', err);
+      }
+      setSelectedRoles([]);
     }
   };
 
@@ -394,30 +413,60 @@ export default function PermissionGrantManager({
         }
       }
 
-      // Gestione Role template (ora compatibile con Grant diretto)
-      // Determina il tipo di permission dal nome
-      const permissionType = getPermissionType(permission.name);
-
-      // Per le operazioni su Role template, usa l'ID originale della permission
-      const permissionId = permission.id;
-
       // Gestione ruoli (Role template)
-      const originalRoles: Role[] = permission.assignedRoles || [];
-      
-      for (const originalRole of originalRoles) {
-        if (!selectedRoles.find((role: Role) => role.id === originalRole.id)) {
-          await api.delete('/itemtypeset-permissions/remove-role', {
-            params: { permissionId, roleId: originalRole.id, permissionType }
-          });
+      if (scope === 'project' && projectId) {
+        // Per scope 'project', gestisci i ruoli di progetto separatamente
+        // Carica i ruoli esistenti di progetto
+        let existingProjectRoles: Role[] = [];
+        try {
+          const response = await api.get(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}`);
+          existingProjectRoles = response.data || [];
+        } catch (err: any) {
+          // Se non ci sono ruoli di progetto, è normale
+          if (err.response?.status !== 404) {
+            console.warn('Warning fetching existing project roles:', err);
+          }
         }
-      }
+        
+        // Rimuovi i ruoli che non sono più selezionati
+        for (const existingRole of existingProjectRoles) {
+          if (!selectedRoles.find((role: Role) => role.id === existingRole.id)) {
+            await api.delete(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}/remove`, {
+              params: { roleId: existingRole.id }
+            });
+          }
+        }
+        
+        // Aggiungi i nuovi ruoli
+        for (const role of selectedRoles) {
+          const isAlreadyAssigned = existingProjectRoles.find((existingRole: Role) => existingRole.id === role.id);
+          if (!isAlreadyAssigned) {
+            await api.post(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}/add`, null, {
+              params: { roleId: role.id }
+            });
+          }
+        }
+      } else {
+        // Per scope 'tenant', gestisci i ruoli globali
+        const permissionType = getPermissionType(permission.name);
+        const permissionId = permission.id;
+        const originalRoles: Role[] = permission.assignedRoles || [];
+        
+        for (const originalRole of originalRoles) {
+          if (!selectedRoles.find((role: Role) => role.id === originalRole.id)) {
+            await api.delete('/itemtypeset-permissions/remove-role', {
+              params: { permissionId, roleId: originalRole.id, permissionType }
+            });
+          }
+        }
 
-      for (const role of selectedRoles) {
-        const isAlreadyAssigned = originalRoles.find((originalRole: Role) => originalRole.id === role.id);
-        if (!isAlreadyAssigned) {
-          await api.post('/itemtypeset-permissions/assign-role', null, {
-            params: { permissionId, roleId: role.id, permissionType }
-          });
+        for (const role of selectedRoles) {
+          const isAlreadyAssigned = originalRoles.find((originalRole: Role) => originalRole.id === role.id);
+          if (!isAlreadyAssigned) {
+            await api.post('/itemtypeset-permissions/assign-role', null, {
+              params: { permissionId, roleId: role.id, permissionType }
+            });
+          }
         }
       }
 
