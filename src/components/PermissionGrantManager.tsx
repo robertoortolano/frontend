@@ -440,6 +440,25 @@ export default function PermissionGrantManager({
           projectRolePayload.roleIds = [];
         }
         
+        // IMPORTANTE: Recupera la grant esistente per preservarla quando si salvano i ruoli
+        // Se non la includiamo, il backend la rimuoverà quando grantId è null
+        try {
+          const existingAssignmentResponse = await api.get(
+            `/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`
+          );
+          const existingAssignment = existingAssignmentResponse.data;
+          // Se esiste una grant, includila nel payload per preservarla
+          if (existingAssignment.assignment?.grant?.id) {
+            projectRolePayload.grantId = existingAssignment.assignment.grant.id;
+          }
+        } catch (err: any) {
+          // Se non esiste ancora un assignment, va bene, continuiamo senza grantId
+          // Questo è normale quando si crea per la prima volta
+          if (err.response?.status !== 404 && err.response?.status !== 200) {
+            console.warn('Warning fetching existing assignment for grant preservation:', err);
+          }
+        }
+        
         try {
           // Usa il nuovo endpoint ProjectPermissionAssignment per creare/aggiornare i ruoli
           await api.post(`/project-permission-assignments`, projectRolePayload);
