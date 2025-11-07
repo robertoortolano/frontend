@@ -50,7 +50,8 @@ export interface PermissionImpact {
   roleName?: string;
   grantId?: number;
   grantName?: string;
-  assignedRoles: string[];
+  assignedRoles: string[]; // Ruoli globali
+  projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
   hasAssignments: boolean;
   
   // Info per preservazione
@@ -67,7 +68,13 @@ export interface PermissionImpact {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId: number;
+  roleId?: number;
+}
+
+export interface ProjectRoleInfo {
+  projectId: number;
+  projectName: string;
+  roles: string[];
 }
 
 export interface ExecutorPermissionImpact {
@@ -85,13 +92,44 @@ export interface ExecutorPermissionImpact {
   roleName?: string;
   grantId?: number;
   grantName?: string;
-  assignedRoles: string[];
+  assignedRoles: string[]; // Ruoli globali
+  projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
   hasAssignments: boolean;
   
   // Info per preservazione
   transitionIdMatch?: number;
   transitionNameMatch?: string;
   matchingTransitionName?: string; // Nome della transition corrispondente nel nuovo stato
+  canBePreserved?: boolean;
+  defaultPreserve?: boolean;
+  
+  // Grant di progetto
+  projectGrants?: ProjectGrantInfo[];
+}
+
+export interface FieldStatusPermissionImpact {
+  permissionId: number;
+  permissionType: string; // "EDITORS" o "VIEWERS"
+  itemTypeSetId: number;
+  itemTypeSetName: string;
+  projectId: number | null;
+  projectName: string | null;
+  fieldId: number;
+  fieldName: string;
+  workflowStatusId: number;
+  workflowStatusName: string;
+  statusName: string;
+  roleId?: number;
+  roleName?: string;
+  grantId?: number;
+  grantName?: string;
+  assignedRoles: string[]; // Ruoli globali
+  projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
+  hasAssignments: boolean;
+  
+  // Info per preservazione
+  matchingStatusId?: number;
+  matchingStatusName?: string;
   canBePreserved?: boolean;
   defaultPreserve?: boolean;
   
