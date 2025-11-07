@@ -115,12 +115,15 @@ export default function PermissionGrantManager({
       const permissionType = getPermissionType(permission.name);
       
       if (scope === 'project') {
-        // Per scope 'project', i ruoli devono essere aggiuntivi e separati da quelli globali
-        // Carica i ruoli di progetto se disponibili
         if (projectId && permissionId && permissionType) {
           fetchProjectRoles(permissionType, permissionId, Number(projectId));
+          fetchProjectGrantDetails(permissionType, permissionId, Number(projectId));
         } else {
           setSelectedRoles([]);
+          setProjectGrantUsers([]);
+          setProjectGrantGroups([]);
+          setProjectGrantNegatedUsers([]);
+          setProjectGrantNegatedGroups([]);
         }
       } else {
         // Per scope 'tenant', usa i ruoli globali
@@ -139,18 +142,11 @@ export default function PermissionGrantManager({
         setGrantNegatedGroups([]);
       }
       
-      // Se siamo in un progetto e c'è una grant di progetto, carica i suoi dettagli
-      if (scope === 'project' && projectId && permissionId) {
-        const hasProjectGrant = (permission as any).hasProjectGrant;
-        if (hasProjectGrant) {
-          const permissionType = getPermissionType(permission.name);
-          fetchProjectGrantDetails(permissionType, permissionId, Number(projectId));
-        } else {
-          setProjectGrantUsers([]);
-          setProjectGrantGroups([]);
-          setProjectGrantNegatedUsers([]);
-          setProjectGrantNegatedGroups([]);
-        }
+      if (scope !== 'project') {
+        setProjectGrantUsers([]);
+        setProjectGrantGroups([]);
+        setProjectGrantNegatedUsers([]);
+        setProjectGrantNegatedGroups([]);
       }
     }
   }, [permission]);
@@ -210,8 +206,8 @@ export default function PermissionGrantManager({
       // Usa il nuovo endpoint ProjectPermissionAssignment
       const response = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
       const assignment = response.data;
-      const grantDetails = assignment.assignment?.grant;
-      
+      const grantDetails = assignment.grant;
+
       if (!grantDetails) {
         setProjectGrantUsers([]);
         setProjectGrantGroups([]);
@@ -282,7 +278,7 @@ export default function PermissionGrantManager({
       const response = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
       const assignment = response.data;
       // Estrai i ruoli da assignment.assignment.roles
-      const roles = assignment.assignment?.roles || [];
+      const roles = assignment.roles || [];
       setSelectedRoles(Array.from(roles).map((r: any) => ({
         id: r.id,
         name: r.name,
@@ -374,6 +370,12 @@ export default function PermissionGrantManager({
       }
       
       // Gestione Grant diretto di progetto (solo se siamo in un contesto progetto)
+      const hadInitialProjectGrant = scope === 'project' && Boolean(
+        (permission as any).projectGrantId ??
+        (permission as any).projectGrantName ??
+        (permission as any).hasProjectGrant
+      );
+      
       if (scope === 'project' && projectId) {
         const hasProjectGrantDirect = projectGrantUsers.length > 0 || projectGrantGroups.length > 0 || 
                                      projectGrantNegatedUsers.length > 0 || projectGrantNegatedGroups.length > 0;
@@ -409,7 +411,7 @@ export default function PermissionGrantManager({
             const errorMessage = extractErrorMessage(err, 'Errore sconosciuto');
             throw new Error(`Errore nella creazione/modifica Grant di progetto: ${errorMessage}`);
           }
-        } else if ((permission as any).hasProjectGrant) {
+        } else if (hadInitialProjectGrant) {
           // Se prima c'era una Grant di progetto ma ora non c'è, rimuovila
           try {
             // Usa il nuovo endpoint ProjectPermissionAssignment per eliminare
@@ -448,8 +450,8 @@ export default function PermissionGrantManager({
           );
           const existingAssignment = existingAssignmentResponse.data;
           // Se esiste una grant, includila nel payload per preservarla
-          if (existingAssignment.assignment?.grant?.id) {
-            projectRolePayload.grantId = existingAssignment.assignment.grant.id;
+          if (existingAssignment.grant?.id) {
+            projectRolePayload.grantId = existingAssignment.grant.id;
           }
         } catch (err: any) {
           // Se non esiste ancora un assignment, va bene, continuiamo senza grantId

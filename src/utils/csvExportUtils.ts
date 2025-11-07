@@ -32,11 +32,18 @@ export interface PermissionData {
   transitionName?: string | null;
   fromStatusName?: string | null;
   toStatusName?: string | null;
-  assignedRoles?: string[];
+  assignedRoles?: string[]; // Ruoli globali
+  projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
   grantId?: number | null;
   roleId?: number | null;
   projectGrants?: ProjectGrantInfo[];
   canBePreserved?: boolean;
+}
+
+export interface ProjectRoleInfo {
+  projectId: number;
+  projectName: string;
+  roles: string[];
 }
 
 export interface ProjectGrantInfo {
@@ -164,31 +171,25 @@ const processPermissionRows = async (
     transitionName = formatTransition(perm.fromStatusName, perm.toStatusName, perm.transitionName);
   }
 
-  // Righe base per ruoli assegnati (senza grant di progetto)
-  // Questi ruoli vengono esportati se non ci sono grant di progetto
-  // Se ci sono grant di progetto, i ruoli vengono esportati insieme alle grant di progetto
+  // Ruoli globali - sempre esportati con Grant = "Global"
   if (perm.assignedRoles && perm.assignedRoles.length > 0) {
-    // Se non ci sono grant di progetto, esporta i ruoli qui
-    if (!perm.projectGrants || perm.projectGrants.length === 0) {
-      perm.assignedRoles.forEach((roleName: string) => {
-        rows.push(createBaseRow(
-          permissionName,
-          itemTypeSetName,
-          action,
-          fieldName,
-          statusName,
-          transitionName,
-          roleName,
-          'Global', // Ruolo globale = Grant = Global
-          '',
-          '',
-          '',
-          '',
-          ''
-        ));
-      });
-    }
-    // Se ci sono grant di progetto, i ruoli verranno esportati insieme alle grant di progetto
+    perm.assignedRoles.forEach((roleName: string) => {
+      rows.push(createBaseRow(
+        permissionName,
+        itemTypeSetName,
+        action,
+        fieldName,
+        statusName,
+        transitionName,
+        roleName,
+        'Global', // Ruolo globale = Grant = Global
+        '',
+        '',
+        '',
+        '',
+        ''
+      ));
+    });
   }
 
   // Grant globale
@@ -324,14 +325,12 @@ const processPermissionRows = async (
     }
   }
 
-  // Grant di progetto - gestito come le grant globali: prima i ruoli (se ci sono), poi la grant
-  if (perm.projectGrants && perm.projectGrants.length > 0) {
-    // Prima esporta i ruoli (con nome progetto nella colonna Grant) se ci sono
-    // Nota: se ci sono più grant di progetto, esportiamo i ruoli per ogni progetto
-    if (perm.assignedRoles && perm.assignedRoles.length > 0) {
-      for (const projectGrant of perm.projectGrants) {
-        const projectName = escapeCSV(projectGrant.projectName);
-        perm.assignedRoles.forEach((roleName: string) => {
+  // Ruoli di progetto - esportati con Grant = nome progetto
+  if (perm.projectAssignedRoles && perm.projectAssignedRoles.length > 0) {
+    perm.projectAssignedRoles.forEach((projectRole: ProjectRoleInfo) => {
+      const projectName = escapeCSV(projectRole.projectName);
+      if (projectRole.roles && projectRole.roles.length > 0) {
+        projectRole.roles.forEach((roleName: string) => {
           rows.push(createBaseRow(
             permissionName,
             itemTypeSetName,
@@ -344,13 +343,16 @@ const processPermissionRows = async (
             '',
             '',
             '',
+            '',
             ''
           ));
         });
       }
-    }
+    });
+  }
 
-    // Poi esporta le grant di progetto (senza ruoli nella colonna ruolo)
+  // Grant di progetto - esportate senza ruoli nella colonna ruolo
+  if (perm.projectGrants && perm.projectGrants.length > 0) {
     for (const projectGrant of perm.projectGrants) {
       try {
         // Usa il nuovo endpoint ProjectPermissionAssignment
@@ -493,7 +495,8 @@ const processPermissionRows = async (
   // Se non ci sono né ruoli né grant, aggiungi almeno una riga base
   if ((!perm.assignedRoles || perm.assignedRoles.length === 0) &&
       !perm.grantId &&
-      (!perm.projectGrants || perm.projectGrants.length === 0)) {
+      (!perm.projectGrants || perm.projectGrants.length === 0) &&
+      (!perm.projectAssignedRoles || perm.projectAssignedRoles.length === 0)) {
     rows.push(createBaseRow(
       permissionName,
       itemTypeSetName,

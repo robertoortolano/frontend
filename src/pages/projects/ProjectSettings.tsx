@@ -414,6 +414,7 @@ function ItemTypeSetDetails({
                       refreshTrigger={refreshTrigger}
                       projectId={projectId}
                       showOnlyWithAssignments={true}
+                      includeProjectAssignments={false}
                       // Non passiamo onPermissionGrantClick così non è possibile modificare (sola lettura)
                     />
                   </div>
