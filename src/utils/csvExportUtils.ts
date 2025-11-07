@@ -192,6 +192,7 @@ const processPermissionRows = async (
     });
   }
 
+  // Grant globali senza utenti/gruppi ma comunque presenti nel permesso
   // Grant globale
   if (perm.grantId && perm.permissionId && perm.permissionType) {
     try {
@@ -367,7 +368,7 @@ const processPermissionRows = async (
           `/project-permission-assignments/${backendPermissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
         );
         const assignment = projectGrantResponse.data;
-        const projectGrantDetails = assignment.assignment?.grant || {};
+        const projectGrantDetails = assignment.grant || {};
         const projectName = escapeCSV(projectGrant.projectName);
 
         // Riga base senza utenti/gruppi se non ci sono

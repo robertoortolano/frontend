@@ -47,6 +47,7 @@ export interface PermissionImpact {
   grantName?: string; // Nome grant globale
   assignedRoles: string[];
   assignedGrants: string[];
+  projectAssignedRoles?: ProjectRoleInfo[];
   hasAssignments: boolean; // true se ha ruoli o grant assegnati
   
   // Info per preservazione (simile a ItemTypeConfigurationMigrationImpactDto)
@@ -68,6 +69,12 @@ export interface PermissionImpact {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
+}
+
+export interface ProjectRoleInfo {
+  projectId: number;
+  projectName: string;
+  roles: string[];
 }
 
 

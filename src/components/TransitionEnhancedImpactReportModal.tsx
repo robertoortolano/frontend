@@ -117,21 +117,24 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
     if (!impact) return;
 
     // Prepara le permissions con i dati necessari
-    const allPermissions = (impact.executorPermissions || [])
-      .filter(p => p.hasAssignments)
-      .map(perm => ({
-        permissionId: perm.permissionId,
-        permissionType: perm.permissionType || 'N/A',
-        itemTypeSetName: perm.itemTypeSetName || 'N/A',
-        fromStatusName: perm.fromStatusName || null,
-        toStatusName: perm.toStatusName || null,
-        transitionName: perm.transitionName || null,
-        assignedRoles: perm.assignedRoles || [],
-        grantId: perm.grantId,
-        roleId: perm.roleId,
-        projectGrants: perm.projectGrants,
-        canBePreserved: perm.canBePreserved
-      }));
+    const allPermissions = [
+      ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
+    ].map(perm => ({
+      permissionId: perm.permissionId,
+      permissionType: perm.permissionType || 'N/A',
+      itemTypeSetName: perm.itemTypeSetName || 'N/A',
+      fieldName: perm.fieldName || null,
+      statusName: perm.statusName || perm.workflowStatusName || null,
+      fromStatusName: perm.fromStatusName || null,
+      toStatusName: perm.toStatusName || null,
+      transitionName: perm.transitionName || null,
+      assignedRoles: perm.assignedRoles || [],
+      grantId: perm.grantId,
+      roleId: perm.roleId,
+      projectGrants: perm.projectGrants,
+      projectAssignedRoles: perm.projectAssignedRoles,
+      canBePreserved: perm.canBePreserved
+    }));
 
     // Funzioni per estrarre i nomi (specifiche per Transition report)
     const getFieldName = () => ''; // Executor permissions non hanno field
@@ -217,9 +220,6 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
                       Match nel nuovo stato
                     </th>
                     <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
-                      Ruoli
-                    </th>
-                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
                       Grant Globali
                     </th>
                     <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #10b981' }}>
@@ -231,9 +231,50 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
                   {allPermissionsWithAssignments.map((perm: any, idx: number) => {
                     const rolesCount = perm.assignedRoles?.length || 0;
                     const hasGlobalGrant = perm.grantId != null;
-                    const projectGrantsCount = perm.projectGrants?.length || 0;
                     const isSelected = perm.permissionId != null && preservedPermissionIds.has(perm.permissionId);
                     const canPreserve = perm.canBePreserved ?? false;
+                    const projectEntriesMap = new Map<string, {
+                      projectId?: number | null;
+                      projectName?: string | null;
+                      roles: string[];
+                      grant?: ProjectGrantInfo;
+                    }>();
+
+                    if (Array.isArray(perm.projectAssignedRoles)) {
+                      perm.projectAssignedRoles.forEach((projectRole: { projectId?: number | null; projectName?: string | null; roles?: string[] }) => {
+                        const key = `${projectRole.projectId ?? 'null'}::${projectRole.projectName ?? 'N/A'}`;
+                        const existing = projectEntriesMap.get(key) ?? {
+                          projectId: projectRole.projectId,
+                          projectName: projectRole.projectName,
+                          roles: [],
+                          grant: undefined
+                        };
+                        if (Array.isArray(projectRole.roles)) {
+                          existing.roles = [
+                            ...existing.roles,
+                            ...projectRole.roles.filter(Boolean)
+                          ];
+                        }
+                        projectEntriesMap.set(key, existing);
+                      });
+                    }
+
+                    if (Array.isArray(perm.projectGrants)) {
+                      perm.projectGrants.forEach((projectGrant: ProjectGrantInfo) => {
+                        const key = `${projectGrant.projectId ?? 'null'}::${projectGrant.projectName ?? 'N/A'}`;
+                        const existing = projectEntriesMap.get(key) ?? {
+                          projectId: projectGrant.projectId,
+                          projectName: projectGrant.projectName,
+                          roles: [],
+                          grant: undefined
+                        };
+                        existing.grant = projectGrant;
+                        projectEntriesMap.set(key, existing);
+                      });
+                    }
+
+                    const projectEntries = Array.from(projectEntriesMap.values());
+                    const hasProjectAssignments = projectEntries.some(entry => entry.roles.length > 0 || entry.grant);
                     
                     return (
                       <tr 
@@ -293,108 +334,17 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
                           )}
                         </td>
                         <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                          {rolesCount > 0 ? (
-                            <span
-                              onClick={() => setSelectedRolesDetails({
-                                permissionName: getPermissionName(perm),
-                                roles: perm.assignedRoles || []
-                              })}
-                              style={{
-                                cursor: 'pointer',
-                                color: '#2563eb',
-                                textDecoration: 'underline',
-                                fontWeight: '500'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.opacity = '0.7';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '1';
-                              }}
-                            >
-                              {rolesCount} {rolesCount === 1 ? 'ruolo' : 'ruoli'}
-                            </span>
+                          {(rolesCount === 0 && !hasGlobalGrant) ? (
+                            <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>—</span>
                           ) : (
-                            <span style={{ color: '#9ca3af' }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                          {hasGlobalGrant ? (
-                            <span
-                              onClick={perm.permissionId && perm.permissionType ? async () => {
-                                setLoadingGrantDetails(true);
-                                try {
-                                  // Mappa il tipo di permission al formato backend
-                                  const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
-                                  // Usa il nuovo endpoint PermissionAssignment
-                                  const response = await api.get(
-                                    `/permission-assignments/${backendPermissionType}/${perm.permissionId}`
-                                  );
-                                  const assignment = response.data;
-                                  setSelectedGrantDetails({
-                                    projectId: 0,
-                                    projectName: 'Globale',
-                                    roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
-                                    details: assignment.grant || {}
-                                  });
-                                } catch (error) {
-                                  console.error('Errore nel recupero dei dettagli della grant globale:', error);
-                                  alert('Errore nel recupero dei dettagli della grant globale');
-                                } finally {
-                                  setLoadingGrantDetails(false);
-                                }
-                              } : undefined}
-                              style={{
-                                cursor: 'pointer',
-                                color: '#2563eb',
-                                textDecoration: 'underline',
-                                fontWeight: '500'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.opacity = '0.7';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '1';
-                              }}
-                            >
-                              {(perm.grantName === 'Grant diretto' ? 'Grant globale' : perm.grantName) || `Grant #${perm.grantId}`}
-                            </span>
-                          ) : (
-                            <span style={{ color: '#9ca3af' }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                          {projectGrantsCount > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {perm.projectGrants?.map((pg: ProjectGrantInfo, pgIdx: number) => (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem' }}>
+                              {rolesCount > 0 && (
                                 <span
-                                  key={pgIdx}
-                                      onClick={async () => {
-                                        if (!perm.permissionId || !perm.permissionType) {
-                                          alert('Permission senza permissionId o permissionType');
-                                          return;
-                                        }
-                                        setLoadingGrantDetails(true);
-                                        try {
-                                          // Usa il nuovo endpoint ProjectPermissionAssignment
-                                          const response = await api.get(
-                                            `/project-permission-assignments/${mapPermissionTypeToBackend(perm.permissionType)}/${perm.permissionId}/project/${pg.projectId}`
-                                          );
-                                          const assignment = response.data;
-                                          setSelectedGrantDetails({
-                                            projectId: pg.projectId,
-                                            projectName: pg.projectName,
-                                            roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
-                                            details: assignment.assignment?.grant || {}
-                                          });
-                                        } catch (error) {
-                                      alert('Errore nel recupero dei dettagli della grant');
-                                    } finally {
-                                      setLoadingGrantDetails(false);
-                                    }
-                                  }}
+                                  onClick={() => setSelectedRolesDetails({
+                                    permissionName: getPermissionName(perm),
+                                    roles: perm.assignedRoles || []
+                                  })}
                                   style={{
-                                    fontSize: '0.75rem',
                                     cursor: 'pointer',
                                     color: '#2563eb',
                                     textDecoration: 'underline',
@@ -407,9 +357,131 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
                                     e.currentTarget.style.opacity = '1';
                                   }}
                                 >
-                                  {pg.projectName}: 1 grant
+                                  Ruoli
                                 </span>
-                              ))}
+                              )}
+                              {hasGlobalGrant && (
+                                <span
+                                  onClick={perm.permissionId && perm.permissionType ? async () => {
+                                    setLoadingGrantDetails(true);
+                                    try {
+                                      const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
+                                      const response = await api.get(
+                                        `/permission-assignments/${backendPermissionType}/${perm.permissionId}`
+                                      );
+                                      const assignment = response.data;
+                                      setSelectedGrantDetails({
+                                        projectId: 0,
+                                        projectName: 'Globale',
+                                      roleId: perm.permissionId,
+                                        details: assignment.grant || {}
+                                      });
+                                    } catch (error) {
+                                      console.error('Errore nel recupero dei dettagli della grant globale:', error);
+                                      alert('Errore nel recupero dei dettagli della grant globale');
+                                    } finally {
+                                      setLoadingGrantDetails(false);
+                                    }
+                                  } : undefined}
+                                  style={{
+                                    cursor: 'pointer',
+                                    color: '#2563eb',
+                                    textDecoration: 'underline',
+                                    fontWeight: '500'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.opacity = '0.7';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.opacity = '1';
+                                  }}
+                                >
+                                  Grant
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#4b5563' }}>
+                          {hasProjectAssignments ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.75rem' }}>
+                              {projectEntries.flatMap((entry, entryIdx) => {
+                                const displayName = entry.projectName || 'Progetto N/A';
+                                const nodes: React.ReactNode[] = [];
+
+                                if (entry.roles.length > 0) {
+                                  nodes.push(
+                                    <span
+                                      key={`proj-role-${entryIdx}`}
+                                      onClick={() => setSelectedRolesDetails({
+                                        permissionName: `${getPermissionName(perm)} — ${displayName}`,
+                                        roles: entry.roles
+                                      })}
+                                      style={{
+                                        cursor: 'pointer',
+                                        color: '#2563eb',
+                                        textDecoration: 'underline',
+                                        fontWeight: '500'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.opacity = '0.7';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.opacity = '1';
+                                      }}
+                                    >
+                                      {`${displayName}: Ruoli`}
+                                    </span>
+                                  );
+                                }
+
+                                if (entry.grant) {
+                                  nodes.push(
+                                    <span
+                                      key={`proj-grant-${entryIdx}`}
+                                      onClick={async () => {
+                                        if (!perm.permissionId || !perm.permissionType) {
+                                          alert('Permission senza permissionId o permissionType');
+                                          return;
+                                        }
+                                        setLoadingGrantDetails(true);
+                                        try {
+                                          const response = await api.get(
+                                            `/project-permission-assignments/${mapPermissionTypeToBackend(perm.permissionType)}/${perm.permissionId}/project/${entry.grant?.projectId}`
+                                          );
+                                          const assignment = response.data;
+                                          setSelectedGrantDetails({
+                                            projectId: entry.grant?.projectId ?? 0,
+                                            projectName: entry.grant?.projectName ?? 'Progetto',
+                                            roleId: perm.permissionId,
+                                            details: assignment.grant || {}
+                                          });
+                                        } catch (error) {
+                                          alert('Errore nel recupero dei dettagli della grant');
+                                        } finally {
+                                          setLoadingGrantDetails(false);
+                                        }
+                                      }}
+                                      style={{
+                                        cursor: 'pointer',
+                                        color: '#2563eb',
+                                        textDecoration: 'underline',
+                                        fontWeight: '500'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.opacity = '0.7';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.opacity = '1';
+                                      }}
+                                    >
+                                      {`${displayName}: Grant`}
+                                    </span>
+                                  );
+                                }
+
+                                return nodes;
+                              })}
                             </div>
                           ) : (
                             <span style={{ color: '#9ca3af' }}>—</span>

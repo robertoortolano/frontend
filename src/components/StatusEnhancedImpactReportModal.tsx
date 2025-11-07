@@ -373,7 +373,30 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                         </td>
                         <td style={{ padding: '10px 12px', color: '#4b5563' }}>
                           {(hasGlobalGrant || globalRolesCount > 0) ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.75rem' }}>
+                              {globalRolesCount > 0 ? (
+                                <span
+                                  onClick={() => setSelectedRolesDetails({
+                                    permissionName: getPermissionName(perm),
+                                    roles: perm.assignedRoles || [] // Solo ruoli globali
+                                  })}
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    color: '#2563eb',
+                                    textDecoration: 'underline',
+                                    fontWeight: '500'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.opacity = '0.7';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.opacity = '1';
+                                  }}
+                                >
+                                  Ruoli
+                                </span>
+                              ) : null}
                               {hasGlobalGrant ? (
                                 <span
                                   onClick={perm.permissionId && perm.permissionType ? async () => {
@@ -413,15 +436,43 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                                     e.currentTarget.style.opacity = '1';
                                   }}
                                 >
-                                  {(perm.grantName === 'Grant diretto' ? 'Grant globale' : perm.grantName) || `Grant #${perm.grantId}`}
+                                  Grant
                                 </span>
                               ) : null}
-                              {globalRolesCount > 0 ? (
+                            </div>
+                          ) : (
+                            <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: '#4b5563' }}>
+                          {(projectGrantsCount > 0 || projectRolesCount > 0) ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.75rem' }}>
+                              {perm.projectGrants?.map((pg: ProjectGrantInfo, pgIdx: number) => (
                                 <span
-                                  onClick={() => setSelectedRolesDetails({
-                                    permissionName: getPermissionName(perm),
-                                    roles: perm.assignedRoles || [] // Solo ruoli globali
-                                  })}
+                                  key={`grant-${pgIdx}`}
+                                  onClick={async () => {
+                                    if (!perm.permissionId || !perm.permissionType) {
+                                      alert('Permission senza permissionId o permissionType');
+                                      return;
+                                    }
+                                    setLoadingGrantDetails(true);
+                                    try {
+                                      const response = await api.get(
+                                        `/project-permission-assignments/${mapPermissionTypeToBackend(perm.permissionType)}/${perm.permissionId}/project/${pg.projectId}`
+                                      );
+                                      const assignment = response.data;
+                                      setSelectedGrantDetails({
+                                        projectId: pg.projectId,
+                                        projectName: pg.projectName,
+                                        roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+                                        details: assignment.grant || {}
+                                      });
+                                    } catch (error) {
+                                      alert('Errore nel recupero dei dettagli della grant');
+                                    } finally {
+                                      setLoadingGrantDetails(false);
+                                    }
+                                  }}
                                   style={{
                                     fontSize: '0.75rem',
                                     cursor: 'pointer',
@@ -436,45 +487,19 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                                     e.currentTarget.style.opacity = '1';
                                   }}
                                 >
-                                  {globalRolesCount} {globalRolesCount === 1 ? 'ruolo' : 'ruoli'}
+                                  {`${pg.projectName}: Grant`}
                                 </span>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span style={{ color: '#9ca3af' }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                          {(projectGrantsCount > 0 || projectRolesCount > 0) ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              {/* Mostra grant di progetto */}
-                              {perm.projectGrants?.map((pg: ProjectGrantInfo, pgIdx: number) => (
-                                <div key={`grant-${pgIdx}`} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              ))}
+                              {perm.projectAssignedRoles?.map((pr: any, prIdx: number) => {
+                                const projectRoles = pr.roles || [];
+                                if (projectRoles.length === 0) return null;
+                                return (
                                   <span
-                                    onClick={async () => {
-                                      if (!perm.permissionId || !perm.permissionType) {
-                                        alert('Permission senza permissionId o permissionType');
-                                        return;
-                                      }
-                                      setLoadingGrantDetails(true);
-                                      try {
-                                        // Usa il nuovo endpoint ProjectPermissionAssignment
-                                        const response = await api.get(
-                                          `/project-permission-assignments/${mapPermissionTypeToBackend(perm.permissionType)}/${perm.permissionId}/project/${pg.projectId}`
-                                        );
-                                        const assignment = response.data;
-                                        setSelectedGrantDetails({
-                                          projectId: pg.projectId,
-                                          projectName: pg.projectName,
-                                          roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
-                                          details: assignment.assignment?.grant || {}
-                                        });
-                                      } catch (error) {
-                                        alert('Errore nel recupero dei dettagli della grant');
-                                      } finally {
-                                        setLoadingGrantDetails(false);
-                                      }
-                                    }}
+                                    key={`roles-${prIdx}`}
+                                    onClick={() => setSelectedRolesDetails({
+                                      permissionName: `${getPermissionName(perm)} — ${pr.projectName || 'Progetto N/A'}`,
+                                      roles: projectRoles // Solo ruoli di progetto per questo progetto
+                                    })}
                                     style={{
                                       fontSize: '0.75rem',
                                       cursor: 'pointer',
@@ -489,38 +514,8 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                                       e.currentTarget.style.opacity = '1';
                                     }}
                                   >
-                                    {pg.projectName}: 1 grant
+                                    {`${pr.projectName}: Ruoli`}
                                   </span>
-                                </div>
-                              ))}
-                              {/* Mostra ruoli di progetto */}
-                              {perm.projectAssignedRoles?.map((pr: any, prIdx: number) => {
-                                const projectRoles = pr.roles || [];
-                                if (projectRoles.length === 0) return null;
-                                return (
-                                  <div key={`roles-${prIdx}`} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    <span
-                                      onClick={() => setSelectedRolesDetails({
-                                        permissionName: getPermissionName(perm),
-                                        roles: projectRoles // Solo ruoli di progetto per questo progetto
-                                      })}
-                                      style={{
-                                        fontSize: '0.75rem',
-                                        cursor: 'pointer',
-                                        color: '#2563eb',
-                                        textDecoration: 'underline',
-                                        fontWeight: '500'
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        e.currentTarget.style.opacity = '0.7';
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.currentTarget.style.opacity = '1';
-                                      }}
-                                    >
-                                      {pr.projectName}: {projectRoles.length} {projectRoles.length === 1 ? 'ruolo' : 'ruoli'}
-                                    </span>
-                                  </div>
                                 );
                               })}
                             </div>

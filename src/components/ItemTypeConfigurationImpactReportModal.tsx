@@ -2,6 +2,7 @@ import React from 'react';
 import { ItemTypeConfigurationRemovalImpactDto } from '../types/itemtypeconfiguration-impact.types';
 import { GenericImpactReportModal, ImpactReportData } from './GenericImpactReportModal';
 import form from '../styles/common/Forms.module.css';
+import { buildGlobalAssignmentsLabel, buildProjectAssignmentsLabel } from '../utils/assignmentDisplayUtils';
 
 interface ItemTypeConfigurationImpactReportModalProps {
   isOpen: boolean;
@@ -53,27 +54,15 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             key: 'fieldConfigurationName',
             render: (value) => value || '—'
           },
-          { 
-            header: 'Ruoli', 
-            key: 'assignedRoles',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const roles = Array.isArray(value) ? value : [];
-              return roles.length > 0 
-                ? <span>{roles.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant Globali',
+            key: 'globalAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           },
-          { 
-            header: 'Grant', 
-            key: 'assignedGrants',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const grants = Array.isArray(value) ? value : [];
-              return grants.length > 0 
-                ? <span>{grants.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant di Progetto',
+            key: 'projectAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           }
         ],
         data: impact.fieldOwnerPermissions
@@ -82,8 +71,14 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             itemTypeSetName: perm.itemTypeSetName,
             itemTypeName: perm.itemTypeName,
             fieldConfigurationName: perm.fieldConfigurationName,
-            assignedRoles: perm.assignedRoles || [],
-            assignedGrants: perm.assignedGrants || []
+            globalAssignments: buildGlobalAssignmentsLabel({
+              assignedRoles: perm.assignedRoles,
+              assignedGrants: perm.assignedGrants
+            }),
+            projectAssignments: buildProjectAssignmentsLabel({
+              projectAssignedRoles: perm.projectAssignedRoles,
+              projectGrants: perm.projectGrants
+            })
           })),
         showIfEmpty: false
       }] : []),
@@ -107,27 +102,15 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             key: 'workflowStatusName',
             render: (value) => value || '—'
           },
-          { 
-            header: 'Ruoli', 
-            key: 'assignedRoles',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const roles = Array.isArray(value) ? value : [];
-              return roles.length > 0 
-                ? <span>{roles.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant Globali',
+            key: 'globalAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           },
-          { 
-            header: 'Grant', 
-            key: 'assignedGrants',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const grants = Array.isArray(value) ? value : [];
-              return grants.length > 0 
-                ? <span>{grants.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant di Progetto',
+            key: 'projectAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           }
         ],
         data: impact.statusOwnerPermissions
@@ -136,8 +119,14 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             itemTypeSetName: perm.itemTypeSetName,
             itemTypeName: perm.itemTypeName,
             workflowStatusName: perm.workflowStatusName,
-            assignedRoles: perm.assignedRoles || [],
-            assignedGrants: perm.assignedGrants || []
+            globalAssignments: buildGlobalAssignmentsLabel({
+              assignedRoles: perm.assignedRoles,
+              assignedGrants: perm.assignedGrants
+            }),
+            projectAssignments: buildProjectAssignmentsLabel({
+              projectAssignedRoles: perm.projectAssignedRoles,
+              projectGrants: perm.projectGrants
+            })
           })),
         showIfEmpty: false
       }] : []),
@@ -182,27 +171,15 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             key: 'workflowStatusName',
             render: (value) => value || '—'
           },
-          { 
-            header: 'Ruoli', 
-            key: 'assignedRoles',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const roles = Array.isArray(value) ? value : [];
-              return roles.length > 0 
-                ? <span>{roles.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant Globali',
+            key: 'globalAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           },
-          { 
-            header: 'Grant', 
-            key: 'assignedGrants',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const grants = Array.isArray(value) ? value : [];
-              return grants.length > 0 
-                ? <span>{grants.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant di Progetto',
+            key: 'projectAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           }
         ],
         data: impact.fieldStatusPermissions
@@ -213,8 +190,14 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             permissionType: perm.permissionType,
             fieldConfigurationName: perm.fieldConfigurationName,
             workflowStatusName: perm.workflowStatusName,
-            assignedRoles: perm.assignedRoles || [],
-            assignedGrants: perm.assignedGrants || []
+            globalAssignments: buildGlobalAssignmentsLabel({
+              assignedRoles: perm.assignedRoles,
+              assignedGrants: perm.assignedGrants
+            }),
+            projectAssignments: buildProjectAssignmentsLabel({
+              projectAssignedRoles: perm.projectAssignedRoles,
+              projectGrants: perm.projectGrants
+            })
           })),
         showIfEmpty: false
       }] : []),
@@ -248,27 +231,15 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             key: 'toStatusName',
             render: (value) => value || '—'
           },
-          { 
-            header: 'Ruoli', 
-            key: 'assignedRoles',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const roles = Array.isArray(value) ? value : [];
-              return roles.length > 0 
-                ? <span>{roles.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant Globali',
+            key: 'globalAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           },
-          { 
-            header: 'Grant', 
-            key: 'assignedGrants',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const grants = Array.isArray(value) ? value : [];
-              return grants.length > 0 
-                ? <span>{grants.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
+          {
+            header: 'Grant di Progetto',
+            key: 'projectAssignments',
+            tdStyle: { whiteSpace: 'normal' }
           }
         ],
         data: impact.executorPermissions
@@ -279,8 +250,14 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             transitionName: perm.transitionName,
             fromStatusName: perm.fromStatusName,
             toStatusName: perm.toStatusName,
-            assignedRoles: perm.assignedRoles || [],
-            assignedGrants: perm.assignedGrants || []
+            globalAssignments: buildGlobalAssignmentsLabel({
+              assignedRoles: perm.assignedRoles,
+              assignedGrants: perm.assignedGrants
+            }),
+            projectAssignments: buildProjectAssignmentsLabel({
+              projectAssignedRoles: perm.projectAssignedRoles,
+              projectGrants: perm.projectGrants
+            })
           })),
         showIfEmpty: false
       }] : [])

@@ -59,6 +59,7 @@ export interface PermissionImpact {
   grantName: string | null;
   assignedRoles: string[];
   assignedGrants: string[];
+  projectAssignedRoles?: ProjectRoleInfo[];
   hasAssignments: boolean;
   
   // Info per preservazione
@@ -81,6 +82,12 @@ export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
   roleId: number;
+}
+
+export interface ProjectRoleInfo {
+  projectId: number;
+  projectName: string;
+  roles: string[];
 }
 
 

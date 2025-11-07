@@ -277,7 +277,7 @@ export default function PermissionGrantManager({
       // Usa il nuovo endpoint ProjectPermissionAssignment
       const response = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
       const assignment = response.data;
-      // Estrai i ruoli da assignment.assignment.roles
+      // Estrai i ruoli direttamente dalla risposta
       const roles = assignment.roles || [];
       setSelectedRoles(Array.from(roles).map((r: any) => ({
         id: r.id,

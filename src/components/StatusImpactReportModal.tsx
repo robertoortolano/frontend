@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusRemovalImpactDto } from '../types/status-impact.types';
 import { GenericImpactReportModal, ImpactReportData, ImpactReportTableColumn } from './GenericImpactReportModal';
 import form from '../styles/common/Forms.module.css';
+import { buildGlobalAssignmentsLabel, buildProjectAssignmentsLabel } from '../utils/assignmentDisplayUtils';
 
 interface StatusImpactReportModalProps {
   isOpen: boolean;
@@ -43,9 +44,36 @@ export const StatusImpactReportModal: React.FC<StatusImpactReportModalProps> = (
       project: perm.projectName || 'N/A',
       status: perm.statusName,
       category: perm.statusCategory,
-      roles: perm.assignedRoles.join(', ') || 'Nessuno',
+      globalAssignments: buildGlobalAssignmentsLabel({
+        assignedRoles: perm.assignedRoles,
+        assignedGrants: perm.assignedGrants ?? (perm.grantName ? [perm.grantName] : undefined)
+      }),
+      projectAssignments: buildProjectAssignmentsLabel({
+        projectAssignedRoles: perm.projectAssignedRoles,
+        projectGrants: perm.projectGrants
+      }),
       populated: perm.hasAssignments ? 'Sì' : 'No'
     }));
+
+  const allPermissions = [
+    ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments),
+    ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
+  ].map(perm => ({
+    permissionId: perm.permissionId,
+    permissionType: perm.permissionType || 'N/A',
+    itemTypeSetName: perm.itemTypeSetName || 'N/A',
+    fieldName: '',
+    statusName: perm.statusName || perm.workflowStatusName || null,
+    fromStatusName: perm.fromStatusName || null,
+    toStatusName: perm.toStatusName || null,
+    transitionName: perm.transitionName || null,
+    assignedRoles: perm.assignedRoles || [],
+    grantId: perm.grantId,
+    roleId: perm.roleId,
+    projectGrants: perm.projectGrants,
+    projectAssignedRoles: perm.projectAssignedRoles,
+    canBePreserved: perm.canBePreserved
+  }));
 
   const data: ImpactReportData = {
     title: '📊 Report Impatto Rimozione Status',
@@ -85,7 +113,8 @@ export const StatusImpactReportModal: React.FC<StatusImpactReportModalProps> = (
           { header: 'Progetto', key: 'project' },
           { header: 'Status', key: 'status' },
           { header: 'Categoria', key: 'category' },
-          { header: 'Ruoli Assegnati', key: 'roles' },
+          { header: 'Grant Globali', key: 'globalAssignments' },
+          { header: 'Grant di Progetto', key: 'projectAssignments' },
           { 
             header: 'Popolata', 
             key: 'populated',

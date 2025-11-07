@@ -2,6 +2,7 @@ import React from 'react';
 import { TransitionRemovalImpactDto } from '../types/transition-impact.types';
 import { GenericImpactReportModal, ImpactReportData } from './GenericImpactReportModal';
 import form from '../styles/common/Forms.module.css';
+import { buildGlobalAssignmentsLabel, buildProjectAssignmentsLabel } from '../utils/assignmentDisplayUtils';
 
 interface TransitionImpactReportModalProps {
   isOpen: boolean;
@@ -44,7 +45,14 @@ export const TransitionImpactReportModal: React.FC<TransitionImpactReportModalPr
       transition: perm.transitionName,
       fromStatus: perm.fromStatusName,
       toStatus: perm.toStatusName,
-      roles: perm.assignedRoles.join(', ') || 'Nessuno',
+      globalAssignments: buildGlobalAssignmentsLabel({
+        assignedRoles: perm.assignedRoles,
+        assignedGrants: perm.assignedGrants ?? (perm.grantName ? [perm.grantName] : undefined)
+      }),
+      projectAssignments: buildProjectAssignmentsLabel({
+        projectAssignedRoles: perm.projectAssignedRoles,
+        projectGrants: perm.projectGrants
+      }),
       populated: perm.hasAssignments ? 'Sì' : 'No'
     }));
 
@@ -95,7 +103,8 @@ export const TransitionImpactReportModal: React.FC<TransitionImpactReportModalPr
           { header: 'Transition', key: 'transition' },
           { header: 'Da Status', key: 'fromStatus' },
           { header: 'A Status', key: 'toStatus' },
-          { header: 'Ruoli Assegnati', key: 'roles' },
+          { header: 'Grant Globali', key: 'globalAssignments' },
+          { header: 'Grant di Progetto', key: 'projectAssignments' },
           { 
             header: 'Popolata', 
             key: 'populated',

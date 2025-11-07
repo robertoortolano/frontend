@@ -51,6 +51,7 @@ export interface PermissionImpact {
   grantId?: number;
   grantName?: string;
   assignedRoles: string[]; // Ruoli globali
+  assignedGrants?: string[];
   projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
   hasAssignments: boolean;
   
@@ -93,6 +94,7 @@ export interface ExecutorPermissionImpact {
   grantId?: number;
   grantName?: string;
   assignedRoles: string[]; // Ruoli globali
+  assignedGrants?: string[];
   projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
   hasAssignments: boolean;
   
@@ -124,6 +126,7 @@ export interface FieldStatusPermissionImpact {
   grantId?: number;
   grantName?: string;
   assignedRoles: string[]; // Ruoli globali
+  assignedGrants?: string[];
   projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
   hasAssignments: boolean;
   

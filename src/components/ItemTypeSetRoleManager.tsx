@@ -705,41 +705,12 @@ export default function ItemTypeSetRoleManager({
                               
                               // Se non ci sono né ruoli né grant, controlla se stiamo caricando o se non c'è nulla
                               if (!hasProjectRoles && !hasGrant) {
-                                // Se stiamo caricando i dettagli delle grant, mostra messaggio di caricamento
-                                if (loadingGrantDetails.has(permissionId)) {
-                                  return (
-                                    <div className="text-xs text-gray-500 italic">
-                                      Caricamento dettagli grant di progetto...
-                                    </div>
-                                  );
-                                }
-                                
-                                // Se abbiamo tentato di caricare ma non c'è grant (404), mostriamo "N"
-                                if (grantDetails && grantDetails.isProjectGrant === false) {
-                                  return (
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
-                                      N
-                                    </span>
-                                  );
-                                }
-                                
-                                // Se non abbiamo ancora tentato di caricare e non ci sono ruoli di progetto,
-                                // significa che non ci sono assegnazioni (i ruoli di progetto sono sempre disponibili nei dati)
-                                // Mostriamo "N" invece di "Caricamento..." perché i ruoli sono già stati controllati
-                                return (
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
-                                    N
-                                  </span>
-                                );
+                                return null;
                               }
                               
                               // Se abbiamo i dettagli delle grant ma sono vuoti (nessun utente/gruppo), mostriamo comunque i ruoli se presenti
                               if (grantDetails && grantDetails.isProjectGrant === true && !hasGrant && !hasProjectRoles) {
-                                return (
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700`}>
-                                    Grant vuota
-                                  </span>
-                                );
+                                return null;
                               }
                               
                               // Mostra ruoli e dettagli del grant di progetto
@@ -770,7 +741,7 @@ export default function ItemTypeSetRoleManager({
                                           e.currentTarget.style.opacity = '1';
                                         }}
                                       >
-                                        {projectRolesCount} {projectRolesCount === 1 ? 'ruolo' : 'ruoli'} di progetto
+                                        Ruoli
                                       </span>
                                     </div>
                                   )}
@@ -815,7 +786,7 @@ export default function ItemTypeSetRoleManager({
                                           e.currentTarget.style.opacity = '1';
                                         }}
                                       >
-                                        Grant di progetto
+                                        Grant
                                       </span>
                                     </div>
                                   )}
@@ -851,11 +822,7 @@ export default function ItemTypeSetRoleManager({
                             const grantDetails = grantDetailsMap.get(mapKey);
                             
                             if (!hasAssignments) {
-                              return (
-                                <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
-                                  N
-                                </span>
-                              );
+                              return null;
                             }
                             
                             return (
@@ -882,7 +849,7 @@ export default function ItemTypeSetRoleManager({
                                         e.currentTarget.style.opacity = '1';
                                       }}
                                     >
-                                      {globalRolesCount} {globalRolesCount === 1 ? 'ruolo' : 'ruoli'} globale{globalRolesCount !== 1 ? 'i' : ''}
+                                      Ruoli
                                     </span>
                                   </div>
                                 )}
@@ -930,7 +897,7 @@ export default function ItemTypeSetRoleManager({
                                         }
                                       }}
                                     >
-                                      Grant globale
+                                      Grant
                                     </span>
                                   </div>
                                 )}
@@ -962,7 +929,7 @@ export default function ItemTypeSetRoleManager({
                                         e.currentTarget.style.opacity = '1';
                                       }}
                                     >
-                                      {projectRolesCount} {projectRolesCount === 1 ? 'ruolo di progetto' : 'ruoli di progetto'}
+                                      Ruoli
                                     </span>
                                   </div>
                                 )}
@@ -1006,7 +973,7 @@ export default function ItemTypeSetRoleManager({
                                         e.currentTarget.style.opacity = '1';
                                       }}
                                     >
-                                      Grant progetto {projectGrant.projectName || projectGrant.projectId}
+                                      Grant
                                     </span>
                                   </div>
                                 ))}
