@@ -34,6 +34,20 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
     roles: string[];
   } | null>(null);
 
+  // Funzione helper per mappare il tipo di permission dal formato frontend al formato backend
+  const mapPermissionTypeToBackend = (permissionType: string): string => {
+    const mapping: { [key: string]: string } = {
+      'FIELD_OWNERS': 'FieldOwnerPermission',
+      'EDITORS': 'FieldStatusPermission',
+      'VIEWERS': 'FieldStatusPermission',
+      'STATUS_OWNERS': 'StatusOwnerPermission',
+      'EXECUTORS': 'ExecutorPermission',
+      'WORKERS': 'WorkerPermission',
+      'CREATORS': 'CreatorPermission'
+    };
+    return mapping[permissionType] || permissionType;
+  };
+
   // Funzione helper per renderizzare la colonna Grant
   const renderGrantColumn = (perm: any) => {
     const handleGlobalGrantClick = async () => {
@@ -41,9 +55,11 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
       
       setLoadingGrantDetails(true);
       try {
+        // Mappa il tipo di permission al formato backend
+        const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
         // Usa il nuovo endpoint PermissionAssignment
         const response = await api.get(
-          `/permission-assignments/${perm.permissionType}/${perm.permissionId}`
+          `/permission-assignments/${backendPermissionType}/${perm.permissionId}`
         );
         const assignment = response.data;
         setSelectedGrantDetails({
@@ -53,6 +69,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
           details: assignment.grant || {}
         });
       } catch (error) {
+        console.error('Errore nel recupero dei dettagli della grant globale:', error);
         alert('Errore nel recupero dei dettagli della grant globale');
       } finally {
         setLoadingGrantDetails(false);
@@ -66,9 +83,11 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
       }
       setLoadingGrantDetails(true);
       try {
+        // Mappa il tipo di permission al formato backend
+        const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
         // Usa il nuovo endpoint ProjectPermissionAssignment
         const response = await api.get(
-          `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
+          `/project-permission-assignments/${backendPermissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
         );
         const assignment = response.data;
         setSelectedGrantDetails({
@@ -78,6 +97,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
           details: assignment.assignment?.grant || {}
         });
       } catch (error) {
+        console.error('Errore nel recupero dei dettagli della grant:', error);
         alert('Errore nel recupero dei dettagli della grant');
       } finally {
         setLoadingGrantDetails(false);
@@ -90,23 +110,19 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
         {perm.grantId && (
           <div style={{ marginBottom: '8px' }}>
             <div 
-              onClick={perm.roleId ? handleGlobalGrantClick : undefined}
+              onClick={handleGlobalGrantClick}
               style={{
-                fontWeight: '600',
-                color: perm.roleId ? '#2563eb' : '#1f2937',
-                textDecoration: perm.roleId ? 'underline' : 'none',
-                cursor: perm.roleId ? 'pointer' : 'default',
+                cursor: 'pointer',
+                color: '#2563eb',
+                textDecoration: 'underline',
+                fontWeight: '500',
                 whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => {
-                if (perm.roleId) {
-                  e.currentTarget.style.opacity = '0.7';
-                }
+                e.currentTarget.style.opacity = '0.7';
               }}
               onMouseLeave={(e) => {
-                if (perm.roleId) {
-                  e.currentTarget.style.opacity = '1';
-                }
+                e.currentTarget.style.opacity = '1';
               }}
             >
               Globale: {(perm.grantName === 'Grant diretto' ? 'Grant globale' : perm.grantName) || `Grant #${perm.grantId}`}
@@ -451,9 +467,11 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
                               onClick={perm.permissionId && perm.permissionType ? async () => {
                                 setLoadingGrantDetails(true);
                                 try {
+                                  // Mappa il tipo di permission al formato backend
+                                  const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
                                   // Usa il nuovo endpoint PermissionAssignment
                                   const response = await api.get(
-                                    `/permission-assignments/${perm.permissionType}/${perm.permissionId}`
+                                    `/permission-assignments/${backendPermissionType}/${perm.permissionId}`
                                   );
                                   const assignment = response.data;
                                   setSelectedGrantDetails({
@@ -463,26 +481,23 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
                                     details: assignment.grant || {}
                                   });
                                 } catch (error) {
+                                  console.error('Errore nel recupero dei dettagli della grant globale:', error);
                                   alert('Errore nel recupero dei dettagli della grant globale');
                                 } finally {
                                   setLoadingGrantDetails(false);
                                 }
                               } : undefined}
                               style={{
-                                fontWeight: '500',
-                                color: perm.roleId ? '#2563eb' : '#1f2937',
-                                textDecoration: perm.roleId ? 'underline' : 'none',
-                                cursor: perm.roleId ? 'pointer' : 'default'
+                                cursor: 'pointer',
+                                color: '#2563eb',
+                                textDecoration: 'underline',
+                                fontWeight: '500'
                               }}
                               onMouseEnter={(e) => {
-                                if (perm.roleId) {
-                                  e.currentTarget.style.opacity = '0.7';
-                                }
+                                e.currentTarget.style.opacity = '0.7';
                               }}
                               onMouseLeave={(e) => {
-                                if (perm.roleId) {
-                                  e.currentTarget.style.opacity = '1';
-                                }
+                                e.currentTarget.style.opacity = '1';
                               }}
                             >
                               {(perm.grantName === 'Grant diretto' ? 'Grant globale' : perm.grantName) || `Grant #${perm.grantId}`}
@@ -506,7 +521,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
                                         try {
                                           // Usa il nuovo endpoint ProjectPermissionAssignment
                                           const response = await api.get(
-                                            `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${pg.projectId}`
+                                            `/project-permission-assignments/${mapPermissionTypeToBackend(perm.permissionType)}/${perm.permissionId}/project/${pg.projectId}`
                                           );
                                           const assignment = response.data;
                                           setSelectedGrantDetails({

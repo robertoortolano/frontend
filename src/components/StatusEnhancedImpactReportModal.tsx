@@ -34,6 +34,22 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
     roles: string[];
   } | null>(null);
 
+  // Funzione helper per mappare il tipo di permission dal formato frontend al formato backend
+  const mapPermissionTypeToBackend = (permissionType: string): string => {
+    const mapping: { [key: string]: string } = {
+      'FIELD_OWNERS': 'FieldOwnerPermission',
+      'EDITORS': 'FieldStatusPermission',
+      'VIEWERS': 'FieldStatusPermission',
+      'STATUS_OWNERS': 'StatusOwnerPermission',
+      'STATUS_OWNER': 'StatusOwnerPermission',
+      'EXECUTORS': 'ExecutorPermission',
+      'EXECUTOR': 'ExecutorPermission',
+      'WORKERS': 'WorkerPermission',
+      'CREATORS': 'CreatorPermission'
+    };
+    return mapping[permissionType] || permissionType;
+  };
+
   // Inizializza preservedPermissionIds con le permission che hanno defaultPreserve = true
   useEffect(() => {
     if (impact) {
@@ -357,9 +373,11 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                                 onClick={perm.permissionId && perm.permissionType ? async () => {
                                   setLoadingGrantDetails(true);
                                   try {
+                                    // Mappa il tipo di permission al formato backend
+                                    const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
                                     // Usa il nuovo endpoint PermissionAssignment
                                     const response = await api.get(
-                                      `/permission-assignments/${perm.permissionType}/${perm.permissionId}`
+                                      `/permission-assignments/${backendPermissionType}/${perm.permissionId}`
                                     );
                                     const assignment = response.data;
                                     setSelectedGrantDetails({
@@ -369,6 +387,7 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                                       details: assignment.grant || {}
                                     });
                                   } catch (error) {
+                                    console.error('Errore nel recupero dei dettagli della grant globale:', error);
                                     alert('Errore nel recupero dei dettagli della grant globale');
                                   } finally {
                                     setLoadingGrantDetails(false);
@@ -376,20 +395,16 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                                 } : undefined}
                                 style={{
                                   fontSize: '0.75rem',
-                                  fontWeight: '500',
-                                  color: perm.roleId ? '#2563eb' : '#1f2937',
-                                  textDecoration: perm.roleId ? 'underline' : 'none',
-                                  cursor: perm.roleId ? 'pointer' : 'default'
+                                  cursor: 'pointer',
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                  fontWeight: '500'
                                 }}
                                 onMouseEnter={(e) => {
-                                  if (perm.roleId) {
-                                    e.currentTarget.style.opacity = '0.7';
-                                  }
+                                  e.currentTarget.style.opacity = '0.7';
                                 }}
                                 onMouseLeave={(e) => {
-                                  if (perm.roleId) {
-                                    e.currentTarget.style.opacity = '1';
-                                  }
+                                  e.currentTarget.style.opacity = '1';
                                 }}
                               >
                                 {(perm.grantName === 'Grant diretto' ? 'Grant globale' : perm.grantName) || `Grant #${perm.grantId}`}
@@ -437,7 +452,7 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
                                       try {
                                         // Usa il nuovo endpoint ProjectPermissionAssignment
                                         const response = await api.get(
-                                          `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${pg.projectId}`
+                                          `/project-permission-assignments/${mapPermissionTypeToBackend(perm.permissionType)}/${perm.permissionId}/project/${pg.projectId}`
                                         );
                                         const assignment = response.data;
                                         setSelectedGrantDetails({

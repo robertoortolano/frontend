@@ -5,6 +5,24 @@ import api from '../api/api';
  * Unifica la logica comune a tutti i report enhanced
  */
 
+/**
+ * Funzione helper per mappare il tipo di permission dal formato frontend al formato backend
+ */
+const mapPermissionTypeToBackend = (permissionType: string): string => {
+  const mapping: { [key: string]: string } = {
+    'FIELD_OWNERS': 'FieldOwnerPermission',
+    'EDITORS': 'FieldStatusPermission',
+    'VIEWERS': 'FieldStatusPermission',
+    'STATUS_OWNERS': 'StatusOwnerPermission',
+    'STATUS_OWNER': 'StatusOwnerPermission',
+    'EXECUTORS': 'ExecutorPermission',
+    'EXECUTOR': 'ExecutorPermission',
+    'WORKERS': 'WorkerPermission',
+    'CREATORS': 'CreatorPermission'
+  };
+  return mapping[permissionType] || permissionType;
+};
+
 export interface PermissionData {
   permissionId: number | null;
   permissionType: string;
@@ -176,8 +194,10 @@ const processPermissionRows = async (
   // Grant globale
   if (perm.grantId && perm.permissionId && perm.permissionType) {
     try {
+      // Mappa il tipo di permission al formato backend
+      const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
       // Usa il nuovo endpoint PermissionAssignment
-      const grantResponse = await api.get(`/permission-assignments/${perm.permissionType}/${perm.permissionId}`);
+      const grantResponse = await api.get(`/permission-assignments/${backendPermissionType}/${perm.permissionId}`);
       const assignment = grantResponse.data;
       const grantDetails = assignment.grant || {};
 
@@ -205,6 +225,7 @@ const processPermissionRows = async (
         // Utenti
         if (grantDetails.users && grantDetails.users.length > 0) {
           grantDetails.users.forEach((user: any) => {
+            const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
             rows.push(createBaseRow(
               permissionName,
               itemTypeSetName,
@@ -214,7 +235,7 @@ const processPermissionRows = async (
               transitionName,
               '',
               'Global',
-              user.username || user.email || `User #${user.id}`,
+              userName,
               '',
               '',
               ''
@@ -245,6 +266,7 @@ const processPermissionRows = async (
         // Utenti negati
         if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
           grantDetails.negatedUsers.forEach((user: any) => {
+            const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
             rows.push(createBaseRow(
               permissionName,
               itemTypeSetName,
@@ -255,7 +277,7 @@ const processPermissionRows = async (
               '',
               'Global',
               '',
-              user.username || user.email || `User #${user.id}`,
+              userName,
               '',
               ''
             ));
@@ -337,8 +359,10 @@ const processPermissionRows = async (
           console.warn('Permission senza permissionId o permissionType per grant di progetto:', perm);
           continue;
         }
+        // Mappa il tipo di permission al formato backend
+        const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
         const projectGrantResponse = await api.get(
-          `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
+          `/project-permission-assignments/${backendPermissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
         );
         const assignment = projectGrantResponse.data;
         const projectGrantDetails = assignment.assignment?.grant || {};
@@ -367,6 +391,7 @@ const processPermissionRows = async (
           // Utenti
           if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
             projectGrantDetails.users.forEach((user: any) => {
+              const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
               rows.push(createBaseRow(
                 permissionName,
                 itemTypeSetName,
@@ -376,7 +401,7 @@ const processPermissionRows = async (
                 transitionName,
                 '',
                 projectName,
-                user.username || user.email || `User #${user.id}`,
+                userName,
                 '',
                 '',
                 ''
@@ -407,6 +432,7 @@ const processPermissionRows = async (
           // Utenti negati
           if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
             projectGrantDetails.negatedUsers.forEach((user: any) => {
+              const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
               rows.push(createBaseRow(
                 permissionName,
                 itemTypeSetName,
@@ -417,7 +443,7 @@ const processPermissionRows = async (
                 '',
                 projectName,
                 '',
-                user.username || user.email || `User #${user.id}`,
+                userName,
                 '',
                 ''
               ));

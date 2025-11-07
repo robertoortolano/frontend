@@ -116,8 +116,17 @@ export default function ItemTypeSetRoleManager({
         api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`)
           .then((response) => {
             const assignment = response.data;
+            // Se assignment è null, significa che non esiste ancora (oggetto vuoto restituito dal backend)
+            if (!assignment.assignment) {
+              setGrantDetailsMap((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(mapKey, { isProjectGrant: false });
+                return newMap;
+              });
+              return;
+            }
             const newGrantDetails: any = { isProjectGrant: true };
-            if (assignment.assignment?.grant) {
+            if (assignment.assignment.grant) {
               // Estrai i dati del grant dalla struttura ProjectPermissionAssignmentDto
               newGrantDetails.users = Array.from(assignment.assignment.grant.users || []);
               newGrantDetails.groups = Array.from(assignment.assignment.grant.groups || []);
@@ -131,6 +140,7 @@ export default function ItemTypeSetRoleManager({
             });
           })
           .catch((err: any) => {
+            // Gestisce ancora il caso 404 per retrocompatibilità, ma ora il backend restituisce 200 con assignment null
             if (err.response?.status === 404) {
               // Grant non esiste, settiamo isProjectGrant a false
               setGrantDetailsMap((prev) => {
@@ -231,16 +241,22 @@ export default function ItemTypeSetRoleManager({
               // Usa il nuovo endpoint ProjectPermissionAssignment
               const projectGrantResponse = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
               const assignment = projectGrantResponse.data;
-              // Pulisce i dettagli prima di assegnare quelli del progetto
-              Object.keys(grantDetails).forEach(key => delete grantDetails[key]);
-              if (assignment.assignment?.grant) {
-                grantDetails.users = Array.from(assignment.assignment.grant.users || []);
-                grantDetails.groups = Array.from(assignment.assignment.grant.groups || []);
-                grantDetails.negatedUsers = Array.from(assignment.assignment.grant.negatedUsers || []);
-                grantDetails.negatedGroups = Array.from(assignment.assignment.grant.negatedGroups || []);
+              // Se assignment è null, significa che non esiste ancora (oggetto vuoto restituito dal backend)
+              if (!assignment.assignment) {
+                grantDetails.isProjectGrant = false;
+              } else {
+                // Pulisce i dettagli prima di assegnare quelli del progetto
+                Object.keys(grantDetails).forEach(key => delete grantDetails[key]);
+                if (assignment.assignment.grant) {
+                  grantDetails.users = Array.from(assignment.assignment.grant.users || []);
+                  grantDetails.groups = Array.from(assignment.assignment.grant.groups || []);
+                  grantDetails.negatedUsers = Array.from(assignment.assignment.grant.negatedUsers || []);
+                  grantDetails.negatedGroups = Array.from(assignment.assignment.grant.negatedGroups || []);
+                }
+                grantDetails.isProjectGrant = true;
               }
-              grantDetails.isProjectGrant = true;
             } catch (err: any) {
+              // Gestisce ancora il caso 404 per retrocompatibilità, ma ora il backend restituisce 200 con assignment null
               // Se l'errore è 404, significa che la grant non esiste ancora
               // Se è un altro errore, loggiamolo ma non blocchiamo il rendering
               if (err.response?.status === 404) {
@@ -555,7 +571,8 @@ export default function ItemTypeSetRoleManager({
   const filteredCount = getTotalCount(filteredRoles);
   
   // Ordine di visualizzazione delle permissions
-  const roleOrder = ['WORKERS', 'CREATORS', 'STATUS_OWNERS', 'EXECUTORS', 'FIELD_OWNERS', 'EDITORS', 'VIEWERS'];
+  // IMPORTANTE: Le chiavi devono corrispondere esattamente a quelle restituite dal backend
+  const roleOrder = ['Workers', 'Creators', 'Status Owners', 'Executors', 'Field Owners', 'Editors', 'Viewers'];
 
   return (
     <div className="w-full">
@@ -786,6 +803,9 @@ export default function ItemTypeSetRoleManager({
                             // Solo grant globali, non quelle di progetto
                             const hasGrant = role.grantId != null || role.assignmentType === 'GRANT';
                             const hasAssignments = hasGlobalRoles || hasGrant;
+                            
+                            // Recupera grantDetails dalla mappa per i grant globali
+                            const grantDetails = grantDetailsMap.get(mapKey);
                             
                             if (!hasAssignments) {
                               return (
