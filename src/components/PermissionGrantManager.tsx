@@ -43,7 +43,6 @@ interface Permission {
   roleTemplateId?: number;
   roleTemplateName?: string;
   assignmentType?: string; // "GRANT", "ROLE", "GRANTS", "NONE"
-  itemTypeSetRoleId?: number;
   hasProjectGrant?: boolean;
   projectGrantId?: number;
 }
@@ -57,16 +56,18 @@ interface PermissionGrantManagerProps {
   projectId?: string; // Per GrantRoleAssignment PROJECT-level
 }
 
-// Mappatura dei nomi delle permissions ai tipi che il backend si aspetta
+// Mappatura dei nomi delle permissions ai tipi che il backend si aspetta per PermissionAssignment
+// Dopo la migrazione, i tipi sono: WorkerPermission, StatusOwnerPermission, FieldOwnerPermission, 
+// CreatorPermission, ExecutorPermission, FieldStatusPermission
 const getPermissionType = (permissionName: string): string => {
   const mapping: { [key: string]: string } = {
-    'Workers': 'WORKERS',
-    'Creators': 'CREATORS', 
-    'Status Owners': 'STATUS_OWNERS',
-    'Executors': 'EXECUTORS',
-    'Field Owners': 'FIELD_OWNERS',
-    'Editors': 'EDITORS',
-    'Viewers': 'VIEWERS'
+    'Workers': 'WorkerPermission',
+    'Creators': 'CreatorPermission', 
+    'Status Owners': 'StatusOwnerPermission',
+    'Executors': 'ExecutorPermission',
+    'Field Owners': 'FieldOwnerPermission',
+    'Editors': 'FieldStatusPermission',
+    'Viewers': 'FieldStatusPermission'
   };
   
   return mapping[permissionName] || permissionName?.toUpperCase();
@@ -110,13 +111,14 @@ export default function PermissionGrantManager({
       fetchAvailableGroups();
       
       // Inizializza con i dati esistenti
-      const itemTypeSetRoleId = (permission as any).itemTypeSetRoleId || permission.id;
+      const permissionId = typeof permission.id === 'number' ? permission.id : null;
+      const permissionType = getPermissionType(permission.name);
       
       if (scope === 'project') {
         // Per scope 'project', i ruoli devono essere aggiuntivi e separati da quelli globali
         // Carica i ruoli di progetto se disponibili
-        if (projectId && itemTypeSetRoleId && typeof itemTypeSetRoleId === 'number') {
-          fetchProjectRoles(itemTypeSetRoleId, Number(projectId));
+        if (projectId && permissionId && permissionType) {
+          fetchProjectRoles(permissionType, permissionId, Number(projectId));
         } else {
           setSelectedRoles([]);
         }
@@ -127,8 +129,8 @@ export default function PermissionGrantManager({
       
       // Se c'è già un Grant globale assegnato, carica i suoi dettagli
       // MA solo se NON siamo in modalità progetto (dove le globali sono già visibili in sola lettura)
-      if (scope !== 'project' && permission.grantId && itemTypeSetRoleId && typeof itemTypeSetRoleId === 'number') {
-        fetchGrantDetails(itemTypeSetRoleId);
+      if (scope !== 'project' && permission.grantId && permissionId && permissionType) {
+        fetchGrantDetails(permissionType, permissionId);
       } else {
         // Reset se non c'è grant globale o siamo in modalità progetto
         setGrantUsers([]);
@@ -138,10 +140,11 @@ export default function PermissionGrantManager({
       }
       
       // Se siamo in un progetto e c'è una grant di progetto, carica i suoi dettagli
-      if (scope === 'project' && projectId && itemTypeSetRoleId && typeof itemTypeSetRoleId === 'number') {
+      if (scope === 'project' && projectId && permissionId) {
         const hasProjectGrant = (permission as any).hasProjectGrant;
         if (hasProjectGrant) {
-          fetchProjectGrantDetails(itemTypeSetRoleId, Number(projectId));
+          const permissionType = getPermissionType(permission.name);
+          fetchProjectGrantDetails(permissionType, permissionId, Number(projectId));
         } else {
           setProjectGrantUsers([]);
           setProjectGrantGroups([]);
@@ -152,39 +155,49 @@ export default function PermissionGrantManager({
     }
   }, [permission]);
   
-  const fetchGrantDetails = async (roleId: number) => {
+  const fetchGrantDetails = async (permissionType: string, permissionId: number) => {
     try {
-      const response = await api.get(`/itemtypeset-roles/${roleId}/grant-details`);
-      const grantDetails = response.data;
+      const response = await api.get(`/permission-assignments/${permissionType}/${permissionId}`);
+      const assignment = response.data;
+      
+      // Il PermissionAssignmentDto contiene un campo grant che ha la struttura GrantViewDto
+      const grant = assignment.grant;
+      if (!grant) {
+        setGrantUsers([]);
+        setGrantGroups([]);
+        setGrantNegatedUsers([]);
+        setGrantNegatedGroups([]);
+        return;
+      }
       
       // Converte i dati del backend al formato UserOption
-      // UserSimpleDto ha: id, username, fullName
-      const mappedUsers = grantDetails.users?.map((u: any) => ({
+      // GrantViewDto ha: users, groups, negatedUsers, negatedGroups (Set<UserResponseDto> e Set<GroupViewDto>)
+      const mappedUsers = Array.from(grant.users || []).map((u: any) => ({
         id: u.id,
         username: u.username || '',
         fullName: u.fullName || u.username || 'Utente'
-      })) || [];
+      }));
       
       setGrantUsers(mappedUsers);
       
-      setGrantGroups(grantDetails.groups?.map((g: any) => ({
+      setGrantGroups(Array.from(grant.groups || []).map((g: any) => ({
         id: g.id,
         name: g.name
-      })) || []);
+      })));
       
-      setGrantNegatedUsers(grantDetails.negatedUsers?.map((u: any) => ({
+      setGrantNegatedUsers(Array.from(grant.negatedUsers || []).map((u: any) => ({
         id: u.id,
         username: u.username || '',
         fullName: u.fullName || u.username || 'Utente'
-      })) || []);
+      })));
       
-      setGrantNegatedGroups(grantDetails.negatedGroups?.map((g: any) => ({
+      setGrantNegatedGroups(Array.from(grant.negatedGroups || []).map((g: any) => ({
         id: g.id,
         name: g.name
-      })) || []);
+      })));
     } catch (err) {
       console.error('Error fetching grant details:', err);
-      // Se non riesce a caricare, resetta i campi
+      // Se non riesce a caricare (404 se non esiste), resetta i campi
       setGrantUsers([]);
       setGrantGroups([]);
       setGrantNegatedUsers([]);
@@ -192,34 +205,44 @@ export default function PermissionGrantManager({
     }
   };
   
-  const fetchProjectGrantDetails = async (roleId: number, projectId: number) => {
+  const fetchProjectGrantDetails = async (permissionType: string, permissionId: number, projectId: number) => {
     try {
-      const response = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
-      const grantDetails = response.data;
+      // Usa il nuovo endpoint ProjectPermissionAssignment
+      const response = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
+      const assignment = response.data;
+      const grantDetails = assignment.assignment?.grant;
       
-      const mappedUsers = grantDetails.users?.map((u: any) => ({
+      if (!grantDetails) {
+        setProjectGrantUsers([]);
+        setProjectGrantGroups([]);
+        setProjectGrantNegatedUsers([]);
+        setProjectGrantNegatedGroups([]);
+        return;
+      }
+      
+      const mappedUsers = Array.from(grantDetails.users || []).map((u: any) => ({
         id: u.id,
         username: u.username || '',
         fullName: u.fullName || u.username || 'Utente'
-      })) || [];
+      }));
       
       setProjectGrantUsers(mappedUsers);
       
-      setProjectGrantGroups(grantDetails.groups?.map((g: any) => ({
+      setProjectGrantGroups(Array.from(grantDetails.groups || []).map((g: any) => ({
         id: g.id,
         name: g.name
-      })) || []);
+      })));
       
-      setProjectGrantNegatedUsers(grantDetails.negatedUsers?.map((u: any) => ({
+      setProjectGrantNegatedUsers(Array.from(grantDetails.negatedUsers || []).map((u: any) => ({
         id: u.id,
         username: u.username || '',
         fullName: u.fullName || u.username || 'Utente'
-      })) || []);
+      })));
       
-      setProjectGrantNegatedGroups(grantDetails.negatedGroups?.map((g: any) => ({
+      setProjectGrantNegatedGroups(Array.from(grantDetails.negatedGroups || []).map((g: any) => ({
         id: g.id,
         name: g.name
-      })) || []);
+      })));
     } catch (err: any) {
       // Se la grant di progetto non esiste, è normale
       if (err.response?.status !== 404) {
@@ -253,10 +276,18 @@ export default function PermissionGrantManager({
     }
   };
   
-  const fetchProjectRoles = async (itemTypeSetRoleId: number, projectId: number) => {
+  const fetchProjectRoles = async (permissionType: string, permissionId: number, projectId: number) => {
     try {
-      const response = await api.get(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}`);
-      setSelectedRoles(response.data || []);
+      // Usa il nuovo endpoint ProjectPermissionAssignment
+      const response = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
+      const assignment = response.data;
+      // Estrai i ruoli da assignment.assignment.roles
+      const roles = assignment.assignment?.roles || [];
+      setSelectedRoles(Array.from(roles).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description
+      })));
     } catch (err: any) {
       // Se i ruoli di progetto non esistono, è normale
       if (err.response?.status !== 404) {
@@ -272,18 +303,21 @@ export default function PermissionGrantManager({
     setError(null);
 
     try {
-      // Usa itemTypeSetRoleId se disponibile, altrimenti usa permission.id
-      const itemTypeSetRoleId = (permission as any).itemTypeSetRoleId || 
-                               (typeof permission.id === 'string' && permission.id.startsWith('worker-') 
-        ? null 
-                                 : permission.id);
+      // Usa permission.id direttamente (non più itemTypeSetRoleId)
+      const permissionId = typeof permission.id === 'number' ? permission.id : null;
 
-      if (!itemTypeSetRoleId || typeof itemTypeSetRoleId === 'string') {
+      if (!permissionId) {
         setError(
-          `ID ItemTypeSetRole non valido. Il valore ricevuto è: ${itemTypeSetRoleId}. ` +
-          `Per risolvere il problema, chiudi questa finestra e ricarica la pagina delle permissions ` +
-          `per assicurarti che tutti gli ItemTypeSetRole siano stati creati correttamente.`
+          `ID Permission non valido. Il valore ricevuto è: ${permission.id}. ` +
+          `Per risolvere il problema, chiudi questa finestra e ricarica la pagina delle permissions.`
         );
+        setLoading(false);
+        return;
+      }
+
+      const permissionType = getPermissionType(permission.name);
+      if (!permissionType) {
+        setError(`Tipo di permission non riconosciuto: ${permission.name}`);
         setLoading(false);
         return;
       }
@@ -295,37 +329,11 @@ export default function PermissionGrantManager({
                                grantNegatedUsers.length > 0 || grantNegatedGroups.length > 0;
         
         if (hasGrantDirect) {
-          // Prepara il payload - includi solo campi non vuoti
+          // Prepara il payload per PermissionAssignmentGrantCreateDto
           const payload: any = {
-            itemTypeSetRoleId: itemTypeSetRoleId
+            permissionType: permissionType,
+            permissionId: permissionId
           };
-          
-          // Aggiungi informazioni sulla permission per permettere la creazione automatica dell'ItemTypeSetRole se non esiste
-          if (itemTypeSetId) {
-            payload.itemTypeSetId = itemTypeSetId;
-          }
-          
-          const permissionType = getPermissionType(permission.name);
-          if (permissionType) {
-            payload.permissionType = permissionType;
-          }
-          
-          // Aggiungi informazioni sulle entità correlate in base al tipo di permission
-          if (permission.itemType?.id) {
-            payload.itemTypeId = permission.itemType.id;
-          }
-          if (permission.workflow?.id) {
-            payload.workflowId = permission.workflow.id;
-          }
-          if (permission.workflowStatus?.id) {
-            payload.workflowStatusId = permission.workflowStatus.id;
-          }
-          if (permission.fieldConfiguration?.id) {
-            payload.fieldConfigurationId = permission.fieldConfiguration.id;
-          }
-          if (permission.transition?.id) {
-            payload.transitionId = permission.transition.id;
-          }
           
           if (grantUsers.length > 0) {
             payload.userIds = grantUsers.map(u => u.id);
@@ -344,13 +352,11 @@ export default function PermissionGrantManager({
           }
           
           try {
-            // Se c'è già un Grant, aggiornalo invece di crearne uno nuovo
-            if (permission.grantId) {
-              await api.put('/itemtypeset-roles/update-grant', payload);
-            } else {
-              // Crea nuovo Grant e assegnalo
-              await api.post('/itemtypeset-roles/create-and-assign-grant', payload);
-            }
+            // Usa il nuovo endpoint PermissionAssignment
+            // Il metodo createAndAssignGrant gestisce automaticamente la rimozione del Grant esistente
+            // se presente, quindi non dobbiamo eliminare il PermissionAssignment prima
+            // Crea nuovo Grant e assegnalo (sostituisce quello esistente se presente)
+            await api.post('/permission-assignments/create-and-assign-grant', payload);
           } catch (err: any) {
             const errorMessage = extractErrorMessage(err, 'Errore sconosciuto');
             throw new Error(`Errore nella ${permission.grantId ? 'modifica' : 'creazione'} e assegnazione Grant: ${errorMessage}`);
@@ -359,9 +365,7 @@ export default function PermissionGrantManager({
           // Se prima c'era un Grant ma ora non c'è, rimuovilo
           // IMPORTANTE: Questo viene eseguito solo se NON siamo in scope 'project'
           try {
-            await api.delete('/itemtypeset-roles/remove-assignment', {
-              params: { roleId: itemTypeSetRoleId }
-            });
+            await api.delete(`/permission-assignments/${permissionType}/${permissionId}`);
           } catch (err: any) {
             // Non bloccare se la rimozione fallisce (potrebbe essere già rimosso)
             console.warn('Warning removing grant assignment:', err);
@@ -376,7 +380,10 @@ export default function PermissionGrantManager({
         
         if (hasProjectGrantDirect) {
           const projectPayload: any = {
-            itemTypeSetRoleId: itemTypeSetRoleId
+            permissionType: permissionType,
+            permissionId: permissionId,
+            projectId: Number(projectId),
+            itemTypeSetId: itemTypeSetId
           };
           
           if (projectGrantUsers.length > 0) {
@@ -396,8 +403,8 @@ export default function PermissionGrantManager({
           }
           
           try {
-            // Crea o aggiorna Grant di progetto
-            await api.post(`/project-itemtypeset-role-grants/project/${projectId}`, projectPayload);
+            // Usa il nuovo endpoint ProjectPermissionAssignment per creare/aggiornare Grant di progetto
+            await api.post(`/project-permission-assignments/create-and-assign-grant`, projectPayload);
           } catch (err: any) {
             const errorMessage = extractErrorMessage(err, 'Errore sconosciuto');
             throw new Error(`Errore nella creazione/modifica Grant di progetto: ${errorMessage}`);
@@ -405,7 +412,8 @@ export default function PermissionGrantManager({
         } else if ((permission as any).hasProjectGrant) {
           // Se prima c'era una Grant di progetto ma ora non c'è, rimuovila
           try {
-            await api.delete(`/project-itemtypeset-role-grants/project/${projectId}/role/${itemTypeSetRoleId}`);
+            // Usa il nuovo endpoint ProjectPermissionAssignment per eliminare
+            await api.delete(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
           } catch (err: any) {
             // Non bloccare se la rimozione fallisce (potrebbe essere già rimossa)
             console.warn('Warning removing project grant assignment:', err);
@@ -414,37 +422,30 @@ export default function PermissionGrantManager({
       }
 
       // Gestione ruoli (Role template)
-      if (scope === 'project' && projectId) {
-        // Per scope 'project', gestisci i ruoli di progetto separatamente
-        // Carica i ruoli esistenti di progetto
-        let existingProjectRoles: Role[] = [];
+      if (scope === 'project' && projectId && itemTypeSetId) {
+        // Per scope 'project', gestisci i ruoli di progetto tramite ProjectPermissionAssignment
+        // Usa l'endpoint POST per creare/aggiornare con tutti i roleIds in una volta
+        const projectRolePayload: any = {
+          permissionType: permissionType,
+          permissionId: permissionId,
+          projectId: Number(projectId),
+          itemTypeSetId: itemTypeSetId
+        };
+        
+        // Aggiungi i roleIds se ci sono ruoli selezionati
+        if (selectedRoles.length > 0) {
+          projectRolePayload.roleIds = selectedRoles.map(role => role.id);
+        } else {
+          // Se non ci sono ruoli selezionati, passa un array vuoto per rimuovere tutti i ruoli
+          projectRolePayload.roleIds = [];
+        }
+        
         try {
-          const response = await api.get(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}`);
-          existingProjectRoles = response.data || [];
+          // Usa il nuovo endpoint ProjectPermissionAssignment per creare/aggiornare i ruoli
+          await api.post(`/project-permission-assignments`, projectRolePayload);
         } catch (err: any) {
-          // Se non ci sono ruoli di progetto, è normale
-          if (err.response?.status !== 404) {
-            console.warn('Warning fetching existing project roles:', err);
-          }
-        }
-        
-        // Rimuovi i ruoli che non sono più selezionati
-        for (const existingRole of existingProjectRoles) {
-          if (!selectedRoles.find((role: Role) => role.id === existingRole.id)) {
-            await api.delete(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}/remove`, {
-              params: { roleId: existingRole.id }
-            });
-          }
-        }
-        
-        // Aggiungi i nuovi ruoli
-        for (const role of selectedRoles) {
-          const isAlreadyAssigned = existingProjectRoles.find((existingRole: Role) => existingRole.id === role.id);
-          if (!isAlreadyAssigned) {
-            await api.post(`/project-itemtypeset-role-roles/project/${projectId}/role/${itemTypeSetRoleId}/add`, null, {
-              params: { roleId: role.id }
-            });
-          }
+          const errorMessage = extractErrorMessage(err, 'Errore sconosciuto');
+          throw new Error(`Errore nella gestione dei ruoli di progetto: ${errorMessage}`);
         }
       } else {
         // Per scope 'tenant', gestisci i ruoli globali

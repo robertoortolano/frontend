@@ -305,17 +305,19 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
                         <td style={{ padding: '10px 12px', color: '#4b5563' }}>
                           {hasGlobalGrant ? (
                             <span
-                              onClick={perm.roleId ? async () => {
+                              onClick={perm.permissionId && perm.permissionType ? async () => {
                                 setLoadingGrantDetails(true);
                                 try {
+                                  // Usa il nuovo endpoint PermissionAssignment
                                   const response = await api.get(
-                                    `/itemtypeset-roles/${perm.roleId}/grant-details`
+                                    `/permission-assignments/${perm.permissionType}/${perm.permissionId}`
                                   );
+                                  const assignment = response.data;
                                   setSelectedGrantDetails({
                                     projectId: 0,
                                     projectName: 'Globale',
-                                    roleId: perm.roleId,
-                                    details: response.data
+                                    roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+                                    details: assignment.grant || {}
                                   });
                                 } catch (error) {
                                   alert('Errore nel recupero dei dettagli della grant globale');
@@ -352,19 +354,25 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
                               {perm.projectGrants?.map((pg: ProjectGrantInfo, pgIdx: number) => (
                                 <span
                                   key={pgIdx}
-                                  onClick={async () => {
-                                    setLoadingGrantDetails(true);
-                                    try {
-                                      const response = await api.get(
-                                        `/project-itemtypeset-role-grants/project/${pg.projectId}/role/${pg.roleId}`
-                                      );
-                                      setSelectedGrantDetails({
-                                        projectId: pg.projectId,
-                                        projectName: pg.projectName,
-                                        roleId: pg.roleId,
-                                        details: response.data
-                                      });
-                                    } catch (error) {
+                                      onClick={async () => {
+                                        if (!perm.permissionId || !perm.permissionType) {
+                                          alert('Permission senza permissionId o permissionType');
+                                          return;
+                                        }
+                                        setLoadingGrantDetails(true);
+                                        try {
+                                          // Usa il nuovo endpoint ProjectPermissionAssignment
+                                          const response = await api.get(
+                                            `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${pg.projectId}`
+                                          );
+                                          const assignment = response.data;
+                                          setSelectedGrantDetails({
+                                            projectId: pg.projectId,
+                                            projectName: pg.projectName,
+                                            roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+                                            details: assignment.assignment?.grant || {}
+                                          });
+                                        } catch (error) {
                                       alert('Errore nel recupero dei dettagli della grant');
                                     } finally {
                                       setLoadingGrantDetails(false);

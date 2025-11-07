@@ -6,11 +6,9 @@ export interface FieldSetRemovalImpactDto {
   affectedItemTypeSets: ItemTypeSetImpact[];
   fieldOwnerPermissions: PermissionImpact[];
   fieldStatusPermissions: PermissionImpact[];
-  itemTypeSetRoles: PermissionImpact[];
   totalAffectedItemTypeSets: number;
   totalFieldOwnerPermissions: number;
   totalFieldStatusPermissions: number;
-  totalItemTypeSetRoles: number;
   totalGrantAssignments: number;
   totalRoleAssignments: number;
 }
@@ -36,7 +34,7 @@ export interface ProjectImpact {
 
 export interface PermissionImpact {
   permissionId: number;
-  permissionType: string; // "FIELD_OWNERS", "EDITORS", "VIEWERS", "ITEMTYPESET_ROLE"
+  permissionType: string; // "FIELD_OWNERS", "EDITORS", "VIEWERS"
   itemTypeSetId: number;
   itemTypeSetName: string;
   fieldConfigurationId: number;
@@ -70,7 +68,6 @@ export interface PermissionImpact {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId: number; // ID dell'ItemTypeSetRole associato (per recuperare i dettagli via API)
 }
 
 

@@ -321,8 +321,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       // Verifica se ci sono permission con assegnazioni
       const hasPopulatedPermissions = 
         impact.fieldOwnerPermissions?.some(p => p.hasAssignments) ||
-        impact.fieldStatusPermissions?.some(p => p.hasAssignments) ||
-        impact.itemTypeSetRoles?.some(p => p.hasAssignments);
+        impact.fieldStatusPermissions?.some(p => p.hasAssignments);
       
       if (hasPopulatedPermissions) {
         setImpactReport(impact);
@@ -413,8 +412,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
 
       const hasPermissions = 
         (impactReport.fieldOwnerPermissions && impactReport.fieldOwnerPermissions.length > 0) ||
-        (impactReport.fieldStatusPermissions && impactReport.fieldStatusPermissions.length > 0) ||
-        (impactReport.itemTypeSetRoles && impactReport.itemTypeSetRoles.length > 0);
+        (impactReport.fieldStatusPermissions && impactReport.fieldStatusPermissions.length > 0);
       
       if (hasPermissions && removedConfigIds.length > 0) {
         const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 

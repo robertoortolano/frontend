@@ -41,8 +41,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
         ...(impact.fieldOwnerPermissions || []),
         ...(impact.statusOwnerPermissions || []),
         ...(impact.fieldStatusPermissions || []),
-        ...(impact.executorPermissions || []),
-        ...(impact.itemTypeSetRoles || [])
+        ...(impact.executorPermissions || [])
       ];
       
       const defaultPreserved = allPermissions
@@ -78,8 +77,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
     impact.fieldOwnerPermissions?.some(p => p.hasAssignments) ||
     impact.statusOwnerPermissions?.some(p => p.hasAssignments) ||
     impact.fieldStatusPermissions?.some(p => p.hasAssignments) ||
-    impact.executorPermissions?.some(p => p.hasAssignments) ||
-    impact.itemTypeSetRoles?.some(p => p.hasAssignments);
+    impact.executorPermissions?.some(p => p.hasAssignments);
 
   if (!hasPopulatedPermissions) {
     return null;
@@ -103,8 +101,6 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
         const transitionName = perm.transitionName;
         const transitionPart = transitionName ? ` (${transitionName})` : '';
         return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
-      case 'ITEMTYPESET_ROLE':
-        return perm.roleName || 'ItemTypeSet Role';
       default:
         return `${perm.permissionType} - ${perm.itemTypeSetName || 'N/A'}`;
     }
@@ -115,8 +111,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
     ...(impact.fieldOwnerPermissions || []).filter(p => p.hasAssignments),
     ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments),
     ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments),
-    ...(impact.executorPermissions || []).filter(p => p.hasAssignments),
-    ...(impact.itemTypeSetRoles || []).filter(p => p.hasAssignments)
+    ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
   ].sort((a, b) => {
     const itsCompare = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
     if (itsCompare !== 0) return itsCompare;
@@ -134,8 +129,7 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
       ...(impact.fieldOwnerPermissions || []).filter(p => p.hasAssignments),
       ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments),
       ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments),
-      ...(impact.executorPermissions || []).filter(p => p.hasAssignments),
-      ...(impact.itemTypeSetRoles || []).filter(p => p.hasAssignments)
+      ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
     ].map(perm => ({
       permissionId: perm.permissionId,
       permissionType: perm.permissionType || 'N/A',
@@ -344,17 +338,19 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
                         <td style={{ padding: '10px 12px', color: '#4b5563' }}>
                           {hasGlobalGrant ? (
                             <span
-                              onClick={perm.roleId ? async () => {
+                              onClick={perm.permissionId && perm.permissionType ? async () => {
                                 setLoadingGrantDetails(true);
                                 try {
+                                  // Usa il nuovo endpoint PermissionAssignment
                                   const response = await api.get(
-                                    `/itemtypeset-roles/${perm.roleId}/grant-details`
+                                    `/permission-assignments/${perm.permissionType}/${perm.permissionId}`
                                   );
+                                  const assignment = response.data;
                                   setSelectedGrantDetails({
                                     projectId: 0,
                                     projectName: 'Globale',
-                                    roleId: perm.roleId,
-                                    details: response.data
+                                    roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+                                    details: assignment.grant || {}
                                   });
                                 } catch (error) {
                                   alert('Errore nel recupero dei dettagli della grant globale');
@@ -392,16 +388,22 @@ export const ItemTypeConfigurationEnhancedImpactReportModal: React.FC<ItemTypeCo
                                 <span
                                   key={pgIdx}
                                   onClick={async () => {
+                                    if (!perm.permissionId || !perm.permissionType) {
+                                      alert('Permission senza permissionId o permissionType');
+                                      return;
+                                    }
                                     setLoadingGrantDetails(true);
                                     try {
+                                      // Usa il nuovo endpoint ProjectPermissionAssignment
                                       const response = await api.get(
-                                        `/project-itemtypeset-role-grants/project/${pg.projectId}/role/${pg.roleId}`
+                                        `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${pg.projectId}`
                                       );
+                                      const assignment = response.data;
                                       setSelectedGrantDetails({
                                         projectId: pg.projectId,
                                         projectName: pg.projectName,
-                                        roleId: pg.roleId,
-                                        details: response.data
+                                        roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+                                        details: assignment.assignment?.grant || {}
                                       });
                                     } catch (error) {
                                       alert('Errore nel recupero dei dettagli della grant');

@@ -113,7 +113,6 @@ export interface SelectablePermissionImpact {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId: number; // ID dell'ItemTypeSetRole associato (per recuperare i dettagli via API)
 }
 
 export interface ItemTypeConfigurationMigrationRequest {

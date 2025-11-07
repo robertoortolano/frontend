@@ -13,14 +13,15 @@ import alert from "../styles/common/Alerts.module.css";
 import utilities from "../styles/common/Utilities.module.css";
 import table from "../styles/common/Tables.module.css";
 
+// Dopo la migrazione, le chiavi sono i nomi completi delle permission
 const ROLE_TYPES: any = {
-  WORKERS: { label: "Workers", icon: Users, color: "blue", description: "Per ogni ItemType" },
-  STATUS_OWNERS: { label: "Status Owners", icon: Shield, color: "green", description: "Per ogni WorkflowStatus" },
-  FIELD_OWNERS: { label: "Field Owners", icon: Edit, color: "purple", description: "Per ogni FieldConfiguration (sempre)" },
-  CREATORS: { label: "Creators", icon: Plus, color: "orange", description: "Per ogni Workflow" },
-  EXECUTORS: { label: "Executors", icon: Shield, color: "red", description: "Per ogni Transition" },
-  EDITORS: { label: "Editors", icon: Edit, color: "indigo", description: "Per coppia (Field + Status)" },
-  VIEWERS: { label: "Viewers", icon: Eye, color: "gray", description: "Per coppia (Field + Status)" },
+  "Workers": { label: "Workers", icon: Users, color: "blue", description: "Per ogni ItemType" },
+  "Status Owners": { label: "Status Owners", icon: Shield, color: "green", description: "Per ogni WorkflowStatus" },
+  "Field Owners": { label: "Field Owners", icon: Edit, color: "purple", description: "Per ogni FieldConfiguration (sempre)" },
+  "Creators": { label: "Creators", icon: Plus, color: "orange", description: "Per ogni Workflow" },
+  "Executors": { label: "Executors", icon: Shield, color: "red", description: "Per ogni Transition" },
+  "Editors": { label: "Editors", icon: Edit, color: "indigo", description: "Per coppia (Field + Status)" },
+  "Viewers": { label: "Viewers", icon: Eye, color: "gray", description: "Per coppia (Field + Status)" },
 };
 
 interface ItemTypeSetRoleManagerProps {
@@ -87,31 +88,45 @@ export default function ItemTypeSetRoleManager({
       }
     });
 
-    const missingDetails: number[] = [];
+    const missingDetails: string[] = []; // Chiave: `${permissionType}-${permissionId}`
     allPermissions.forEach((perm: any) => {
-      const roleId = perm.itemTypeSetRoleId;
-      if (roleId && typeof roleId === 'number') {
-        // Usa il ref per verificare se abbiamo già tentato di caricare questo roleId
-        if (!loadedGrantDetailsRef.current.has(roleId)) {
-          missingDetails.push(roleId);
+      const permissionId = perm.id;
+      const permissionType = perm.permissionType;
+      if (permissionId && typeof permissionId === 'number' && permissionType) {
+        const mapKey = `${permissionType}-${permissionId}`;
+        // Usa il ref per verificare se abbiamo già tentato di caricare questa permission
+        if (!loadedGrantDetailsRef.current.has(mapKey)) {
+          missingDetails.push(mapKey);
         }
       }
     });
 
     // Carica i dettagli mancanti
     if (missingDetails.length > 0) {
-      missingDetails.forEach((roleId) => {
-        // Segna che stiamo tentando di caricare questo roleId
-        loadedGrantDetailsRef.current.add(roleId);
-        setLoadingGrantDetails((prev) => new Set(prev).add(roleId));
+      missingDetails.forEach((mapKey) => {
+        // Estrai permissionType e permissionId dalla chiave
+        const [permissionType, permissionIdStr] = mapKey.split('-');
+        const permissionId = parseInt(permissionIdStr, 10);
         
-        api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`)
+        // Segna che stiamo tentando di caricare questa permission
+        loadedGrantDetailsRef.current.add(mapKey);
+        setLoadingGrantDetails((prev) => new Set(prev).add(permissionId));
+        
+        // Usa il nuovo endpoint ProjectPermissionAssignment
+        api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`)
           .then((response) => {
-            const newGrantDetails = response.data;
-            newGrantDetails.isProjectGrant = true;
+            const assignment = response.data;
+            const newGrantDetails: any = { isProjectGrant: true };
+            if (assignment.assignment?.grant) {
+              // Estrai i dati del grant dalla struttura ProjectPermissionAssignmentDto
+              newGrantDetails.users = Array.from(assignment.assignment.grant.users || []);
+              newGrantDetails.groups = Array.from(assignment.assignment.grant.groups || []);
+              newGrantDetails.negatedUsers = Array.from(assignment.assignment.grant.negatedUsers || []);
+              newGrantDetails.negatedGroups = Array.from(assignment.assignment.grant.negatedGroups || []);
+            }
             setGrantDetailsMap((prev) => {
               const newMap = new Map(prev);
-              newMap.set(roleId, newGrantDetails);
+              newMap.set(mapKey, newGrantDetails);
               return newMap;
             });
           })
@@ -120,19 +135,19 @@ export default function ItemTypeSetRoleManager({
               // Grant non esiste, settiamo isProjectGrant a false
               setGrantDetailsMap((prev) => {
                 const newMap = new Map(prev);
-                newMap.set(roleId, { isProjectGrant: false });
+                newMap.set(mapKey, { isProjectGrant: false });
                 return newMap;
               });
             } else {
-              console.error(`Error fetching project grant details for role ${roleId}:`, err);
+              console.error(`Error fetching project grant details for permission ${mapKey}:`, err);
               // In caso di errore diverso da 404, rimuovi dal ref per permettere un retry
-              loadedGrantDetailsRef.current.delete(roleId);
+              loadedGrantDetailsRef.current.delete(mapKey);
             }
           })
           .finally(() => {
             setLoadingGrantDetails((prev) => {
               const newSet = new Set(prev);
-              newSet.delete(roleId);
+              newSet.delete(permissionId);
               return newSet;
             });
           });
@@ -162,44 +177,48 @@ export default function ItemTypeSetRoleManager({
         }
       });
       
-      const detailsMap = new Map<number, any>();
+      const detailsMap = new Map<string, any>(); // Chiave: `${permissionType}-${permissionId}`
       const fetchPromises = allPermissions
         .filter((perm: any) => {
-          // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
-          // perm.id è l'ID della permission (StatusOwnerPermission, ExecutorPermission, ecc.)
-          // itemTypeSetRoleId è l'ID dell'ItemTypeSetRole che contiene il grant
-          const roleId = perm.itemTypeSetRoleId;
-          if (!roleId || typeof roleId !== 'number') {
+          // Dopo la migrazione, usiamo permissionId e permissionType invece di itemTypeSetRoleId
+          const permissionId = perm.id;
+          const permissionType = perm.permissionType;
+          if (!permissionId || typeof permissionId !== 'number' || !permissionType) {
             return false;
           }
-          // Se showOnlyProjectGrants è true, includiamo solo se ha hasProjectGrant
-          // NOTA: anche se hasProjectGrant potrebbe non essere ancora aggiornato dopo il salvataggio,
-          // tentiamo comunque di caricare i dettagli per tutte le permission con roleId valido
-          // quando showOnlyProjectGrants è true, così possiamo verificare se esiste una grant di progetto
+          // Se showOnlyProjectGrants è true, includiamo tutte le permission valide
           if (showOnlyProjectGrants) {
-            // Includiamo tutte le permission con roleId valido, così possiamo verificare se hanno grant di progetto
-            // Questo permette di caricare i dettagli anche se hasProjectGrant non è ancora aggiornato
             return true;
           }
           // Comportamento normale: include se ha grantId o hasProjectGrant
           return perm.grantId != null || perm.hasProjectGrant === true;
         })
         .map(async (perm: any) => {
-          // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
-          const roleId = perm.itemTypeSetRoleId;
-          if (!roleId || typeof roleId !== 'number') {
-            console.warn('Permission senza itemTypeSetRoleId:', perm);
+          // Dopo la migrazione, usiamo permissionId e permissionType
+          const permissionId = perm.id;
+          const permissionType = perm.permissionType;
+          if (!permissionId || typeof permissionId !== 'number' || !permissionType) {
+            console.warn('Permission senza id o permissionType:', perm);
             return;
           }
           const grantDetails: any = {};
+          const mapKey = `${permissionType}-${permissionId}`;
           
           // Carica grant globale se presente (solo se non siamo in modalità showOnlyProjectGrants)
           if (perm.grantId && !showOnlyProjectGrants) {
             try {
-              const grantResponse = await api.get(`/itemtypeset-roles/${roleId}/grant-details`);
-              Object.assign(grantDetails, grantResponse.data);
+              // Usa il nuovo endpoint PermissionAssignment
+              const grantResponse = await api.get(`/permission-assignments/${permissionType}/${permissionId}`);
+              const assignment = grantResponse.data;
+              if (assignment.grant) {
+                // Estrai i dati del grant dalla struttura PermissionAssignmentDto
+                grantDetails.users = Array.from(assignment.grant.users || []);
+                grantDetails.groups = Array.from(assignment.grant.groups || []);
+                grantDetails.negatedUsers = Array.from(assignment.grant.negatedUsers || []);
+                grantDetails.negatedGroups = Array.from(assignment.grant.negatedGroups || []);
+              }
             } catch (err) {
-              console.error(`Error fetching grant details for role ${roleId}:`, err);
+              console.error(`Error fetching grant details for permission ${permissionType}/${permissionId}:`, err);
             }
           }
           
@@ -209,10 +228,17 @@ export default function ItemTypeSetRoleManager({
           // anche se hasProjectGrant non è ancora settato, così possiamo verificare se esiste
           if (showOnlyProjectGrants && projectId) {
             try {
-              const projectGrantResponse = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
+              // Usa il nuovo endpoint ProjectPermissionAssignment
+              const projectGrantResponse = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
+              const assignment = projectGrantResponse.data;
               // Pulisce i dettagli prima di assegnare quelli del progetto
               Object.keys(grantDetails).forEach(key => delete grantDetails[key]);
-              Object.assign(grantDetails, projectGrantResponse.data);
+              if (assignment.assignment?.grant) {
+                grantDetails.users = Array.from(assignment.assignment.grant.users || []);
+                grantDetails.groups = Array.from(assignment.assignment.grant.groups || []);
+                grantDetails.negatedUsers = Array.from(assignment.assignment.grant.negatedUsers || []);
+                grantDetails.negatedGroups = Array.from(assignment.assignment.grant.negatedGroups || []);
+              }
               grantDetails.isProjectGrant = true;
             } catch (err: any) {
               // Se l'errore è 404, significa che la grant non esiste ancora
@@ -221,7 +247,7 @@ export default function ItemTypeSetRoleManager({
                 // Grant non esiste, settiamo isProjectGrant a false per indicare che non c'è grant
                 grantDetails.isProjectGrant = false;
               } else {
-                console.error(`[fetchRoles] Error fetching project grant details for role ${roleId}:`, err);
+                console.error(`[fetchRoles] Error fetching project grant details for permission ${permissionType}/${permissionId}:`, err);
                 // Per altri errori, non settiamo isProjectGrant per permettere un retry
               }
             }
@@ -230,7 +256,7 @@ export default function ItemTypeSetRoleManager({
           // Salva i dettagli se abbiamo almeno isProjectGrant settato o se ci sono dati
           // Questo permette di distinguere tra "non ancora caricato" e "non ha grant"
           if (grantDetails.isProjectGrant !== undefined || Object.keys(grantDetails).length > 0) {
-            detailsMap.set(roleId, grantDetails);
+            detailsMap.set(mapKey, grantDetails);
           }
         });
       
@@ -259,37 +285,47 @@ export default function ItemTypeSetRoleManager({
             }
           });
           
-          const detailsMap = new Map<number, any>();
+          const detailsMap = new Map<string, any>(); // Chiave: `${permissionType}-${permissionId}`
           const fetchPromises = allPermissions
             .filter((perm: any) => {
-              // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
-              const roleId = perm.itemTypeSetRoleId;
-              if (!roleId || typeof roleId !== 'number') {
+              // Dopo la migrazione, usiamo permissionId e permissionType
+              const permissionId = perm.id;
+              const permissionType = perm.permissionType;
+              if (!permissionId || typeof permissionId !== 'number' || !permissionType) {
                 return false;
               }
-              // Se showOnlyProjectGrants è true, includiamo solo se ha hasProjectGrant
+              // Se showOnlyProjectGrants è true, includiamo tutte le permission valide
               if (showOnlyProjectGrants) {
-                return perm.hasProjectGrant === true;
+                return true;
               }
               // Comportamento normale: include se ha grantId o hasProjectGrant
               return perm.grantId != null || perm.hasProjectGrant === true;
             })
             .map(async (perm: any) => {
-              // IMPORTANTE: usiamo solo itemTypeSetRoleId, non perm.id
-              const roleId = perm.itemTypeSetRoleId;
-              if (!roleId || typeof roleId !== 'number') {
-                console.warn('Permission senza itemTypeSetRoleId (retry):', perm);
+              // Dopo la migrazione, usiamo permissionId e permissionType
+              const permissionId = perm.id;
+              const permissionType = perm.permissionType;
+              if (!permissionId || typeof permissionId !== 'number' || !permissionType) {
+                console.warn('Permission senza id o permissionType (retry):', perm);
                 return;
               }
               const grantDetails: any = {};
+              const mapKey = `${permissionType}-${permissionId}`;
               
               // Carica grant globale se presente (solo se non siamo in modalità showOnlyProjectGrants)
               if (perm.grantId && !showOnlyProjectGrants) {
                 try {
-                  const grantResponse = await api.get(`/itemtypeset-roles/${roleId}/grant-details`);
-                  Object.assign(grantDetails, grantResponse.data);
+                  // Usa il nuovo endpoint PermissionAssignment
+                  const grantResponse = await api.get(`/permission-assignments/${permissionType}/${permissionId}`);
+                  const assignment = grantResponse.data;
+                  if (assignment.grant) {
+                    grantDetails.users = Array.from(assignment.grant.users || []);
+                    grantDetails.groups = Array.from(assignment.grant.groups || []);
+                    grantDetails.negatedUsers = Array.from(assignment.grant.negatedUsers || []);
+                    grantDetails.negatedGroups = Array.from(assignment.grant.negatedGroups || []);
+                  }
                 } catch (err) {
-                  console.error(`Error fetching grant details for role ${roleId}:`, err);
+                  console.error(`Error fetching grant details for permission ${permissionType}/${permissionId}:`, err);
                 }
               }
               
@@ -297,13 +333,20 @@ export default function ItemTypeSetRoleManager({
               // Quando showOnlyProjectGrants è false, mostriamo solo le grant globali
               if (showOnlyProjectGrants && perm.hasProjectGrant && projectId) {
                 try {
-                  const projectGrantResponse = await api.get(`/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`);
+                  // Usa il nuovo endpoint ProjectPermissionAssignment
+                  const projectGrantResponse = await api.get(`/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`);
+                  const assignment = projectGrantResponse.data;
                   // Pulisce i dettagli prima di assegnare quelli del progetto
                   Object.keys(grantDetails).forEach(key => delete grantDetails[key]);
-                  Object.assign(grantDetails, projectGrantResponse.data);
+                  if (assignment.assignment?.grant) {
+                    grantDetails.users = Array.from(assignment.assignment.grant.users || []);
+                    grantDetails.groups = Array.from(assignment.assignment.grant.groups || []);
+                    grantDetails.negatedUsers = Array.from(assignment.assignment.grant.negatedUsers || []);
+                    grantDetails.negatedGroups = Array.from(assignment.assignment.grant.negatedGroups || []);
+                  }
                   grantDetails.isProjectGrant = true;
                 } catch (err) {
-                  console.error(`Error fetching project grant details for role ${roleId}:`, err);
+                  console.error(`Error fetching project grant details for permission ${permissionType}/${permissionId}:`, err);
                   // Anche in caso di errore, settiamo isProjectGrant per indicare che abbiamo tentato di caricare
                   grantDetails.isProjectGrant = false;
                 }
@@ -312,7 +355,7 @@ export default function ItemTypeSetRoleManager({
               // Salva i dettagli se abbiamo almeno isProjectGrant settato o se ci sono dati
               // Questo permette di distinguere tra "non ancora caricato" e "non ha grant"
               if (grantDetails.isProjectGrant !== undefined || Object.keys(grantDetails).length > 0) {
-                detailsMap.set(roleId, grantDetails);
+                detailsMap.set(mapKey, grantDetails);
               }
             });
           
@@ -585,18 +628,20 @@ export default function ItemTypeSetRoleManager({
                         </td>
                         <td>
                           {(() => {
-                            // IMPORTANTE: usiamo solo itemTypeSetRoleId, non role.id come fallback
-                            // role.id è l'ID della permission, non dell'ItemTypeSetRole
-                            const roleId = role.itemTypeSetRoleId;
+                            // Dopo la migrazione, usiamo permissionId e permissionType
+                            const permissionId = role.id;
+                            const permissionType = role.permissionType;
                             
-                            if (!roleId || typeof roleId !== 'number') {
-                              // Se non abbiamo itemTypeSetRoleId, non possiamo mostrare i dettagli del grant
+                            if (!permissionId || typeof permissionId !== 'number' || !permissionType) {
+                              // Se non abbiamo permissionId o permissionType, non possiamo mostrare i dettagli del grant
                               return (
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500`}>
                                   N/A
                                 </span>
                               );
                             }
+                            
+                            const mapKey = `${permissionType}-${permissionId}`;
                             
                             // Se showOnlyProjectGrants è true, mostra solo grant di progetto
                             if (showOnlyProjectGrants) {
@@ -606,7 +651,7 @@ export default function ItemTypeSetRoleManager({
                               const hasProjectRoles = projectRolesCount > 0;
                               
                               // Poi controlla i dettagli delle grant (che vengono caricati via useEffect)
-                              const grantDetails = grantDetailsMap.get(roleId);
+                              const grantDetails = grantDetailsMap.get(mapKey);
                               const hasUsers = grantDetails?.users && grantDetails.users.length > 0;
                               const hasGroups = grantDetails?.groups && grantDetails.groups.length > 0;
                               const hasNegatedUsers = grantDetails?.negatedUsers && grantDetails.negatedUsers.length > 0;
@@ -616,7 +661,7 @@ export default function ItemTypeSetRoleManager({
                               // Se non ci sono né ruoli né grant, controlla se stiamo caricando o se non c'è nulla
                               if (!hasProjectRoles && !hasGrant) {
                                 // Se stiamo caricando i dettagli delle grant, mostra messaggio di caricamento
-                                if (loadingGrantDetails.has(roleId)) {
+                                if (loadingGrantDetails.has(permissionId)) {
                                   return (
                                     <div className="text-xs text-gray-500 italic">
                                       Caricamento dettagli grant di progetto...
@@ -690,17 +735,19 @@ export default function ItemTypeSetRoleManager({
                                     <div>
                                       <span
                                         onClick={async () => {
-                                          if (!roleId || !projectId) return;
+                                          if (!permissionId || !permissionType || !projectId) return;
                                           setLoadingGrantPopup(true);
                                           try {
+                                            // Usa il nuovo endpoint ProjectPermissionAssignment
                                             const response = await api.get(
-                                              `/project-itemtypeset-role-grants/project/${projectId}/role/${roleId}`
+                                              `/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`
                                             );
+                                            const assignment = response.data;
                                             setSelectedGrantDetails({
                                               projectId: Number(projectId),
                                               projectName: 'Progetto',
-                                              roleId: roleId,
-                                              details: response.data,
+                                              roleId: permissionId, // Manteniamo per compatibilità con il popup
+                                              details: assignment.assignment?.grant || {},
                                               isProjectGrant: true
                                             });
                                           } catch (error) {
@@ -781,17 +828,19 @@ export default function ItemTypeSetRoleManager({
                                 {hasGrant && grantDetails && !grantDetails.isProjectGrant && (
                                   <div>
                                     <span
-                                      onClick={roleId ? async () => {
+                                      onClick={permissionId && permissionType ? async () => {
                                         setLoadingGrantPopup(true);
                                         try {
+                                          // Usa il nuovo endpoint PermissionAssignment
                                           const response = await api.get(
-                                            `/itemtypeset-roles/${roleId}/grant-details`
+                                            `/permission-assignments/${permissionType}/${permissionId}`
                                           );
+                                          const assignment = response.data;
                                           setSelectedGrantDetails({
                                             projectId: 0,
                                             projectName: 'Globale',
-                                            roleId: roleId,
-                                            details: response.data,
+                                            roleId: permissionId, // Manteniamo per compatibilità con il popup
+                                            details: assignment.grant || {},
                                             isProjectGrant: false
                                           });
                                         } catch (error) {
@@ -802,18 +851,18 @@ export default function ItemTypeSetRoleManager({
                                       } : undefined}
                                       style={{
                                         fontWeight: '500',
-                                        color: roleId ? '#2563eb' : '#1f2937',
-                                        textDecoration: roleId ? 'underline' : 'none',
-                                        cursor: roleId ? 'pointer' : 'default',
+                                        color: permissionId && permissionType ? '#2563eb' : '#1f2937',
+                                        textDecoration: permissionId && permissionType ? 'underline' : 'none',
+                                        cursor: permissionId && permissionType ? 'pointer' : 'default',
                                         fontSize: '0.75rem'
                                       }}
                                       onMouseEnter={(e) => {
-                                        if (roleId) {
+                                        if (permissionId && permissionType) {
                                           e.currentTarget.style.opacity = '0.7';
                                         }
                                       }}
                                       onMouseLeave={(e) => {
-                                        if (roleId) {
+                                        if (permissionId && permissionType) {
                                           e.currentTarget.style.opacity = '1';
                                         }
                                       }}

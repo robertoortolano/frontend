@@ -27,8 +27,7 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
     impact.fieldOwnerPermissions.some(p => p.hasAssignments) ||
     impact.statusOwnerPermissions.some(p => p.hasAssignments) ||
     impact.fieldStatusPermissions.some(p => p.hasAssignments) ||
-    impact.executorPermissions.some(p => p.hasAssignments) ||
-    impact.itemTypeSetRoles.some(p => p.hasAssignments);
+    impact.executorPermissions.some(p => p.hasAssignments);
 
   const data: ImpactReportData = {
     title: '📊 Report Impatto Rimozione ItemTypeConfiguration',
@@ -280,71 +279,6 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
             transitionName: perm.transitionName,
             fromStatusName: perm.fromStatusName,
             toStatusName: perm.toStatusName,
-            assignedRoles: perm.assignedRoles || [],
-            assignedGrants: perm.assignedGrants || []
-          })),
-        showIfEmpty: false
-      }] : []),
-      // ItemTypeSet Roles section
-      ...(impact.itemTypeSetRoles.filter(p => p.hasAssignments).length > 0 ? [{
-        title: 'ItemTypeSet Roles',
-        icon: '👥',
-        columns: [
-          { 
-            header: 'ItemTypeSet', 
-            key: 'itemTypeSetName',
-            render: (value) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
-          },
-          { 
-            header: 'ItemType', 
-            key: 'itemTypeName',
-            render: (value) => value || '—'
-          },
-          { 
-            header: 'Tipo Ruolo', 
-            key: 'permissionType',
-            render: (value) => (
-              <span style={{ 
-                display: 'inline-block',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontSize: '0.85em',
-                backgroundColor: '#e0e7ff',
-                color: '#3730a3'
-              }}>
-                {value}
-              </span>
-            )
-          },
-          { 
-            header: 'Ruoli Template', 
-            key: 'assignedRoles',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const roles = Array.isArray(value) ? value : [];
-              return roles.length > 0 
-                ? <span>{roles.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
-          },
-          { 
-            header: 'Grant', 
-            key: 'assignedGrants',
-            tdStyle: { whiteSpace: 'normal' },
-            render: (value) => {
-              const grants = Array.isArray(value) ? value : [];
-              return grants.length > 0 
-                ? <span>{grants.join(', ')}</span>
-                : <span style={{ color: '#9ca3af' }}>Nessuno</span>;
-            }
-          }
-        ],
-        data: impact.itemTypeSetRoles
-          .filter(perm => perm.hasAssignments)
-          .map(perm => ({
-            itemTypeSetName: perm.itemTypeSetName,
-            itemTypeName: perm.itemTypeName,
-            permissionType: perm.permissionType,
             assignedRoles: perm.assignedRoles || [],
             assignedGrants: perm.assignedGrants || []
           })),

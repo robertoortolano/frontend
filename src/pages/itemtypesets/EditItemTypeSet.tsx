@@ -254,12 +254,13 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    // Aggiorna automaticamente i ruoli per l'ItemTypeSet modificato
+    // Aggiorna automaticamente le permissions per l'ItemTypeSet modificato
+    // Nota: Non c'è più bisogno di eliminare le vecchie permission perché vengono gestite automaticamente
+    // Se necessario, le permission vengono ricreate quando si modifica l'ItemTypeSet
     try {
-      await api.delete(`/itemtypeset-roles/itemtypeset/${id}/all`);
-      await api.post(`/itemtypeset-roles/create-for-itemtypeset/${id}`);
+      await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${id}`);
     } catch (roleError) {
-      console.warn("Errore nell'aggiornamento automatico dei ruoli:", roleError);
+      console.warn("Errore nell'aggiornamento automatico delle permissions:", roleError);
     }
 
     // Aggiorna originalConfigurationsRef con lo stato salvato dal backend
@@ -403,8 +404,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         impact.fieldOwnerPermissions?.some((p: any) => p.hasAssignments) ||
         impact.statusOwnerPermissions?.some((p: any) => p.hasAssignments) ||
         impact.fieldStatusPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.executorPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.itemTypeSetRoles?.some((p: any) => p.hasAssignments);
+        impact.executorPermissions?.some((p: any) => p.hasAssignments);
       
       if (hasPopulatedPermissions) {
         setRemovalImpact(impact);

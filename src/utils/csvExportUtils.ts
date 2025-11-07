@@ -174,10 +174,12 @@ const processPermissionRows = async (
   }
 
   // Grant globale
-  if (perm.grantId && perm.roleId) {
+  if (perm.grantId && perm.permissionId && perm.permissionType) {
     try {
-      const grantResponse = await api.get(`/itemtypeset-roles/${perm.roleId}/grant-details`);
-      const grantDetails = grantResponse.data;
+      // Usa il nuovo endpoint PermissionAssignment
+      const grantResponse = await api.get(`/permission-assignments/${perm.permissionType}/${perm.permissionId}`);
+      const assignment = grantResponse.data;
+      const grantDetails = assignment.grant || {};
 
       // Riga base senza utenti/gruppi se non ci sono
       if ((!grantDetails.users || grantDetails.users.length === 0) &&
@@ -329,10 +331,17 @@ const processPermissionRows = async (
     // Poi esporta le grant di progetto (senza ruoli nella colonna ruolo)
     for (const projectGrant of perm.projectGrants) {
       try {
+        // Usa il nuovo endpoint ProjectPermissionAssignment
+        // Nota: projectGrant potrebbe non avere permissionId/permissionType, quindi usiamo quelli di perm
+        if (!perm.permissionId || !perm.permissionType) {
+          console.warn('Permission senza permissionId o permissionType per grant di progetto:', perm);
+          continue;
+        }
         const projectGrantResponse = await api.get(
-          `/project-itemtypeset-role-grants/project/${projectGrant.projectId}/role/${projectGrant.roleId}`
+          `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
         );
-        const projectGrantDetails = projectGrantResponse.data;
+        const assignment = projectGrantResponse.data;
+        const projectGrantDetails = assignment.assignment?.grant || {};
         const projectName = escapeCSV(projectGrant.projectName);
 
         // Riga base senza utenti/gruppi se non ci sono

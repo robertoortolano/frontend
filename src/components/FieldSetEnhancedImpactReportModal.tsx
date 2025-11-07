@@ -37,18 +37,20 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
   // Funzione helper per renderizzare la colonna Grant
   const renderGrantColumn = (perm: any) => {
     const handleGlobalGrantClick = async () => {
-      if (!perm.roleId) return;
+      if (!perm.permissionId || !perm.permissionType) return;
       
       setLoadingGrantDetails(true);
       try {
+        // Usa il nuovo endpoint PermissionAssignment
         const response = await api.get(
-          `/itemtypeset-roles/${perm.roleId}/grant-details`
+          `/permission-assignments/${perm.permissionType}/${perm.permissionId}`
         );
+        const assignment = response.data;
         setSelectedGrantDetails({
           projectId: 0, // 0 indica grant globale
           projectName: 'Globale',
-          roleId: perm.roleId,
-          details: response.data
+          roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+          details: assignment.grant || {}
         });
       } catch (error) {
         alert('Errore nel recupero dei dettagli della grant globale');
@@ -58,16 +60,22 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
     };
 
     const handleProjectGrantClick = async (projectGrant: ProjectGrantInfo) => {
+      if (!perm.permissionId || !perm.permissionType) {
+        alert('Permission senza permissionId o permissionType');
+        return;
+      }
       setLoadingGrantDetails(true);
       try {
+        // Usa il nuovo endpoint ProjectPermissionAssignment
         const response = await api.get(
-          `/project-itemtypeset-role-grants/project/${projectGrant.projectId}/role/${projectGrant.roleId}`
+          `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
         );
+        const assignment = response.data;
         setSelectedGrantDetails({
           projectId: projectGrant.projectId,
           projectName: projectGrant.projectName,
-          roleId: projectGrant.roleId,
-          details: response.data
+          roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+          details: assignment.assignment?.grant || {}
         });
       } catch (error) {
         alert('Errore nel recupero dei dettagli della grant');
@@ -147,8 +155,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
     if (impact) {
       const allPermissions = [
         ...(impact.fieldOwnerPermissions || []),
-        ...(impact.fieldStatusPermissions || []),
-        ...(impact.itemTypeSetRoles || [])
+        ...(impact.fieldStatusPermissions || [])
       ];
       
       const defaultPreserved = allPermissions
@@ -182,8 +189,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
   // Check if there are any permissions with assignments
   const hasPopulatedPermissions = 
     impact.fieldOwnerPermissions?.some(p => p.hasAssignments) ||
-    impact.fieldStatusPermissions?.some(p => p.hasAssignments) ||
-    impact.itemTypeSetRoles?.some(p => p.hasAssignments);
+    impact.fieldStatusPermissions?.some(p => p.hasAssignments);
 
   if (!hasPopulatedPermissions) {
     return null; // Non mostrare il modal se non ci sono assegnazioni
@@ -198,8 +204,6 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
         return `Editor - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${perm.statusName || 'N/A'}`;
       case 'VIEWERS':
         return `Viewer - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${perm.statusName || 'N/A'}`;
-      case 'ITEMTYPESET_ROLE':
-        return perm.roleName || 'ItemTypeSet Role';
       default:
         return `${perm.permissionType} - ${perm.itemTypeSetName || 'N/A'}`;
     }
@@ -208,8 +212,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
   // Raccogli tutte le permission con assegnazioni
   const allPermissionsWithAssignments = [
     ...(impact.fieldOwnerPermissions || []).filter(p => p.hasAssignments),
-    ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments),
-    ...(impact.itemTypeSetRoles || []).filter(p => p.hasAssignments)
+    ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments)
   ].sort((a, b) => {
     // Ordina per ItemTypeSet, poi per tipo di permission, poi per nome field
     const itsCompare = (a.itemTypeSetName || '').localeCompare(b.itemTypeSetName || '');
@@ -226,8 +229,7 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
     // Raccogli tutte le permission con assegnazioni
     const allPermissions = [
       ...(impact.fieldOwnerPermissions || []).filter(p => p.hasAssignments),
-      ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments),
-      ...(impact.itemTypeSetRoles || []).filter(p => p.hasAssignments)
+      ...(impact.fieldStatusPermissions || []).filter(p => p.hasAssignments)
     ].map(perm => {
       // Il backend popola fieldName per FIELD_OWNERS, EDITORS, VIEWERS
       // Se fieldName non è disponibile, usa fieldConfigurationName come fallback
@@ -446,17 +448,19 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
                         <td style={{ padding: '10px 12px', color: '#4b5563' }}>
                           {hasGlobalGrant ? (
                             <span
-                              onClick={perm.roleId ? async () => {
+                              onClick={perm.permissionId && perm.permissionType ? async () => {
                                 setLoadingGrantDetails(true);
                                 try {
+                                  // Usa il nuovo endpoint PermissionAssignment
                                   const response = await api.get(
-                                    `/itemtypeset-roles/${perm.roleId}/grant-details`
+                                    `/permission-assignments/${perm.permissionType}/${perm.permissionId}`
                                   );
+                                  const assignment = response.data;
                                   setSelectedGrantDetails({
                                     projectId: 0, // 0 indica grant globale
                                     projectName: 'Globale',
-                                    roleId: perm.roleId,
-                                    details: response.data
+                                    roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+                                    details: assignment.grant || {}
                                   });
                                 } catch (error) {
                                   alert('Errore nel recupero dei dettagli della grant globale');
@@ -493,19 +497,25 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
                               {perm.projectGrants?.map((pg: ProjectGrantInfo, pgIdx: number) => (
                                 <span
                                   key={pgIdx}
-                                  onClick={async () => {
-                                    setLoadingGrantDetails(true);
-                                    try {
-                                      const response = await api.get(
-                                        `/project-itemtypeset-role-grants/project/${pg.projectId}/role/${pg.roleId}`
-                                      );
-                                      setSelectedGrantDetails({
-                                        projectId: pg.projectId,
-                                        projectName: pg.projectName,
-                                        roleId: pg.roleId,
-                                        details: response.data
-                                      });
-                                    } catch (error) {
+                                      onClick={async () => {
+                                        if (!perm.permissionId || !perm.permissionType) {
+                                          alert('Permission senza permissionId o permissionType');
+                                          return;
+                                        }
+                                        setLoadingGrantDetails(true);
+                                        try {
+                                          // Usa il nuovo endpoint ProjectPermissionAssignment
+                                          const response = await api.get(
+                                            `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${pg.projectId}`
+                                          );
+                                          const assignment = response.data;
+                                          setSelectedGrantDetails({
+                                            projectId: pg.projectId,
+                                            projectName: pg.projectName,
+                                            roleId: perm.permissionId, // Manteniamo per compatibilità con il popup
+                                            details: assignment.assignment?.grant || {}
+                                          });
+                                        } catch (error) {
                                       alert('Errore nel recupero dei dettagli della grant');
                                     } finally {
                                       setLoadingGrantDetails(false);

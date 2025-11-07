@@ -8,13 +8,11 @@ export interface ItemTypeConfigurationRemovalImpactDto {
   statusOwnerPermissions: PermissionImpact[];
   fieldStatusPermissions: PermissionImpact[];
   executorPermissions: PermissionImpact[];
-  itemTypeSetRoles: PermissionImpact[];
   totalAffectedItemTypeSets: number;
   totalFieldOwnerPermissions: number;
   totalStatusOwnerPermissions: number;
   totalFieldStatusPermissions: number;
   totalExecutorPermissions: number;
-  totalItemTypeSetRoles: number;
   totalGrantAssignments: number;
   totalRoleAssignments: number;
 }

@@ -111,12 +111,12 @@ export default function ItemTypeSetCreate() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Crea automaticamente i ruoli per il nuovo ItemTypeSet
+      // Crea automaticamente le permissions per il nuovo ItemTypeSet
       const itemTypeSetId = response.data.id;
       try {
-        await api.post(`/itemtypeset-roles/create-for-itemtypeset/${itemTypeSetId}`);
+        await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSetId}`);
       } catch (roleError) {
-        console.warn("Errore nella creazione automatica dei ruoli:", roleError);
+        console.warn("Errore nella creazione automatica delle permissions:", roleError);
       }
 
       navigate("../item-type-sets");
