@@ -252,9 +252,9 @@ function ItemTypeSetDetails({
           }
         }
       } else if (isProjectAdmin && projectId) {
-        const response = await api.get(`/item-type-sets/project/${projectId}`);
-        const projectSets: ItemTypeSetDto[] = response.data || [];
-        setAvailableItemTypeSets(projectSets);
+          const response = await api.get(`/item-type-sets/project/${projectId}`);
+          const projectSets: ItemTypeSetDto[] = response.data || [];
+          setAvailableItemTypeSets(projectSets);
       }
     } catch (err: any) {
       console.error("Error fetching ItemTypeSets:", err);
@@ -277,17 +277,17 @@ function ItemTypeSetDetails({
         try {
           const response = await api.get(baseUrl);
           permissionsData = response.data;
-        } catch (err: any) {
-          console.error("Error fetching permissions:", err);
+    } catch (err: any) {
+      console.error("Error fetching permissions:", err);
           if (err.response?.status === 500) {
-            try {
-              await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSet.id}`);
+        try {
+          await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSet.id}`);
               const retryResponse = await api.get(baseUrl);
               permissionsData = retryResponse.data;
-            } catch (createErr) {
-              console.error("Error creating permissions:", createErr);
-            }
-          }
+        } catch (createErr) {
+          console.error("Error creating permissions:", createErr);
+        }
+      }
         }
 
         if (projectId) {
