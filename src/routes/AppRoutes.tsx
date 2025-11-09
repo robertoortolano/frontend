@@ -297,7 +297,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectSettings />
           </RoleProtectedRoute>
         } />
@@ -305,7 +305,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <EditDetails />
           </RoleProtectedRoute>
         } />
@@ -313,7 +313,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ItemTypeSetEdit />
           </RoleProtectedRoute>
         } />
@@ -321,7 +321,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectMembers />
           </RoleProtectedRoute>
         } />
@@ -331,7 +331,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectFieldConfigurationCreate />
           </RoleProtectedRoute>
         } />
@@ -339,7 +339,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectFieldConfigurationEdit />
           </RoleProtectedRoute>
         } />
@@ -347,7 +347,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectFieldConfigurations />
           </RoleProtectedRoute>
         } />
@@ -357,7 +357,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectFieldSetCreate />
           </RoleProtectedRoute>
         } />
@@ -365,7 +365,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectFieldSetEdit />
           </RoleProtectedRoute>
         } />
@@ -373,7 +373,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectFieldSets />
           </RoleProtectedRoute>
         } />
@@ -383,7 +383,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ProjectWorkflows />
           </RoleProtectedRoute>
         } />
@@ -391,7 +391,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <WorkflowEditor scope="project" />
           </RoleProtectedRoute>
         } />
@@ -399,7 +399,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <WorkflowEditor scope="project" />
           </RoleProtectedRoute>
         } />
@@ -409,7 +409,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ItemTypeSetsUniversal scope="project" />
           </RoleProtectedRoute>
         } />
@@ -417,7 +417,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <ItemTypeSetCreateUniversal scope="project" />
           </RoleProtectedRoute>
         } />
@@ -425,7 +425,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" },
             { name: "ADMIN", scope: "PROJECT" }
-          ]}>
+          ]} projectParam="projectId">
             <EditItemTypeSet scope="project" />
           </RoleProtectedRoute>
         } />
