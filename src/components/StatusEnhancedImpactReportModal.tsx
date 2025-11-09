@@ -59,11 +59,15 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
           const transitionPart = transitionName ? ` (${transitionName})` : '';
           return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
         }
+        case 'FIELD_EDITORS':
+        case 'FIELD_VIEWERS':
         case 'EDITORS':
         case 'VIEWERS': {
           const fieldName = perm.fieldName || 'N/A';
           const statusName = perm.statusName || perm.workflowStatusName || 'N/A';
-          const label = perm.permissionType === 'EDITORS' ? 'Editor' : 'Viewer';
+          const label = perm.permissionType === 'FIELD_EDITORS' || perm.permissionType === 'EDITORS'
+            ? 'Editor'
+            : 'Viewer';
           return `${label} - ${fieldName} in ${statusName}`;
         }
         default:
@@ -102,8 +106,10 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
   const mapPermissionTypeToBackend = (permissionType: string): string => {
     const mapping: { [key: string]: string } = {
       'FIELD_OWNERS': 'FieldOwnerPermission',
-      'EDITORS': 'FieldStatusPermission',
-      'VIEWERS': 'FieldStatusPermission',
+      'FIELD_EDITORS': 'FieldStatusPermission',
+      'FIELD_VIEWERS': 'FieldStatusPermission',
+      'EDITORS': 'FieldStatusPermission', // retrocompatibilità
+      'VIEWERS': 'FieldStatusPermission', // retrocompatibilità
       'STATUS_OWNERS': 'StatusOwnerPermission',
       'STATUS_OWNER': 'StatusOwnerPermission',
       'EXECUTORS': 'ExecutorPermission',
@@ -256,7 +262,7 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
     const allPermissions = [...statusOwnerPerms, ...executorPerms, ...fieldStatusPerms];
 
     // Funzioni per estrarre i nomi (specifiche per Status report)
-    const getFieldName = (perm: PermissionData) => escapeCSV(perm.fieldName || ''); // Per EDITORS/VIEWERS
+    const getFieldName = (perm: PermissionData) => escapeCSV(perm.fieldName || ''); // Per FIELD_EDITORS / FIELD_VIEWERS
     const getStatusName = (perm: PermissionData) => escapeCSV(perm.statusName || '');
     // La formattazione viene gestita automaticamente dalla utility usando fromStatusName/toStatusName/transitionName
     const getTransitionName = () => '';

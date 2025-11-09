@@ -198,8 +198,10 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
         return `Field Owner - ${perm.fieldName || perm.entityName || 'N/A'}`;
       case 'STATUS_OWNERS':
         return `Status Owner - ${perm.entityName || 'N/A'}`;
+      case 'FIELD_EDITORS':
       case 'EDITORS':
         return `Editor - ${perm.fieldName || 'N/A'} @ ${perm.workflowStatusName || 'N/A'}`;
+      case 'FIELD_VIEWERS':
       case 'VIEWERS':
         return `Viewer - ${perm.fieldName || 'N/A'} @ ${perm.workflowStatusName || 'N/A'}`;
       case 'EXECUTORS':
@@ -233,7 +235,12 @@ export const ItemTypeConfigurationMigrationModal: React.FC<ItemTypeConfiguration
         let fieldName: string | null = null;
         if (perm.permissionType === 'FIELD_OWNERS') {
           fieldName = perm.fieldName || perm.entityName || null;
-        } else if (perm.permissionType === 'EDITORS' || perm.permissionType === 'VIEWERS') {
+        } else if (
+          perm.permissionType === 'FIELD_EDITORS' ||
+          perm.permissionType === 'FIELD_VIEWERS' ||
+          perm.permissionType === 'EDITORS' ||
+          perm.permissionType === 'VIEWERS'
+        ) {
           fieldName = perm.fieldName || null;
         }
         

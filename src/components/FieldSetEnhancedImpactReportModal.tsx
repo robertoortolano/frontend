@@ -51,8 +51,10 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
       switch (perm.permissionType) {
         case 'FIELD_OWNERS':
           return `Field Owner - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'}`;
+        case 'FIELD_EDITORS':
         case 'EDITORS':
           return `Editor - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${perm.statusName || 'N/A'}`;
+        case 'FIELD_VIEWERS':
         case 'VIEWERS':
           return `Viewer - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${perm.statusName || 'N/A'}`;
         default:
@@ -88,8 +90,10 @@ export const FieldSetEnhancedImpactReportModal: React.FC<FieldSetEnhancedImpactR
   const mapPermissionTypeToBackend = (permissionType: string): string => {
     const mapping: { [key: string]: string } = {
       'FIELD_OWNERS': 'FieldOwnerPermission',
-      'EDITORS': 'FieldStatusPermission',
-      'VIEWERS': 'FieldStatusPermission',
+      'FIELD_EDITORS': 'FieldStatusPermission',
+      'FIELD_VIEWERS': 'FieldStatusPermission',
+      'EDITORS': 'FieldStatusPermission', // retrocompatibilità
+      'VIEWERS': 'FieldStatusPermission', // retrocompatibilità
       'STATUS_OWNERS': 'StatusOwnerPermission',
       'EXECUTORS': 'ExecutorPermission',
       'WORKERS': 'WorkerPermission',

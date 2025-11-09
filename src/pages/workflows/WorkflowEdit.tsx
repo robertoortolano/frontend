@@ -403,12 +403,13 @@ export default function WorkflowEdit() {
     if (!workflowName.trim()) return alert("Inserisci un nome per il workflow.");
     if (!nodes.length) return alert("Aggiungi almeno uno stato.");
 
-    // Se ci sono Transition rimosse, analizza gli impatti prima di salvare
-    if (removedTransitionIds.length > 0) {
-      await analyzeTransitionRemovalImpact(removedTransitionIds);
-    } else if (removedStatusIds.length > 0) {
-      // Se ci sono Status rimossi, analizza gli impatti prima di salvare
+    // Se ci sono Status rimossi, analizza gli impatti prima di salvare.
+    // Questo include anche le transizioni collegate agli status eliminati.
+    if (removedStatusIds.length > 0) {
       await analyzeStatusRemovalImpact(removedStatusIds);
+    } else if (removedTransitionIds.length > 0) {
+      // Se non ci sono Status rimossi ma ci sono Transition rimosse, analizza l'impatto delle Transition
+      await analyzeTransitionRemovalImpact(removedTransitionIds);
     } else {
       // Nessuna Transition o Status rimossa, procedi con il salvataggio normale
       await performSave();

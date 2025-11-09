@@ -7,10 +7,12 @@ export interface TransitionRemovalImpactDto {
   affectedItemTypeSets: ItemTypeSetImpact[];
 
   executorPermissions: PermissionImpact[];
+  statusOwnerPermissions: StatusOwnerPermissionImpact[];
   fieldStatusPermissions: FieldStatusPermissionImpact[];
 
   totalAffectedItemTypeSets: number;
   totalExecutorPermissions: number;
+  totalStatusOwnerPermissions: number;
   totalFieldStatusPermissions: number;
   totalGrantAssignments: number;
   totalRoleAssignments: number;
@@ -58,6 +60,25 @@ export interface PermissionImpact {
   projectGrants?: ProjectGrantInfo[];
 }
 
+export interface StatusOwnerPermissionImpact {
+  permissionId: number;
+  permissionType: string;
+  itemTypeSetId: number;
+  itemTypeSetName: string;
+  projectId?: number | null;
+  projectName?: string | null;
+  workflowStatusId?: number | null;
+  workflowStatusName?: string | null;
+  statusId?: number | null;
+  statusName?: string | null;
+  grantId?: number | null;
+  grantName?: string | null;
+  assignedRoles?: string[];
+  projectAssignedRoles?: ProjectRoleInfo[];
+  hasAssignments: boolean;
+  projectGrants?: ProjectGrantInfo[];
+}
+
 export interface FieldStatusPermissionImpact {
   permissionId: number;
   permissionType: string;
@@ -82,7 +103,7 @@ export interface FieldStatusPermissionImpact {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId: number;
+  roleId?: number;
 }
 
 export interface ProjectRoleInfo {
@@ -101,10 +122,12 @@ export interface TransitionRemovalImpactDto {
   
   // Permissions che verranno rimosse
   executorPermissions: PermissionImpact[];
+  statusOwnerPermissions: StatusOwnerPermissionImpact[];
   
   // Statistiche
   totalAffectedItemTypeSets: number;
   totalExecutorPermissions: number;
+  totalStatusOwnerPermissions: number;
   totalGrantAssignments: number;
   totalRoleAssignments: number;
 }
@@ -157,10 +180,29 @@ export interface PermissionImpact {
   projectGrants?: ProjectGrantInfo[];
 }
 
+export interface StatusOwnerPermissionImpact {
+  permissionId: number;
+  permissionType: string;
+  itemTypeSetId: number;
+  itemTypeSetName: string;
+  projectId?: number;
+  projectName?: string;
+  workflowStatusId?: number;
+  workflowStatusName?: string;
+  statusId?: number;
+  statusName?: string;
+  grantId?: number;
+  grantName?: string;
+  assignedRoles: string[];
+  projectAssignedRoles?: ProjectRoleInfo[];
+  hasAssignments: boolean;
+  projectGrants?: ProjectGrantInfo[];
+}
+
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId: number;
+  roleId?: number;
 }
 
 export interface ProjectRoleInfo {

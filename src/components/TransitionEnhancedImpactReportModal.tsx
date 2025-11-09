@@ -60,17 +60,31 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
       fallbackItemTypeSetName: null
     });
 
+    const statusOwnerPermissions = mapImpactPermissions({
+      permissions: impact.statusOwnerPermissions || [],
+      getLabel: (perm: any) => {
+        const statusName = perm.statusName || perm.workflowStatusName || 'Status';
+        return `Status Owner - ${statusName}`;
+      },
+      fallbackItemTypeSetName: null
+    });
+
     const fieldStatusPermissions = mapImpactPermissions({
       permissions: impact.fieldStatusPermissions || [],
       getLabel: (perm: any) => {
         const field = perm.fieldName || 'Field';
         const status = perm.workflowStatusName || perm.statusName || 'Status';
-        return `${perm.permissionType || 'Field Permission'} - ${field} @ ${status}`;
+        const prefix = perm.permissionType === 'FIELD_EDITORS'
+          ? 'Field Editor'
+          : perm.permissionType === 'FIELD_VIEWERS'
+            ? 'Field Viewer'
+            : (perm.permissionType || 'Field Permission');
+        return `${prefix} - ${field} @ ${status}`;
       },
       fallbackItemTypeSetName: null
     });
 
-    return [...executorPermissions, ...fieldStatusPermissions];
+    return [...executorPermissions, ...statusOwnerPermissions, ...fieldStatusPermissions];
   }, [impact]);
 
   const selection = useImpactPermissionSelection(permissionRows);
@@ -78,15 +92,17 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
   // Funzione helper per mappare il tipo di permission dal formato frontend al formato backend
   const mapPermissionTypeToBackend = (permissionType: string): string => {
     const mapping: { [key: string]: string } = {
-      'FIELD_OWNERS': 'FieldOwnerPermission',
-      'EDITORS': 'FieldStatusPermission',
-      'VIEWERS': 'FieldStatusPermission',
-      'STATUS_OWNERS': 'StatusOwnerPermission',
-      'STATUS_OWNER': 'StatusOwnerPermission',
-      'EXECUTORS': 'ExecutorPermission',
-      'EXECUTOR': 'ExecutorPermission',
-      'WORKERS': 'WorkerPermission',
-      'CREATORS': 'CreatorPermission'
+      FIELD_OWNERS: 'FieldOwnerPermission',
+      FIELD_EDITORS: 'FieldStatusPermission',
+      FIELD_VIEWERS: 'FieldStatusPermission',
+      EDITORS: 'FieldStatusPermission', // retrocompatibilità
+      VIEWERS: 'FieldStatusPermission', // retrocompatibilità
+      STATUS_OWNERS: 'StatusOwnerPermission',
+      STATUS_OWNER: 'StatusOwnerPermission',
+      EXECUTORS: 'ExecutorPermission',
+      EXECUTOR: 'ExecutorPermission',
+      WORKERS: 'WorkerPermission',
+      CREATORS: 'CreatorPermission'
     };
     return mapping[permissionType] || permissionType;
   };
@@ -191,11 +207,30 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
         canBePreserved: perm.canBePreserved ?? false
       }));
 
+    const statusOwnerPermissions = (impact.statusOwnerPermissions || [])
+      .filter((perm) => perm.hasAssignments)
+      .map((perm) => ({
+        permissionId: perm.permissionId ?? null,
+        permissionType: perm.permissionType || 'STATUS_OWNERS',
+        itemTypeSetName: perm.itemTypeSetName || 'N/A',
+        fieldName: null,
+        statusName: perm.statusName || perm.workflowStatusName || null,
+        fromStatusName: null,
+        toStatusName: null,
+        transitionName: null,
+        assignedRoles: perm.assignedRoles || [],
+        projectAssignedRoles: perm.projectAssignedRoles || [],
+        grantId: perm.grantId ?? null,
+        roleId: perm.permissionId ?? null,
+        projectGrants: perm.projectGrants || [],
+        canBePreserved: perm.canBePreserved ?? false
+      }));
+
     const fieldStatusPermissions = (impact.fieldStatusPermissions || [])
       .filter((perm) => perm.hasAssignments)
       .map((perm) => ({
         permissionId: perm.permissionId ?? null,
-        permissionType: perm.permissionType || 'FIELD_STATUS',
+        permissionType: perm.permissionType || 'FIELD_VIEWERS',
         itemTypeSetName: perm.itemTypeSetName || 'N/A',
         fieldName: perm.fieldName || null,
         statusName: perm.workflowStatusName || perm.statusName || null,
@@ -210,7 +245,7 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
         canBePreserved: perm.canBePreserved ?? false
       }));
 
-    const allPermissions = [...executorPermissions, ...fieldStatusPermissions];
+    const allPermissions = [...executorPermissions, ...statusOwnerPermissions, ...fieldStatusPermissions];
 
     // Funzioni per estrarre i nomi (specifiche per Transition report)
     const getFieldName = (perm: PermissionData) => perm.fieldName || '';

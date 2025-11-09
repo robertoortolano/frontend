@@ -11,8 +11,10 @@ import api from '../api/api';
 const mapPermissionTypeToBackend = (permissionType: string): string => {
   const mapping: { [key: string]: string } = {
     'FIELD_OWNERS': 'FieldOwnerPermission',
-    'EDITORS': 'FieldStatusPermission',
-    'VIEWERS': 'FieldStatusPermission',
+    'FIELD_EDITORS': 'FieldStatusPermission',
+    'FIELD_VIEWERS': 'FieldStatusPermission',
+    'EDITORS': 'FieldStatusPermission', // retrocompatibilità
+    'VIEWERS': 'FieldStatusPermission', // retrocompatibilità
     'STATUS_OWNERS': 'StatusOwnerPermission',
     'STATUS_OWNER': 'StatusOwnerPermission',
     'EXECUTORS': 'ExecutorPermission',
@@ -49,7 +51,7 @@ export interface ProjectRoleInfo {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId: number;
+  roleId?: number;
 }
 
 export interface ExportCsvParams {
