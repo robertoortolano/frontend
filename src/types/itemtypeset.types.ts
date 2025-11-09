@@ -18,6 +18,12 @@ export interface ItemTypeConfigurationDto {
   workflow?: WorkflowSimpleDto | null;
 }
 
+export interface ProjectSummaryDto {
+  id: number;
+  name: string;
+  projectKey: string;
+}
+
 export interface ItemTypeSetDto {
   id: number;
   name: string;
@@ -25,7 +31,8 @@ export interface ItemTypeSetDto {
   scope: ScopeType;
   defaultItemTypeSet: boolean;
   itemTypeConfigurations: ItemTypeConfigurationDto[];
-  projectsAssociation?: Array<{ id: number; name: string; projectKey: string }>; // Progetti che usano questo ItemTypeSet
+  projectsAssociation?: ProjectSummaryDto[]; // Progetti che usano questo ItemTypeSet (solo per scope TENANT)
+  project?: ProjectSummaryDto | null; // Progetto proprietario quando scope = PROJECT
 }
 
 export interface ItemTypeSetCreateDto {

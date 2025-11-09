@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ProjectDto } from "../../types/project.types";
+import { ItemTypeSetDto } from "../../types/itemtypeset.types";
 import { CheckCircle, Loader2, AlertCircle, Check, Home, Settings, Users, Shield, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import ProjectMembersPanel from "../../components/ProjectMembersPanel";
@@ -200,6 +201,22 @@ function ItemTypeSetDetails({
     }
   }, [refreshTrigger]);
 
+  const filterItemTypeSetsForProject = (sets: ItemTypeSetDto[]): ItemTypeSetDto[] => {
+    const currentProjectId = projectId ? Number(projectId) : null;
+
+    return sets.filter((set) => {
+      if (set.scope === 'TENANT') {
+        return true;
+      }
+
+      if (!currentProjectId) {
+        return false;
+      }
+
+      return set.project?.id === currentProjectId;
+    });
+  };
+
   const fetchAvailableItemTypeSets = async () => {
     try {
       setLoading(true);
@@ -212,14 +229,17 @@ function ItemTypeSetDetails({
             api.get('/item-type-sets/project')
           ]);
           // Combina entrambi gli array
-          const allSets = [...(globalResponse.data || []), ...(projectResponse.data || [])];
-          setAvailableItemTypeSets(allSets);
+          const globalSets: ItemTypeSetDto[] = globalResponse.data || [];
+          const projectSets: ItemTypeSetDto[] = projectResponse.data || [];
+          const allSets = [...globalSets, ...projectSets];
+          setAvailableItemTypeSets(filterItemTypeSetsForProject(allSets));
         } catch (err: any) {
           // Se fallisce il caricamento dei globali, prova solo quelli di progetto
           console.warn("Error fetching global ItemTypeSets, trying project only:", err);
           try {
             const projectResponse = await api.get('/item-type-sets/project');
-            setAvailableItemTypeSets(projectResponse.data || []);
+            const projectSets: ItemTypeSetDto[] = projectResponse.data || [];
+            setAvailableItemTypeSets(filterItemTypeSetsForProject(projectSets));
           } catch (projectErr: any) {
             console.error("Error fetching project ItemTypeSets:", projectErr);
             setAvailableItemTypeSets([]);
@@ -228,7 +248,8 @@ function ItemTypeSetDetails({
       } else if (isProjectAdmin) {
         // Project admin del progetto specifico: carica solo quelli di progetto
         const response = await api.get('/item-type-sets/project');
-        setAvailableItemTypeSets(response.data || []);
+        const projectSets: ItemTypeSetDto[] = response.data || [];
+        setAvailableItemTypeSets(filterItemTypeSetsForProject(projectSets));
       } else {
         // Utente senza permessi: nessun ItemTypeSet disponibile
         setAvailableItemTypeSets([]);
