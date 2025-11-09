@@ -358,13 +358,27 @@ export default function PermissionGrantManager({
             throw new Error(`Errore nella ${permission.grantId ? 'modifica' : 'creazione'} e assegnazione Grant: ${errorMessage}`);
           }
         } else if (permission.grantId) {
-          // Se prima c'era un Grant ma ora non c'è, rimuovilo
-          // IMPORTANTE: Questo viene eseguito solo se NON siamo in scope 'project'
-          try {
-            await api.delete(`/permission-assignments/${permissionType}/${permissionId}`);
-          } catch (err: any) {
-            // Non bloccare se la rimozione fallisce (potrebbe essere già rimosso)
-            console.warn('Warning removing grant assignment:', err);
+          // Se prima c'era un Grant ma ora non c'è, aggiorna l'assegnazione mantenendo i ruoli (se presenti)
+          const currentRoleIds = selectedRoles.map((role) => role.id);
+          if (currentRoleIds.length > 0) {
+            try {
+              await api.post('/permission-assignments', {
+                permissionType,
+                permissionId,
+                roleIds: currentRoleIds,
+                grantId: null,
+              });
+            } catch (err: any) {
+              const errorMessage = extractErrorMessage(err, 'Errore sconosciuto');
+              throw new Error(`Errore durante la rimozione del Grant: ${errorMessage}`);
+            }
+          } else {
+            // Nessun ruolo da preservare: elimina completamente l'assegnazione
+            try {
+              await api.delete(`/permission-assignments/${permissionType}/${permissionId}`);
+            } catch (err: any) {
+              console.warn('Warning removing empty permission assignment:', err);
+            }
           }
         }
       }
