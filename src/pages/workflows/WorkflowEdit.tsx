@@ -614,8 +614,10 @@ export default function WorkflowEdit() {
       const impact = response.data;
       
       // Verifica se ci sono permission con assegnazioni
-      const hasPopulatedPermissions = 
-        impact.executorPermissions?.some(p => p.hasAssignments) || false;
+      const hasExecutorAssignments = impact.executorPermissions?.some((p) => p.hasAssignments) ?? false;
+      const hasStatusOwnerAssignments = impact.statusOwnerPermissions?.some((p) => p.hasAssignments) ?? false;
+      const hasFieldStatusAssignments = impact.fieldStatusPermissions?.some((p) => p.hasAssignments) ?? false;
+      const hasPopulatedPermissions = hasExecutorAssignments || hasStatusOwnerAssignments || hasFieldStatusAssignments;
       
       if (hasPopulatedPermissions) {
         setImpactReport(impact);
@@ -625,9 +627,9 @@ export default function WorkflowEdit() {
       } else {
         // Se non ci sono assegnazioni, procedi direttamente con il salvataggio
         await performConfirmSave();
-        setToast({ 
-          message: 'Transition rimosse con successo. Nessun impatto rilevato sulle permission Executor.', 
-          type: 'success' 
+        setToast({
+          message: 'Transition rimosse con successo. Nessun impatto rilevato sulle permission interessate.',
+          type: 'success'
         });
       }
     } catch (err: any) {
