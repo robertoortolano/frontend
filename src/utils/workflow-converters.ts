@@ -30,11 +30,16 @@ export function convertToUnifiedNodes(
     return [];
   }
 
+  const statusByStatusId = new Map<number, (typeof workflowView.statuses)[number]>();
+  workflowView.statuses.forEach((workflowStatus) => {
+    if (workflowStatus?.status?.id != null) {
+      statusByStatusId.set(workflowStatus.status.id, workflowStatus);
+    }
+  });
+
   return workflowView.workflowNodes.map(nodeDto => {
     // Find corresponding WorkflowStatus
-    const workflowStatus = workflowView.statuses?.find(
-      ws => ws.status.id === nodeDto.statusId
-    );
+    const workflowStatus = statusByStatusId.get(nodeDto.statusId);
 
     if (!workflowStatus) {
       // Return a minimal node data - this should not happen in normal operation

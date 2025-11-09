@@ -25,6 +25,14 @@ interface UserAccessStatus {
   roles: string[];
 }
 
+const ROLE_BADGE_META: Record<string, { className: string; label: string }> = {
+  ADMIN: { className: "bg-red-100 text-red-800", label: "Tenant Admin" },
+  USER: { className: "bg-blue-100 text-blue-800", label: "Tenant User" },
+};
+
+const getRoleBadgeMeta = (role: string) =>
+  ROLE_BADGE_META[role] ?? { className: "bg-gray-100 text-gray-800", label: role };
+
 export default function TenantUserManagement() {
   const auth = useAuth() as any;
   const token = auth?.token;
@@ -157,21 +165,10 @@ export default function TenantUserManagement() {
   };
 
   const getRoleBadges = (user: TenantUser) => {
-    const roleColors: Record<string, string> = {
-      "ADMIN": "bg-red-100 text-red-800",
-      "USER": "bg-blue-100 text-blue-800",
-    };
-    
-    const roleLabels: Record<string, string> = {
-      "ADMIN": "Tenant Admin",
-      "USER": "Tenant User",
-    };
-    
     return user.roles.map((role) => {
-      const bgColor = roleColors[role] || "bg-gray-100 text-gray-800";
-      const label = roleLabels[role] || role;
+      const { className, label } = getRoleBadgeMeta(role);
       return (
-        <span key={role} className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor}`}>
+        <span key={role} className={`px-2 py-1 rounded-full text-xs font-medium ${className}`}>
           {label}
         </span>
       );
@@ -241,14 +238,10 @@ export default function TenantUserManagement() {
                       <span className="text-green-600 font-medium">✓ Ha già accesso</span>
                       <div className="flex flex-wrap gap-1">
                         {searchResult.roles.map(role => {
-                          const roleColors: Record<string, string> = {
-                            "ADMIN": "bg-red-100 text-red-800",
-                            "USER": "bg-blue-100 text-blue-800",
-                          };
-                          const bgColor = roleColors[role] || "bg-gray-100 text-gray-800";
+                          const { className, label } = getRoleBadgeMeta(role);
                           return (
-                            <span key={role} className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor}`}>
-                              {role === "ADMIN" ? "Tenant Admin" : role === "USER" ? "Tenant User" : role}
+                            <span key={role} className={`px-2 py-1 rounded-full text-xs font-medium ${className}`}>
+                              {label}
                             </span>
                           );
                         })}
