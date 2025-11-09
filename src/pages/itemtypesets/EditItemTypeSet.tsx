@@ -404,7 +404,9 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         impact.fieldOwnerPermissions?.some((p: any) => p.hasAssignments) ||
         impact.statusOwnerPermissions?.some((p: any) => p.hasAssignments) ||
         impact.fieldStatusPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.executorPermissions?.some((p: any) => p.hasAssignments);
+        impact.executorPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.workerPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.creatorPermissions?.some((p: any) => p.hasAssignments);
       
       if (hasPopulatedPermissions) {
         setRemovalImpact(impact);

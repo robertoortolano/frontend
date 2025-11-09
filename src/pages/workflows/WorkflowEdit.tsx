@@ -700,7 +700,9 @@ export default function WorkflowEdit() {
       
       // Verifica se ci sono permission con assegnazioni
       const hasPopulatedPermissions = 
-        impact.statusOwnerPermissions?.some(p => p.hasAssignments) || false;
+        impact.statusOwnerPermissions?.some(p => p.hasAssignments) ||
+        impact.executorPermissions?.some(p => p.hasAssignments) ||
+        impact.fieldStatusPermissions?.some(p => p.hasAssignments) || false;
       
       if (hasPopulatedPermissions) {
         setStatusImpactReport(impact);
