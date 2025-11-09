@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TransitionRemovalImpactDto, ProjectGrantInfo } from '../types/transition-impact.types';
 import form from '../styles/common/Forms.module.css';
+import buttons from '../styles/common/Buttons.module.css';
 import api from '../api/api';
 import { exportImpactReportToCSV, escapeCSV, PermissionData, formatTransition } from '../utils/csvExportUtils';
 
@@ -34,6 +35,10 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
     roles: string[];
   } | null>(null);
 
+  const allPermissions = [
+    ...(impact?.executorPermissions || [])
+  ];
+
   // Funzione helper per mappare il tipo di permission dal formato frontend al formato backend
   const mapPermissionTypeToBackend = (permissionType: string): string => {
     const mapping: { [key: string]: string } = {
@@ -53,12 +58,8 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
   // Inizializza preservedPermissionIds con le permission che hanno defaultPreserve = true
   useEffect(() => {
     if (impact) {
-      const allPermissions = [
-        ...(impact.executorPermissions || [])
-      ];
-      
       const defaultPreserved = allPermissions
-        .filter(p => p.hasAssignments && p.canBePreserved && p.defaultPreserve)
+        .filter(p => p.hasAssignments && (p.canBePreserved ?? false))
         .map(p => p.permissionId)
         .filter((id): id is number => id !== null && id !== undefined);
       
@@ -88,6 +89,21 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
   // Check if there are any permissions with assignments
   const hasPopulatedPermissions = 
     impact.executorPermissions?.some(p => p.hasAssignments) || false;
+
+  const handlePreserveAll = () => {
+    if (!impact) return;
+    const newSet = new Set<number>();
+    allPermissions.forEach((perm) => {
+      if (perm.permissionId != null && (perm.canBePreserved ?? false) && perm.hasAssignments) {
+        newSet.add(perm.permissionId);
+      }
+    });
+    setPreservedPermissionIds(newSet);
+  };
+
+  const handleRemoveAll = () => {
+    setPreservedPermissionIds(new Set());
+  };
 
   if (!hasPopulatedPermissions) {
     return null;
@@ -198,6 +214,24 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
           padding: '16px',
           marginBottom: '24px'
         }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '12px' }}>
+            <button
+              type="button"
+              className={buttons.button}
+              onClick={handlePreserveAll}
+              disabled={loading || allPermissionsWithAssignments.length === 0}
+            >
+              ✓ Mantieni Tutto
+            </button>
+            <button
+              type="button"
+              className={`${buttons.button} ${buttons.buttonDanger}`}
+              onClick={handleRemoveAll}
+              disabled={loading || allPermissionsWithAssignments.length === 0}
+            >
+              🗑️ Rimuovi Tutto
+            </button>
+          </div>
           {allPermissionsWithAssignments.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ 

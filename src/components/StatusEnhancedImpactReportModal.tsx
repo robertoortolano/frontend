@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StatusRemovalImpactDto, ProjectGrantInfo } from '../types/status-impact.types';
 import form from '../styles/common/Forms.module.css';
+import buttons from '../styles/common/Buttons.module.css';
 import api from '../api/api';
 import { exportImpactReportToCSV, escapeCSV, PermissionData } from '../utils/csvExportUtils';
 
@@ -34,6 +35,12 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
     roles: string[];
   } | null>(null);
 
+  const allPermissions = [
+    ...(impact?.statusOwnerPermissions || []),
+    ...(impact?.executorPermissions || []),
+    ...(impact?.fieldStatusPermissions || [])
+  ];
+
   // Funzione helper per mappare il tipo di permission dal formato frontend al formato backend
   const mapPermissionTypeToBackend = (permissionType: string): string => {
     const mapping: { [key: string]: string } = {
@@ -53,14 +60,8 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
   // Inizializza preservedPermissionIds con le permission che hanno defaultPreserve = true
   useEffect(() => {
     if (impact) {
-      const allPermissions = [
-        ...(impact.statusOwnerPermissions || []),
-        ...(impact.executorPermissions || []),
-        ...(impact.fieldStatusPermissions || [])
-      ];
-      
       const defaultPreserved = allPermissions
-        .filter(p => p.hasAssignments && p.canBePreserved && p.defaultPreserve)
+        .filter(p => p.hasAssignments && (p.canBePreserved ?? false))
         .map(p => p.permissionId)
         .filter((id): id is number => id !== null && id !== undefined);
       
@@ -92,6 +93,21 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
     impact.statusOwnerPermissions?.some(p => p.hasAssignments) || false ||
     impact.executorPermissions?.some(p => p.hasAssignments) || false ||
     impact.fieldStatusPermissions?.some(p => p.hasAssignments) || false;
+
+  const handlePreserveAll = () => {
+    if (!impact) return;
+    const newSet = new Set<number>();
+    allPermissions.forEach((perm) => {
+      if (perm.permissionId != null && (perm.canBePreserved ?? false) && perm.hasAssignments) {
+        newSet.add(perm.permissionId);
+      }
+    });
+    setPreservedPermissionIds(newSet);
+  };
+
+  const handleRemoveAll = () => {
+    setPreservedPermissionIds(new Set());
+  };
 
   if (!hasPopulatedPermissions) {
     return null;
@@ -254,6 +270,24 @@ export const StatusEnhancedImpactReportModal: React.FC<StatusEnhancedImpactRepor
           padding: '16px',
           marginBottom: '24px'
         }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '12px' }}>
+            <button
+              type="button"
+              className={buttons.button}
+              onClick={handlePreserveAll}
+              disabled={loading || allPermissionsWithAssignments.length === 0}
+            >
+              ✓ Mantieni Tutto
+            </button>
+            <button
+              type="button"
+              className={`${buttons.button} ${buttons.buttonDanger}`}
+              onClick={handleRemoveAll}
+              disabled={loading || allPermissionsWithAssignments.length === 0}
+            >
+              🗑️ Rimuovi Tutto
+            </button>
+          </div>
           {allPermissionsWithAssignments.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ 
