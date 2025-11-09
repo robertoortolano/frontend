@@ -20,8 +20,9 @@ export interface StatusViewDto {
  * Role information
  */
 export interface Role {
-  id: number;
+  id?: number;
   name: string;
   scope?: ScopeType;
+  projectId?: number;
 }
 
