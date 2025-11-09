@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { TransitionRemovalImpactDto } from '../types/transition-impact.types';
 import form from '../styles/common/Forms.module.css';
 import api from '../api/api';
-import { exportImpactReportToCSV, escapeCSV, PermissionData, formatTransition } from '../utils/csvExportUtils';
+import { exportImpactReportToCSV, PermissionData } from '../utils/csvExportUtils';
 import { ImpactPermissionTable } from './ImpactPermissionTable';
 import { useImpactPermissionSelection } from '../hooks/useImpactPermissionSelection';
 import { ImpactPermissionRow, ProjectAssignmentInfo } from '../types/impact-permission.types';
@@ -42,29 +42,35 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
       return [];
     }
 
-    const permissions = [...(impact.executorPermissions || [])];
-
-    const getPermissionName = (perm: any): string => {
-      const fromStatus = perm.fromStatusName || 'N/A';
-      const toStatus = perm.toStatusName || 'N/A';
-      const transitionName = perm.transitionName;
-      const transitionPart = transitionName ? ` (${transitionName})` : '';
-      return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
-    };
-
-    const getMatchLabel = (perm: any): string | undefined => {
-      if (!(perm.canBePreserved ?? false)) {
-        return undefined;
-      }
-      return perm.transitionNameMatch ? `✓ ${perm.transitionNameMatch}` : undefined;
-    };
-
-    return mapImpactPermissions({
-      permissions,
-      getLabel: getPermissionName,
-      getMatchLabel,
+    const executorPermissions = mapImpactPermissions({
+      permissions: impact.executorPermissions || [],
+      getLabel: (perm: any) => {
+        const fromStatus = perm.fromStatusName || 'N/A';
+        const toStatus = perm.toStatusName || 'N/A';
+        const transitionName = perm.transitionName;
+        const transitionPart = transitionName ? ` (${transitionName})` : '';
+        return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
+      },
+      getMatchLabel: (perm: any) => {
+        if (!(perm.canBePreserved ?? false)) {
+          return undefined;
+        }
+        return perm.transitionNameMatch ? `✓ ${perm.transitionNameMatch}` : undefined;
+      },
       fallbackItemTypeSetName: null
     });
+
+    const fieldStatusPermissions = mapImpactPermissions({
+      permissions: impact.fieldStatusPermissions || [],
+      getLabel: (perm: any) => {
+        const field = perm.fieldName || 'Field';
+        const status = perm.workflowStatusName || perm.statusName || 'Status';
+        return `${perm.permissionType || 'Field Permission'} - ${field} @ ${status}`;
+      },
+      fallbackItemTypeSetName: null
+    });
+
+    return [...executorPermissions, ...fieldStatusPermissions];
   }, [impact]);
 
   const selection = useImpactPermissionSelection(permissionRows);
@@ -166,30 +172,50 @@ export const TransitionEnhancedImpactReportModal: React.FC<TransitionEnhancedImp
   const handleExportFullReport = async () => {
     if (!impact) return;
 
-    // Prepara le permissions con i dati necessari
-    const allPermissions = [
-      ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
-    ].map(perm => ({
-      permissionId: perm.permissionId,
-      permissionType: perm.permissionType || 'N/A',
-      itemTypeSetName: perm.itemTypeSetName || 'N/A',
-      fieldName: perm.fieldName || null,
-      statusName: perm.statusName || perm.workflowStatusName || null,
-      fromStatusName: perm.fromStatusName || null,
-      toStatusName: perm.toStatusName || null,
-      transitionName: perm.transitionName || null,
-      assignedRoles: perm.assignedRoles || [],
-      grantId: perm.grantId,
-      roleId: perm.roleId,
-      projectGrants: perm.projectGrants,
-      projectAssignedRoles: perm.projectAssignedRoles,
-      canBePreserved: perm.canBePreserved
-    }));
+    const executorPermissions = (impact.executorPermissions || [])
+      .filter((perm) => perm.hasAssignments)
+      .map((perm) => ({
+        permissionId: perm.permissionId ?? null,
+        permissionType: perm.permissionType || 'EXECUTORS',
+        itemTypeSetName: perm.itemTypeSetName || 'N/A',
+        fieldName: null,
+        statusName: null,
+        fromStatusName: perm.fromStatusName || null,
+        toStatusName: perm.toStatusName || null,
+        transitionName: perm.transitionName || null,
+        assignedRoles: perm.assignedRoles || [],
+        projectAssignedRoles: perm.projectAssignedRoles || [],
+        grantId: perm.grantId ?? null,
+        roleId: perm.roleId ?? perm.permissionId ?? null,
+        projectGrants: perm.projectGrants || [],
+        canBePreserved: perm.canBePreserved ?? false
+      }));
+
+    const fieldStatusPermissions = (impact.fieldStatusPermissions || [])
+      .filter((perm) => perm.hasAssignments)
+      .map((perm) => ({
+        permissionId: perm.permissionId ?? null,
+        permissionType: perm.permissionType || 'FIELD_STATUS',
+        itemTypeSetName: perm.itemTypeSetName || 'N/A',
+        fieldName: perm.fieldName || null,
+        statusName: perm.workflowStatusName || perm.statusName || null,
+        fromStatusName: null,
+        toStatusName: null,
+        transitionName: null,
+        assignedRoles: perm.assignedRoles || [],
+        projectAssignedRoles: perm.projectAssignedRoles || [],
+        grantId: perm.grantId ?? null,
+        roleId: perm.permissionId ?? null,
+        projectGrants: perm.projectGrants || [],
+        canBePreserved: perm.canBePreserved ?? false
+      }));
+
+    const allPermissions = [...executorPermissions, ...fieldStatusPermissions];
 
     // Funzioni per estrarre i nomi (specifiche per Transition report)
-    const getFieldName = () => ''; // Executor permissions non hanno field
-    const getStatusName = () => ''; // Executor permissions usano from/to status nella transition
-    const getTransitionName = () => ''; // La formattazione viene gestita automaticamente dalla utility usando fromStatusName/toStatusName
+    const getFieldName = (perm: PermissionData) => perm.fieldName || '';
+    const getStatusName = (perm: PermissionData) => perm.statusName || '';
+    const getTransitionName = (perm: PermissionData) => perm.transitionName || '';
 
     // Usa la utility unificata
     await exportImpactReportToCSV({

@@ -250,38 +250,48 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       ? `/item-type-sets/project/${projectId}/${id}`
       : `/item-type-sets/${id}`;
 
-    const response = await api.put(updateEndpoint, dto, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    // Aggiorna automaticamente le permissions per l'ItemTypeSet modificato
-    // Nota: Non c'è più bisogno di eliminare le vecchie permission perché vengono gestite automaticamente
-    // Se necessario, le permission vengono ricreate quando si modifica l'ItemTypeSet
     try {
-      await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${id}`);
-    } catch (roleError) {
-      console.warn("Errore nell'aggiornamento automatico delle permissions:", roleError);
-    }
+      const response = await api.put(updateEndpoint, dto, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      // Aggiorna automaticamente le permissions per l'ItemTypeSet modificato
+      // Nota: Non c'è più bisogno di eliminare le vecchie permission perché vengono gestite automaticamente
+      // Se necessario, le permission vengono ricreate quando si modifica l'ItemTypeSet
+      try {
+        await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${id}`);
+      } catch (roleError) {
+        console.warn("Errore nell'aggiornamento automatico delle permissions:", roleError);
+      }
 
-    // Aggiorna originalConfigurationsRef con lo stato salvato dal backend
-    // Questo è importante perché quando si modifica un FieldSet, le permission vengono ricreate
-    // e dobbiamo riflettere lo stato aggiornato per rilevare correttamente le rimozioni successive
-    const savedData = response.data;
-    if (savedData && savedData.itemTypeConfigurations) {
-      const configs = savedData.itemTypeConfigurations.map((conf: any) => ({
-        id: conf.id,
-        itemTypeId: conf.itemType?.id || conf.itemTypeId,
-        category: conf.category,
-        fieldSetId: conf.fieldSet?.id || conf.fieldSetId,
-        workflowId: conf.workflow?.id || conf.workflowId,
-      }));
-      originalConfigurationsRef.current = [...configs];
-    }
+      // Aggiorna originalConfigurationsRef con lo stato salvato dal backend
+      // Questo è importante perché quando si modifica un FieldSet, le permission vengono ricreate
+      // e dobbiamo riflettere lo stato aggiornato per rilevare correttamente le rimozioni successive
+      const savedData = response.data;
+      if (savedData && savedData.itemTypeConfigurations) {
+        const configs = savedData.itemTypeConfigurations.map((conf: any) => ({
+          id: conf.id,
+          itemTypeId: conf.itemType?.id || conf.itemTypeId,
+          category: conf.category,
+          fieldSetId: conf.fieldSet?.id || conf.fieldSetId,
+          workflowId: conf.workflow?.id || conf.workflowId,
+        }));
+        originalConfigurationsRef.current = [...configs];
+      }
 
-    if (scope === 'tenant') {
-      navigate("/tenant/item-type-sets");
-    } else if (scope === 'project' && projectId) {
-      navigate(`/projects/${projectId}/item-type-sets`);
+      if (scope === 'tenant') {
+        navigate("/tenant/item-type-sets");
+      } else if (scope === 'project' && projectId) {
+        navigate(`/projects/${projectId}/item-type-sets`);
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || "Errore durante il salvataggio dell'ItemTypeSet";
+      if (typeof message === 'string' && message.includes('ITEMTYPESET_REMOVAL_IMPACT')) {
+        setError("Sono presenti permission con assegnazioni per le configurazioni rimosse. Genera e conferma il report d'impatto prima di salvare.");
+      } else {
+        setError(message);
+      }
+      throw err;
     }
   };
 

@@ -389,7 +389,12 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Errore nel salvataggio");
+      const message = err.response?.data?.message || "Errore nel salvataggio";
+      if (typeof message === 'string' && message.includes('FIELDSET_REMOVAL_IMPACT')) {
+        setError("Sono presenti permission con assegnazioni per i field rimossi. Genera e conferma il report d'impatto prima di salvare.");
+      } else {
+        setError(message);
+      }
     } finally {
       setSaving(false);
     }
