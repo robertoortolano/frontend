@@ -181,10 +181,13 @@ function ItemTypeSetDetails({
 
   const hasEntries = itemTypeSet.itemTypeConfigurations?.length > 0;
   const isGlobal = itemTypeSet.scope === 'TENANT';
+  const canChangeItemTypeSet = isTenantAdmin || (isProjectAdmin && !isGlobal);
   
   // Controlla se ci sono altri ItemTypeSet disponibili oltre a quello attuale
-  const hasOtherItemTypeSets = availableItemTypeSets.length > 1 || 
-    (availableItemTypeSets.length === 1 && availableItemTypeSets[0].id !== itemTypeSet.id);
+  const hasOtherItemTypeSets = canChangeItemTypeSet && (
+    availableItemTypeSets.length > 1 || 
+    (availableItemTypeSets.length === 1 && availableItemTypeSets[0].id !== itemTypeSet.id)
+  );
 
   // Carica gli ItemTypeSet disponibili e le permission globali al mount del componente
   useEffect(() => {
@@ -218,23 +221,26 @@ function ItemTypeSetDetails({
   };
 
   const fetchAvailableItemTypeSets = async () => {
+    if (!canChangeItemTypeSet) {
+      setAvailableItemTypeSets([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      
+
       if (isTenantAdmin) {
-        // Tenant admin: carica sia globali che di progetto
         try {
           const [globalResponse, projectResponse] = await Promise.all([
             api.get('/projects/available-item-type-sets'),
             api.get('/item-type-sets/project')
           ]);
-          // Combina entrambi gli array
           const globalSets: ItemTypeSetDto[] = globalResponse.data || [];
           const projectSets: ItemTypeSetDto[] = projectResponse.data || [];
           const allSets = [...globalSets, ...projectSets];
           setAvailableItemTypeSets(filterItemTypeSetsForProject(allSets));
         } catch (err: any) {
-          // Se fallisce il caricamento dei globali, prova solo quelli di progetto
           console.warn("Error fetching global ItemTypeSets, trying project only:", err);
           try {
             const projectResponse = await api.get('/item-type-sets/project');
@@ -245,14 +251,10 @@ function ItemTypeSetDetails({
             setAvailableItemTypeSets([]);
           }
         }
-      } else if (isProjectAdmin) {
-        // Project admin del progetto specifico: carica solo quelli di progetto
-        const response = await api.get('/item-type-sets/project');
+      } else if (isProjectAdmin && projectId) {
+        const response = await api.get(`/item-type-sets/project/${projectId}`);
         const projectSets: ItemTypeSetDto[] = response.data || [];
-        setAvailableItemTypeSets(filterItemTypeSetsForProject(projectSets));
-      } else {
-        // Utente senza permessi: nessun ItemTypeSet disponibile
-        setAvailableItemTypeSets([]);
+        setAvailableItemTypeSets(projectSets);
       }
     } catch (err: any) {
       console.error("Error fetching ItemTypeSets:", err);
@@ -264,44 +266,49 @@ function ItemTypeSetDetails({
 
   const fetchGlobalPermissions = async () => {
     if (!itemTypeSet?.id) return;
-    
+
+    const baseUrl = `/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}`;
+
     try {
       setLoadingPermissions(true);
-      // Carica le permission globali SENZA projectId per vedere solo quelle globali nella visualizzazione
-      // Poi le ricarichiamo CON projectId per la selezione (così abbiamo anche hasProjectGrant)
-      const response = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}`);
-      setGlobalPermissions(response.data);
-      
-      // Carica anche con projectId per avere le informazioni sulle grant di progetto per la selezione
-      try {
-        const responseWithProject = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}?projectId=${projectId}`);
-        // Aggiorna le permission con le informazioni sulle grant di progetto
-        const permissionsWithProjectInfo = { ...responseWithProject.data };
-        setGlobalPermissions(permissionsWithProjectInfo);
-      } catch (projectErr) {
-        // Se fallisce, usa comunque le permission globali
-        console.warn("Could not load project grant info:", projectErr);
-      }
-    } catch (err: any) {
-      console.error("Error fetching global permissions:", err);
-      // Se fallisce con 500, prova a creare le permission
-      if (err.response?.status === 500) {
+
+      if (isTenantAdmin) {
+        let permissionsData: any = null;
         try {
-          await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSet.id}`);
-          const retryResponse = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}`);
-          setGlobalPermissions(retryResponse.data);
-          
-          // Prova anche con projectId
+          const response = await api.get(baseUrl);
+          permissionsData = response.data;
+        } catch (err: any) {
+          console.error("Error fetching permissions:", err);
+          if (err.response?.status === 500) {
+            try {
+              await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${itemTypeSet.id}`);
+              const retryResponse = await api.get(baseUrl);
+              permissionsData = retryResponse.data;
+            } catch (createErr) {
+              console.error("Error creating permissions:", createErr);
+            }
+          }
+        }
+
+        if (projectId) {
           try {
-            const responseWithProject = await api.get(`/itemtypeset-permissions/itemtypeset/${itemTypeSet.id}?projectId=${projectId}`);
-            setGlobalPermissions(responseWithProject.data);
+            const responseWithProject = await api.get(`${baseUrl}?projectId=${projectId}`);
+            permissionsData = responseWithProject.data;
           } catch (projectErr) {
             console.warn("Could not load project grant info:", projectErr);
           }
-        } catch (createErr) {
-          console.error("Error creating permissions:", createErr);
         }
+
+        setGlobalPermissions(permissionsData);
+      } else if (isProjectAdmin && projectId) {
+        const response = await api.get(`${baseUrl}?projectId=${projectId}`);
+        setGlobalPermissions(response.data);
+      } else {
+        setGlobalPermissions(null);
       }
+    } catch (err: any) {
+      console.error("Error fetching permissions:", err);
+      setGlobalPermissions(null);
     } finally {
       setLoadingPermissions(false);
     }
@@ -309,6 +316,9 @@ function ItemTypeSetDetails({
 
 
   const handleStartChange = () => {
+    if (!canChangeItemTypeSet) {
+      return;
+    }
     setIsChanging(true);
     fetchAvailableItemTypeSets();
   };
@@ -323,6 +333,9 @@ function ItemTypeSetDetails({
   };
 
   const handleApplyChange = () => {
+    if (!canChangeItemTypeSet) {
+      return;
+    }
     if (selectedItemTypeSet) {
       onItemTypeSetChange(selectedItemTypeSet.id);
       setIsChanging(false);
@@ -566,7 +579,11 @@ function ItemTypeSetDetails({
         <div className="mt-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Cambia ItemTypeSet</h3>
           
-          {!hasOtherItemTypeSets && !loading ? (
+          {!canChangeItemTypeSet ? (
+            <div className="text-gray-500 text-sm">
+              Solo un Tenant Admin può sostituire un ItemTypeSet globale applicato al progetto.
+            </div>
+          ) : !hasOtherItemTypeSets && !loading ? (
             <div className="text-gray-500 text-sm">
               Non ci sono altri ItemTypeSet disponibili per il cambio.
             </div>
