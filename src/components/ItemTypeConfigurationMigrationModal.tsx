@@ -13,9 +13,11 @@ import {
   PermissionData,
 } from '../utils/csvExportUtils';
 import { useItemTypeConfigurationMigrationWizard } from '../hooks/useItemTypeConfigurationMigrationWizard';
-import { OverviewStep } from './itemTypeConfigurationMigrationWizard/OverviewStep';
-import { PermissionsStep } from './itemTypeConfigurationMigrationWizard/PermissionsStep';
-import { ReviewStep } from './itemTypeConfigurationMigrationWizard/ReviewStep';
+import {
+  OverviewStep,
+  PermissionsStep,
+  ReviewStep,
+} from './itemTypeConfigurationMigrationWizard/steps';
 import { WizardStepsIndicator } from './itemTypeConfigurationMigrationWizard/WizardStepsIndicator';
 
 interface ItemTypeConfigurationMigrationModalProps {

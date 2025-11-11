@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import alertStyles from '../../../../styles/common/Alerts.module.css';
 import {
   ItemTypeConfigurationMigrationImpactDto,
   ProjectGrantInfo,
   SelectablePermissionImpact,
-} from '../../types/item-type-configuration-migration.types';
-import alertStyles from '../../styles/common/Alerts.module.css';
-import { ItemTypeConfigurationWizardStats } from '../../hooks/useItemTypeConfigurationMigrationWizard';
+} from '../../../../types/item-type-configuration-migration.types';
+import { ItemTypeConfigurationWizardStats } from '../../../../hooks/useItemTypeConfigurationMigrationWizard';
+import { ConfigurationSection, usePermissionsStep } from './usePermissionsStep';
 
 interface PermissionsStepProps {
   impacts: ItemTypeConfigurationMigrationImpactDto[];
@@ -27,100 +28,52 @@ interface PermissionsStepProps {
   ) => Promise<void>;
 }
 
-interface ProjectEntry {
-  projectId?: number | null;
-  projectName?: string | null;
-  roles: string[];
-  grant?: ProjectGrantInfo;
+interface PermissionSectionProps {
+  configuration: ConfigurationSection;
+  sectionTitle: string;
+  permissions: SelectablePermissionImpact[];
+  loading: boolean;
+  getPermissionName: PermissionsStepProps['getPermissionName'];
+  togglePermission: PermissionsStepProps['togglePermission'];
+  onShowRolesDetails: PermissionsStepProps['onShowRolesDetails'];
+  onRequestGlobalGrantDetails: PermissionsStepProps['onRequestGlobalGrantDetails'];
+  onRequestProjectGrantDetails: PermissionsStepProps['onRequestProjectGrantDetails'];
+  getProjectEntries: ReturnType<typeof usePermissionsStep>['getProjectEntries'];
 }
 
-const buildProjectEntries = (
-  permission: SelectablePermissionImpact
-): ProjectEntry[] => {
-  const projectEntriesMap = new Map<string, ProjectEntry>();
+const PermissionSection: React.FC<PermissionSectionProps> = ({
+  configuration,
+  sectionTitle,
+  permissions,
+  loading,
+  getPermissionName,
+  togglePermission,
+  onShowRolesDetails,
+  onRequestGlobalGrantDetails,
+  onRequestProjectGrantDetails,
+  getProjectEntries,
+}) => {
+  const preservedSet = configuration.preservedSet;
 
-  if (Array.isArray((permission as any).projectAssignedRoles)) {
-    ((permission as any).projectAssignedRoles as Array<{
-      projectId?: number | null;
-      projectName?: string | null;
-      roles?: string[];
-    }>).forEach((projectRole) => {
-      const key = `${projectRole.projectId ?? 'null'}::${
-        projectRole.projectName ?? 'N/A'
-      }`;
+  const { selectedInSection, canPreserveCount } = useMemo(() => {
+    let selected = 0;
+    let preservable = 0;
 
-      const existing =
-        projectEntriesMap.get(key) ??
-        ({
-          projectId: projectRole.projectId,
-          projectName: projectRole.projectName,
-          roles: [],
-        } as ProjectEntry);
-
-      if (Array.isArray(projectRole.roles)) {
-        existing.roles = [
-          ...existing.roles,
-          ...projectRole.roles.filter(Boolean),
-        ];
+    permissions.forEach((permission) => {
+      if (permission.canBePreserved) {
+        preservable += 1;
       }
-
-      projectEntriesMap.set(key, existing);
+      if (preservedSet.has(permission.permissionId)) {
+        selected += 1;
+      }
     });
-  }
 
-  if (permission.projectGrants) {
-    permission.projectGrants.forEach((grant) => {
-      const key = `${grant.projectId ?? 'null'}::${grant.projectName ?? 'N/A'}`;
-      const existing =
-        projectEntriesMap.get(key) ??
-        ({
-          projectId: grant.projectId,
-          projectName: grant.projectName,
-          roles: [],
-        } as ProjectEntry);
-      existing.grant = grant;
-      projectEntriesMap.set(key, existing);
-    });
-  }
+    return { selectedInSection: selected, canPreserveCount: preservable };
+  }, [permissions, preservedSet]);
 
-  return Array.from(projectEntriesMap.values());
-};
-
-const renderPermissionSection = (
-  title: string,
-  impact: ItemTypeConfigurationMigrationImpactDto,
-  permissions: SelectablePermissionImpact[],
-  preservedPermissionIdsMap: Map<number, Set<number>>,
-  getPermissionName: (perm: SelectablePermissionImpact) => string,
-  togglePermission: (configId: number, permissionId: number) => void,
-  onShowRolesDetails: (payload: { permissionName: string; roles: string[] }) => void,
-  onRequestGlobalGrantDetails: (
-    permission: SelectablePermissionImpact
-  ) => Promise<void>,
-  onRequestProjectGrantDetails: (
-    permission: SelectablePermissionImpact,
-    projectGrant: ProjectGrantInfo
-  ) => Promise<void>,
-  loading?: boolean
-) => {
-  const permissionsWithRoles = permissions.filter(
-    (permission) => permission.hasAssignments
-  );
-
-  if (permissionsWithRoles.length === 0) {
+  if (permissions.length === 0) {
     return null;
   }
-
-  const preservedSet =
-    preservedPermissionIdsMap.get(impact.itemTypeConfigurationId) ??
-    new Set<number>();
-
-  const canPreserveCount = permissionsWithRoles.filter(
-    (permission) => permission.canBePreserved
-  ).length;
-  const selectedInSection = permissionsWithRoles.filter((permission) =>
-    preservedSet.has(permission.permissionId)
-  ).length;
 
   return (
     <div
@@ -149,12 +102,13 @@ const renderPermissionSection = (
             color: '#1f2937',
           }}
         >
-          {title} ({permissionsWithRoles.length} con ruoli)
+          {sectionTitle} ({permissions.length} con ruoli)
         </h3>
         <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
           {selectedInSection} / {canPreserveCount} preservabili selezionate
         </div>
       </div>
+
       <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto' }}>
         <table
           style={{
@@ -229,19 +183,19 @@ const renderPermissionSection = (
             </tr>
           </thead>
           <tbody>
-            {permissionsWithRoles.map((permission, index) => {
+            {permissions.map((permission, index) => {
               const isSelected = preservedSet.has(permission.permissionId);
               const canPreserve = permission.canBePreserved;
               const rolesCount = permission.assignedRoles?.length ?? 0;
               const hasGlobalGrant = permission.grantId != null;
-              const projectEntries = buildProjectEntries(permission);
+              const projectEntries = getProjectEntries(permission);
               const hasProjectAssignments = projectEntries.some(
                 (entry) => entry.roles.length > 0 || entry.grant
               );
 
               return (
                 <tr
-                  key={`${impact.itemTypeConfigurationId}-${permission.permissionId}`}
+                  key={`${configuration.impact.itemTypeConfigurationId}-${permission.permissionId}`}
                   style={{
                     borderBottom: '1px solid #d1fae5',
                     backgroundColor:
@@ -258,7 +212,7 @@ const renderPermissionSection = (
                       onClick={() => {
                         if (canPreserve && !loading) {
                           togglePermission(
-                            impact.itemTypeConfigurationId,
+                            configuration.impact.itemTypeConfigurationId,
                             permission.permissionId
                           );
                         }
@@ -272,8 +226,7 @@ const renderPermissionSection = (
                           isSelected && canPreserve ? '#d1fae5' : '#fee2e2',
                         color:
                           isSelected && canPreserve ? '#059669' : '#dc2626',
-                        cursor:
-                          canPreserve && !loading ? 'pointer' : 'not-allowed',
+                        cursor: canPreserve && !loading ? 'pointer' : 'not-allowed',
                         display: 'inline-block',
                         userSelect: 'none',
                         transition: 'background-color 0.2s, color 0.2s',
@@ -393,8 +346,7 @@ const renderPermissionSection = (
                         }}
                       >
                         {projectEntries.map((entry, entryIndex) => {
-                          const displayName =
-                            entry.projectName || 'Progetto N/A';
+                          const displayName = entry.projectName || 'Progetto N/A';
                           const nodes: React.ReactNode[] = [];
 
                           if (entry.roles.length > 0) {
@@ -483,10 +435,15 @@ export const PermissionsStep: React.FC<PermissionsStepProps> = ({
   onRequestGlobalGrantDetails,
   onRequestProjectGrantDetails,
 }) => {
+  const { configurationSections, getProjectEntries } = usePermissionsStep({
+    impacts,
+    preservedPermissionIdsMap,
+  });
+
   return (
     <div>
-      {impacts.map((impact, index) => (
-        <div key={impact.itemTypeConfigurationId} style={{ marginTop: '2rem' }}>
+      {configurationSections.map((configuration) => (
+        <div key={configuration.impact.itemTypeConfigurationId} style={{ marginTop: '2rem' }}>
           <h2
             style={{
               fontSize: '1.125rem',
@@ -495,72 +452,33 @@ export const PermissionsStep: React.FC<PermissionsStepProps> = ({
               color: '#1e3a8a',
             }}
           >
-            Configurazione {index + 1}: {impact.itemTypeName}
+            {configuration.heading}
           </h2>
 
-          {renderPermissionSection(
-            'Permission Field Owner',
-            impact,
-            impact.fieldOwnerPermissions,
-            preservedPermissionIdsMap,
-            getPermissionName,
-            togglePermission,
-            onShowRolesDetails,
-            onRequestGlobalGrantDetails,
-            onRequestProjectGrantDetails,
-            loading
-          )}
-
-          {renderPermissionSection(
-            'Permission Status Owner',
-            impact,
-            impact.statusOwnerPermissions,
-            preservedPermissionIdsMap,
-            getPermissionName,
-            togglePermission,
-            onShowRolesDetails,
-            onRequestGlobalGrantDetails,
-            onRequestProjectGrantDetails,
-            loading
-          )}
-
-          {renderPermissionSection(
-            'Permission Field Status',
-            impact,
-            impact.fieldStatusPermissions,
-            preservedPermissionIdsMap,
-            getPermissionName,
-            togglePermission,
-            onShowRolesDetails,
-            onRequestGlobalGrantDetails,
-            onRequestProjectGrantDetails,
-            loading
-          )}
-
-          {renderPermissionSection(
-            'Permission Executor',
-            impact,
-            impact.executorPermissions,
-            preservedPermissionIdsMap,
-            getPermissionName,
-            togglePermission,
-            onShowRolesDetails,
-            onRequestGlobalGrantDetails,
-            onRequestProjectGrantDetails,
-            loading
-          )}
+          {configuration.groups.map((group) => (
+            <PermissionSection
+              key={`${configuration.impact.itemTypeConfigurationId}-${group.key}`}
+              configuration={configuration}
+              sectionTitle={group.title}
+              permissions={group.permissions}
+              loading={loading}
+              getPermissionName={getPermissionName}
+              togglePermission={togglePermission}
+              onShowRolesDetails={onShowRolesDetails}
+              onRequestGlobalGrantDetails={onRequestGlobalGrantDetails}
+              onRequestProjectGrantDetails={onRequestProjectGrantDetails}
+              getProjectEntries={getProjectEntries}
+            />
+          ))}
         </div>
       ))}
 
       {stats.withRoles === 0 && (
-        <div
-          className={alertStyles.infoContainer}
-          style={{ marginTop: '1.5rem' }}
-        >
+        <div className={alertStyles.infoContainer} style={{ marginTop: '1.5rem' }}>
           <h4>ℹ️ Nessuna permission con ruoli</h4>
           <p>
-            Non ci sono permission con ruoli assegnati interessate da questa
-            modifica. Le permission vuote verranno gestite automaticamente.
+            Non ci sono permission con ruoli assegnati interessate da questa modifica.
+            Le permission vuote verranno gestite automaticamente.
           </p>
         </div>
       )}

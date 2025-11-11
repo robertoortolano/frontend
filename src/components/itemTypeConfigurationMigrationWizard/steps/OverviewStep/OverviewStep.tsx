@@ -1,9 +1,9 @@
 import React from 'react';
-import layout from '../../styles/common/Layout.module.css';
-import form from '../../styles/common/Forms.module.css';
-import buttons from '../../styles/common/Buttons.module.css';
-import { ItemTypeConfigurationMigrationImpactDto } from '../../types/item-type-configuration-migration.types';
-import { ItemTypeConfigurationWizardStats } from '../../hooks/useItemTypeConfigurationMigrationWizard';
+import layout from '../../../../styles/common/Layout.module.css';
+import form from '../../../../styles/common/Forms.module.css';
+import buttons from '../../../../styles/common/Buttons.module.css';
+import { ItemTypeConfigurationMigrationImpactDto } from '../../../../types/item-type-configuration-migration.types';
+import { ItemTypeConfigurationWizardStats } from '../../../../hooks/useItemTypeConfigurationMigrationWizard';
 
 interface OverviewStepProps {
   impacts: ItemTypeConfigurationMigrationImpactDto[];
@@ -80,7 +80,9 @@ export const OverviewStep: React.FC<OverviewStepProps> = ({
               className={`${buttons.button} ${buttons.buttonSuccess}`}
               onClick={onPreserveAllPreservable}
               disabled={actionsDisabled || stats.preservable === 0}
-              style={{ backgroundColor: preserveAllPreservableActive ? '#059669' : undefined }}
+              style={{
+                backgroundColor: preserveAllPreservableActive ? '#059669' : undefined,
+              }}
             >
               ✓ Mantieni Tutto Mantenibile ({stats.preservable})
             </button>
