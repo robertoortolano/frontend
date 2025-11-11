@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import ReactFlow, {
+import {
   addEdge,
-  Background,
-  Controls,
-  MiniMap,
   ReactFlowProvider,
   useNodesState,
   useEdgesState,
@@ -11,12 +8,12 @@ import ReactFlow, {
   Connection,
   NodeTypes,
   EdgeTypes,
+  Edge,
 } from "reactflow";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/api";
 
 import SelectableEdge from "./components/SelectableEdge";
-import WorkflowControls from "./components/WorkflowControls";
 import CustomNode from "./components/CustomNode";
 import { getCategoryColor, buildWorkflowStatusesFromFlow } from "./components/workflowUtils";
 import { StatusCategory } from "../../types/common.types";
@@ -34,9 +31,10 @@ import { TransitionEnhancedImpactReportModal } from "../../components/Transition
 import { StatusRemovalImpactDto } from "../../types/status-impact.types";
 import { StatusEnhancedImpactReportModal } from "../../components/StatusEnhancedImpactReportModal";
 import { Toast } from "../../components/Toast";
-import { PageContainer, PageHeader } from "../../components/shared/layout";
+import { PageContainer, PageHeader, Tabs } from "../../components/shared/layout";
+import { WorkflowStatusTab } from "./tabs/WorkflowStatusTab";
+import { WorkflowTransitionsTab } from "./tabs/WorkflowTransitionsTab";
 
-import board from "../../styles/common/WorkflowBoard.module.css";
 import "reactflow/dist/style.css";
 
 // 🔹 Helper per costruire nodi
@@ -123,6 +121,21 @@ function createSelectableEdgeType(
   };
 }
 
+const workflowEditTabs = [
+  {
+    id: "statuses",
+    label: "Stati",
+    description: "Modifica stati, categorie e layout direttamente sul canvas.",
+  },
+  {
+    id: "transitions",
+    label: "Transizioni",
+    description: "Rivedi e aggiorna le transizioni create tra gli stati.",
+  },
+];
+
+const tabContentClass = "mt-8 space-y-6";
+
 // 🔹 Componente principale
 export default function WorkflowEdit() {
   const [workflowName, setWorkflowName] = useState("");
@@ -133,6 +146,7 @@ export default function WorkflowEdit() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [_initialNodeId, setInitialNodeId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<"statuses" | "transitions">("statuses");
   
   // Impact report states
   const [showImpactReport, setShowImpactReport] = useState(false);
@@ -284,8 +298,10 @@ export default function WorkflowEdit() {
 
   // 🔹 Aggiorna edge esistente
   const onEdgeUpdate = useCallback(
-    (oldEdge: any, newConnection: Connection) => {
-      (setEdges as any)((eds: any) => eds.map((e: any) => (e.id === oldEdge.id ? { ...e, ...newConnection } : e)));
+    (oldEdge: Edge, newConnection: Connection) => {
+      setEdges((eds: any[]) =>
+        eds.map((edge: any) => (edge.id === oldEdge.id ? { ...edge, ...newConnection } : edge))
+      );
     },
     [setEdges]
   );
@@ -351,6 +367,25 @@ export default function WorkflowEdit() {
     setSelectedStatusId("");
     if (nodes.length === 0) setInitialNode(String(nodeId));
   };
+
+  const handleEdgeLabelChange = useCallback(
+    (edgeId: string, newLabel: string) => {
+      setEdges((eds: any[]) =>
+        eds.map((edge: any) =>
+          edge.id === edgeId
+            ? {
+                ...edge,
+                data: {
+                  ...(edge.data || {}),
+                  label: newLabel,
+                },
+              }
+            : edge
+        )
+      );
+    },
+    [setEdges]
+  );
 
   const handleExportReport = async () => {
     if (!impactReport) return;
@@ -804,51 +839,51 @@ export default function WorkflowEdit() {
             title="Modifica Workflow"
             description="Aggiorna stati e transizioni del workflow."
           />
-          <div className={board.wrapper}>
-            <WorkflowControls
-              workflowName={workflowName}
-              setWorkflowName={setWorkflowName}
-              selectedStatusId={selectedStatusId}
-              setSelectedStatusId={setSelectedStatusId}
-              availableStatuses={availableStatuses}
-              nodes={nodes}
-              statusCategories={statusCategories}
-              addState={addState}
-            />
 
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onEdgeUpdate={onEdgeUpdate}
-              fitView
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              className="w-full"
-              style={{ height: "600px" }}
-            >
-              <MiniMap />
-              <Controls />
-              <Background />
-            </ReactFlow>
+          <Tabs
+            tabs={workflowEditTabs}
+            activeTab={activeTab}
+            onTabChange={(tabId) =>
+              setActiveTab(tabId as "statuses" | "transitions")
+            }
+          />
 
-            <div className={board.buttonBar}>
-              <button
-                className={`${board.button} ${board.cancelButton}`}
-                onClick={() => navigate(-1)}
-              >
-                Cancel
-              </button>
-              <button
-                disabled={saving || !nodes.length}
-                className={board.button}
-                onClick={handleSave}
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </div>
+          <div className={tabContentClass}>
+            {activeTab === "statuses" && (
+              <WorkflowStatusTab
+                controlsProps={{
+                  workflowName,
+                  setWorkflowName,
+                  selectedStatusId,
+                  setSelectedStatusId,
+                  availableStatuses,
+                  nodes,
+                  statusCategories,
+                  addState,
+                }}
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onEdgeUpdate={onEdgeUpdate}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onCancel={() => navigate(-1)}
+                onSave={handleSave}
+                canSave={nodes.length > 0}
+                saving={saving}
+              />
+            )}
+
+            {activeTab === "transitions" && (
+              <WorkflowTransitionsTab
+                edges={edges}
+                nodes={nodes}
+                onEdgeLabelChange={handleEdgeLabelChange}
+                onEdgeDelete={onDeleteEdge}
+              />
+            )}
           </div>
         </PageContainer>
 

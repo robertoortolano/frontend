@@ -113,6 +113,157 @@ function SortableSidebarConfig({
   );
 }
 
+interface FieldSetConfigurationsPanelProps {
+  selectedConfigurations: number[];
+  sensors: any;
+  handleDragEnd: (event: DragEndEvent) => void;
+  fieldConfigurations: FieldConfigurationViewDto[];
+  fields: Field[];
+  removeConfiguration: (configId: number) => void;
+  configurationsByField: Array<{ field: Field; configurations: FieldConfigurationViewDto[] }>;
+  saving: boolean;
+  handleConfigurationSelect: (configId: number) => void;
+}
+
+function FieldSetConfigurationsPanel({
+  selectedConfigurations,
+  sensors,
+  handleDragEnd,
+  fieldConfigurations,
+  fields,
+  removeConfiguration,
+  configurationsByField,
+  saving,
+  handleConfigurationSelect,
+}: FieldSetConfigurationsPanelProps) {
+  return (
+    <div className={sidebarStyles.fieldSetSidebarContainer}>
+      <div className={sidebarStyles.selectedSidebar}>
+        <div className={sidebarStyles.selectedSidebarHeader}>
+          <div className={sidebarStyles.selectedSidebarTitle}>
+            <span>✅</span>
+            <span>Configurazioni Selezionate</span>
+          </div>
+          <div className={sidebarStyles.selectedSidebarCount}>
+            <span className={sidebarStyles.selectedSidebarCountBadge}>
+              {selectedConfigurations.length}
+            </span>
+            <span>{selectedConfigurations.length === 1 ? "configurazione" : "configurazioni"}</span>
+          </div>
+        </div>
+
+        <div className={sidebarStyles.selectedSidebarBody}>
+          {selectedConfigurations.length === 0 ? (
+            <div className={sidebarStyles.sidebarEmpty}>
+              <div className={sidebarStyles.sidebarEmptyIcon}>📝</div>
+              <div style={{ fontSize: "0.8125rem" }}>Nessuna configurazione selezionata</div>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={selectedConfigurations} strategy={verticalListSortingStrategy}>
+                {selectedConfigurations.map((configId) => {
+                  const config = fieldConfigurations.find((c) => c.id === configId);
+                  const field = config ? fields.find((f) => f.id === config.fieldId) : undefined;
+                  return config ? (
+                    <SortableSidebarConfig
+                      key={configId}
+                      configId={configId}
+                      config={config}
+                      field={field}
+                      onRemove={() => removeConfiguration(configId)}
+                    />
+                  ) : null;
+                })}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+      </div>
+
+      <div className={sidebarStyles.mainContentArea}>
+        <div className={sidebarStyles.sidebarInfo}>
+          <strong>💡 Come funziona:</strong>
+          <div>
+            Seleziona una configurazione per ogni Field. Se selezioni una nuova configurazione per un Field già
+            presente, quella precedente verrà sostituita automaticamente. Puoi riordinare le configurazioni
+            selezionate trascinandole nella sidebar.
+          </div>
+        </div>
+
+        {fields.length === 0 ? (
+          <div className={alert.infoContainer}>
+            <p className={alert.info}>
+              <strong>Nessun campo disponibile</strong>
+              <br />
+              Crea prima dei campi per poter modificare un field set.
+            </p>
+          </div>
+        ) : (
+          configurationsByField.map(({ field, configurations }) => (
+            <div key={field.id} className={sidebarStyles.sidebarFieldCard}>
+              <div className={sidebarStyles.sidebarFieldHeader}>
+                <div className={sidebarStyles.sidebarFieldHeaderContent}>
+                  <span className={sidebarStyles.sidebarFieldIcon}>📋</span>
+                  <span className={sidebarStyles.sidebarFieldName}>{field.name}</span>
+                  <span className={sidebarStyles.sidebarFieldBadge}>{configurations.length} disponibili</span>
+                </div>
+              </div>
+
+              <div className={sidebarStyles.sidebarConfigurationsArea}>
+                {configurations.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "1rem",
+                      textAlign: "center",
+                      color: "#9ca3af",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    Nessuna configurazione disponibile
+                  </div>
+                ) : (
+                  <div className={sidebarStyles.sidebarConfigurationsList}>
+                    {configurations.map((config) => {
+                      const isSelected = selectedConfigurations.includes(config.id);
+                      return (
+                        <label
+                          key={config.id}
+                          className={`${sidebarStyles.sidebarConfigItem} ${
+                            isSelected ? sidebarStyles.selected : ""
+                          }`}
+                        >
+                          <div className={sidebarStyles.sidebarConfigItemContent}>
+                            <div className={sidebarStyles.sidebarConfigItemName}>
+                              {config.name || "Senza nome"}
+                            </div>
+                            <div className={sidebarStyles.sidebarConfigItemDetails}>
+                              Tipo: {config.fieldType?.displayName || "Sconosciuto"}
+                              {config.description && ` • ${config.description}`}
+                            </div>
+                          </div>
+                          <input
+                            type="radio"
+                            name={`selectedConfiguration_${field.id}`}
+                            checked={isSelected}
+                            onChange={() => handleConfigurationSelect(config.id)}
+                            disabled={saving}
+                            className={sidebarStyles.sidebarConfigItemCheckbox}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEditUniversalProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -553,133 +704,17 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
             </p>
           </div>
         </PageSection>
-        {/* Sidebar Layout */}
-        <div className={sidebarStyles.fieldSetSidebarContainer}>
-          {/* Sidebar: Configurazioni Selezionate */}
-          <div className={sidebarStyles.selectedSidebar}>
-            <div className={sidebarStyles.selectedSidebarHeader}>
-              <div className={sidebarStyles.selectedSidebarTitle}>
-                <span>✅</span>
-                <span>Configurazioni Selezionate</span>
-              </div>
-              <div className={sidebarStyles.selectedSidebarCount}>
-                <span className={sidebarStyles.selectedSidebarCountBadge}>
-                  {selectedConfigurations.length}
-                </span>
-                <span>{selectedConfigurations.length === 1 ? 'configurazione' : 'configurazioni'}</span>
-              </div>
-            </div>
-
-            <div className={sidebarStyles.selectedSidebarBody}>
-              {selectedConfigurations.length === 0 ? (
-                <div className={sidebarStyles.sidebarEmpty}>
-                  <div className={sidebarStyles.sidebarEmptyIcon}>📝</div>
-                  <div style={{ fontSize: '0.8125rem' }}>Nessuna configurazione selezionata</div>
-                </div>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={selectedConfigurations}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {selectedConfigurations.map((configId) => {
-                      const config = fieldConfigurations.find(c => c.id === configId);
-                      const field = config ? fields.find(f => f.id === config.fieldId) : undefined;
-                      return config ? (
-                        <SortableSidebarConfig
-                          key={configId}
-                          configId={configId}
-                          config={config}
-                          field={field}
-                          onRemove={() => removeConfiguration(configId)}
-                        />
-                      ) : null;
-                    })}
-                  </SortableContext>
-                </DndContext>
-              )}
-            </div>
-          </div>
-
-          {/* Main Content: Field con Configurazioni */}
-          <div className={sidebarStyles.mainContentArea}>
-            <div className={sidebarStyles.sidebarInfo}>
-              <strong>💡 Come funziona:</strong>
-              <div>
-                Seleziona una configurazione per ogni Field. Se selezioni una nuova configurazione per un Field 
-                già presente, quella precedente verrà sostituita automaticamente. 
-                Puoi riordinare le configurazioni selezionate trascinandole nella sidebar.
-              </div>
-            </div>
-
-            {fields.length === 0 ? (
-              <div className={alert.infoContainer}>
-                <p className={alert.info}>
-                  <strong>Nessun campo disponibile</strong><br />
-                  Crea prima dei campi per poter modificare un field set.
-                </p>
-              </div>
-            ) : (
-              configurationsByField.map(({ field, configurations }) => (
-                <div key={field.id} className={sidebarStyles.sidebarFieldCard}>
-                  {/* Header del Field */}
-                  <div className={sidebarStyles.sidebarFieldHeader}>
-                    <div className={sidebarStyles.sidebarFieldHeaderContent}>
-                      <span className={sidebarStyles.sidebarFieldIcon}>📋</span>
-                      <span className={sidebarStyles.sidebarFieldName}>{field.name}</span>
-                      <span className={sidebarStyles.sidebarFieldBadge}>
-                        {configurations.length} disponibili
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Configurazioni */}
-                  <div className={sidebarStyles.sidebarConfigurationsArea}>
-                    {configurations.length === 0 ? (
-                      <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-                        Nessuna configurazione disponibile
-                      </div>
-                    ) : (
-                      <div className={sidebarStyles.sidebarConfigurationsList}>
-                        {configurations.map((config) => {
-                          const isSelected = selectedConfigurations.includes(config.id);
-                          return (
-                            <label
-                              key={config.id}
-                              className={`${sidebarStyles.sidebarConfigItem} ${isSelected ? sidebarStyles.selected : ''}`}
-                            >
-                              <div className={sidebarStyles.sidebarConfigItemContent}>
-                                <div className={sidebarStyles.sidebarConfigItemName}>
-                                  {config.name || "Senza nome"}
-                                </div>
-                                <div className={sidebarStyles.sidebarConfigItemDetails}>
-                                  Tipo: {config.fieldType?.displayName || "Sconosciuto"}
-                                  {config.description && ` • ${config.description}`}
-                                </div>
-                              </div>
-                              <input
-                                type="radio"
-                                name={`selectedConfiguration_${field.id}`}
-                                checked={isSelected}
-                                onChange={() => handleConfigurationSelect(config.id)}
-                                disabled={saving}
-                                className={sidebarStyles.sidebarConfigItemCheckbox}
-                              />
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <FieldSetConfigurationsPanel
+          selectedConfigurations={selectedConfigurations}
+          sensors={sensors}
+          handleDragEnd={handleDragEnd}
+          fieldConfigurations={fieldConfigurations}
+          fields={fields}
+          removeConfiguration={removeConfiguration}
+          configurationsByField={configurationsByField}
+          saving={saving}
+          handleConfigurationSelect={handleConfigurationSelect}
+        />
 
         {/* Action Buttons */}
         <div className={layout.buttonRow} style={{ marginTop: '2rem' }}>

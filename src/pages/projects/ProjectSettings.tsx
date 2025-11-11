@@ -10,6 +10,7 @@ import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
 import PermissionGrantManager from "../../components/PermissionGrantManager";
 import { createPortal } from "react-dom";
 import { PageContainer, PageHeader, Panel, Tabs, CollapsiblePanel } from "../../components/shared/layout";
+import { ProjectSettingsNotificationsPanel } from "./components/ProjectSettingsNotificationsPanel";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -688,124 +689,6 @@ export default function ProjectSettings() {
     }
   };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'home':
-        return (
-          <div className="space-y-6">
-            <ProjectDetails project={project} onEdit={handleEditDetails} />
-          </div>
-        );
-      
-      case 'itemtypeset':
-        return (
-          <div className="space-y-6">
-            {project.itemTypeSet ? (
-              <ItemTypeSetDetails 
-                itemTypeSet={project.itemTypeSet} 
-                onItemTypeSetChange={handleItemTypeSetChange}
-                isUpdatingItemTypeSet={isUpdatingItemTypeSet}
-                successMessage={successMessage}
-                error={error}
-                projectId={projectId!}
-              />
-            ) : (
-              <div className={layout.block}>
-                <h1 className={layout.title}>ItemTypeSet</h1>
-                <p className={alert.muted}>Nessun ItemTypeSet assegnato a questo progetto.</p>
-              </div>
-            )}
-          </div>
-        );
-      
-      case 'members':
-        return (
-          <div className="space-y-6">
-            <Panel
-              title="Membri del Progetto"
-              description={
-                <>
-                  Gestisci gli utenti che possono accedere a questo progetto e i loro ruoli.
-                  <br />
-                  <em className="text-sm">
-                    Nota: Gli utenti con ruolo Tenant Admin hanno accesso automatico a tutti i progetti.
-                  </em>
-                </>
-              }
-              bodyClassName="space-y-4"
-            >
-              {members.length > 0 ? (
-                <>
-                  <table className={`${table.table} ${utilities.mt4}`}>
-                    <thead>
-                      <tr>
-                        <th>Email</th>
-                        <th>Nome Completo</th>
-                        <th>Ruolo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {members.slice(0, 5).map((member) => (
-                        <tr
-                          key={member.userId}
-                          className={member.isTenantAdmin ? "bg-gray-50" : ""}
-                        >
-                          <td>
-                            {member.username}
-                            {member.isTenantAdmin && (
-                              <span className="ml-2 text-xs text-gray-500">
-                                (Tenant Admin)
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            {member.fullName || (
-                              <span className="italic text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td>
-                            <span
-                              className={`rounded-full px-2 py-1 text-xs font-medium ${
-                                member.roleName === "ADMIN"
-                                  ? "bg-purple-100 text-purple-800"
-                                  : "bg-blue-100 text-blue-800"
-                              }`}
-                            >
-                              {member.roleName === "ADMIN" ? "Admin" : "User"}
-                              {member.isTenantAdmin && " (fisso)"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {members.length > 5 && (
-                    <p className="mt-2 text-sm text-gray-500">
-                      ... e altri {members.length - 5} membri
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p className={`${alert.muted} ${utilities.mt4}`}>
-                  Nessun membro assegnato a questo progetto.
-                </p>
-              )}
-
-              <ProjectMembersPanel
-                projectId={projectId!}
-                token={token}
-                members={members}
-                onMembersUpdate={setMembers}
-              />
-            </Panel>
-          </div>
-        );
-      
-      default:
-        return null;
-    }
-  };
-
   return (
     <PageContainer>
       <PageHeader
@@ -819,8 +702,182 @@ export default function ProjectSettings() {
         onTabChange={setActiveTab}
       />
 
-      <div className={tabContentClass}>{renderTabContent()}</div>
+      <div className={tabContentClass}>
+        {activeTab === "home" && (
+          <ProjectSettingsHomeTab
+            project={project}
+            onEditDetails={handleEditDetails}
+            onConfigureNotifications={() => navigate("notifications")}
+          />
+        )}
+
+        {activeTab === "itemtypeset" && (
+          <ProjectSettingsItemTypeSetTab
+            project={project}
+            onItemTypeSetChange={handleItemTypeSetChange}
+            isUpdatingItemTypeSet={isUpdatingItemTypeSet}
+            successMessage={successMessage}
+            error={error}
+            projectId={projectId ?? ""}
+          />
+        )}
+
+        {activeTab === "members" && (
+          <ProjectSettingsMembersTab
+            members={members}
+            projectId={projectId ?? ""}
+            token={token}
+            onMembersUpdate={setMembers}
+          />
+        )}
+      </div>
     </PageContainer>
+  );
+}
+
+interface ProjectSettingsHomeTabProps {
+  project: ProjectDto;
+  onEditDetails: () => void;
+  onConfigureNotifications?: () => void;
+}
+
+function ProjectSettingsHomeTab({
+  project,
+  onEditDetails,
+  onConfigureNotifications,
+}: ProjectSettingsHomeTabProps) {
+  return (
+    <div className="space-y-6">
+      <ProjectDetails project={project} onEdit={onEditDetails} />
+      <ProjectSettingsNotificationsPanel onConfigure={onConfigureNotifications} />
+    </div>
+  );
+}
+
+interface ProjectSettingsItemTypeSetTabProps {
+  project: ProjectDto;
+  onItemTypeSetChange: (itemTypeSetId: number) => void;
+  isUpdatingItemTypeSet: boolean;
+  successMessage: string | null;
+  error: string | null;
+  projectId: string;
+}
+
+function ProjectSettingsItemTypeSetTab({
+  project,
+  onItemTypeSetChange,
+  isUpdatingItemTypeSet,
+  successMessage,
+  error,
+  projectId,
+}: ProjectSettingsItemTypeSetTabProps) {
+  if (!project.itemTypeSet) {
+    return (
+      <div className={layout.block}>
+        <h1 className={layout.title}>ItemTypeSet</h1>
+        <p className={alert.muted}>Nessun ItemTypeSet assegnato a questo progetto.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <ItemTypeSetDetails
+        itemTypeSet={project.itemTypeSet}
+        onItemTypeSetChange={onItemTypeSetChange}
+        isUpdatingItemTypeSet={isUpdatingItemTypeSet}
+        successMessage={successMessage}
+        error={error}
+        projectId={projectId}
+      />
+    </div>
+  );
+}
+
+interface ProjectSettingsMembersTabProps {
+  members: any[];
+  projectId: string;
+  token: string | null;
+  onMembersUpdate: (members: any[]) => void;
+}
+
+function ProjectSettingsMembersTab({
+  members,
+  projectId,
+  token,
+  onMembersUpdate,
+}: ProjectSettingsMembersTabProps) {
+  return (
+    <div className="space-y-6">
+      <Panel
+        title="Membri del Progetto"
+        description={
+          <>
+            Gestisci gli utenti che possono accedere a questo progetto e i loro ruoli.
+            <br />
+            <em className="text-sm">
+              Nota: Gli utenti con ruolo Tenant Admin hanno accesso automatico a tutti i progetti.
+            </em>
+          </>
+        }
+        bodyClassName="space-y-4"
+      >
+        {members.length > 0 ? (
+          <>
+            <table className={`${table.table} ${utilities.mt4}`}>
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Nome Completo</th>
+                  <th>Ruolo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.slice(0, 5).map((member) => (
+                  <tr key={member.userId} className={member.isTenantAdmin ? "bg-gray-50" : ""}>
+                    <td>
+                      {member.username}
+                      {member.isTenantAdmin && (
+                        <span className="ml-2 text-xs text-gray-500">(Tenant Admin)</span>
+                      )}
+                    </td>
+                    <td>
+                      {member.fullName || <span className="italic text-gray-400">-</span>}
+                    </td>
+                    <td>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${
+                          member.roleName === "ADMIN"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {member.roleName === "ADMIN" ? "Admin" : "User"}
+                        {member.isTenantAdmin && " (fisso)"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {members.length > 5 && (
+              <p className="mt-2 text-sm text-gray-500">... e altri {members.length - 5} membri</p>
+            )}
+          </>
+        ) : (
+          <p className={`${alert.muted} ${utilities.mt4}`}>
+            Nessun membro assegnato a questo progetto.
+          </p>
+        )}
+
+        <ProjectMembersPanel
+          projectId={projectId}
+          token={token}
+          members={members}
+          onMembersUpdate={onMembersUpdate}
+        />
+      </Panel>
+    </div>
   );
 }
 
