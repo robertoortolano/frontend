@@ -304,3 +304,4 @@ export const ImpactPermissionTable: React.FC<ImpactPermissionTableProps> = ({
   );
 };
 
+
