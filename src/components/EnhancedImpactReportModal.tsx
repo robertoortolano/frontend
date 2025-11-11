@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import form from '../styles/common/Forms.module.css';
 import api from '../api/api';
 import { exportImpactReportToCSV, PermissionData } from '../utils/csvExportUtils';

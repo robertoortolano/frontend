@@ -1,9 +1,13 @@
 import React from 'react';
 import buttons from '../styles/common/Buttons.module.css';
-import layout from '../styles/common/Layout.module.css';
-import form from '../styles/common/Forms.module.css';
 import { ImpactPermissionRow, ProjectAssignmentInfo } from '../types/impact-permission.types';
 import { ImpactPermissionSelection } from '../hooks/useImpactPermissionSelection';
+import {
+  ACTION_BADGE_LABELS,
+  IMPACT_PERMISSION_TABLE_COLUMNS,
+  buildActionBadgeStyle,
+  buildRowBackgroundColor
+} from './enhancedImpact/impactPermissionTableConfig';
 
 interface ImpactPermissionTableProps {
   permissions: ImpactPermissionRow[];
@@ -34,9 +38,11 @@ export const ImpactPermissionTable: React.FC<ImpactPermissionTableProps> = ({
   };
 
   const renderActionCell = (permission: ImpactPermissionRow) => {
-    const isSelected = selection.isSelected(permission.id);
-    const canToggle = selection.canToggle(permission.id);
-
+    const { isSelected, canToggle, style } = buildActionBadgeStyle({
+      selection,
+      permission,
+      loading
+    });
     return (
       <span
         onClick={() => {
@@ -44,19 +50,7 @@ export const ImpactPermissionTable: React.FC<ImpactPermissionTableProps> = ({
             handleToggle(permission);
           }
         }}
-        style={{
-          padding: '0.25rem 0.5rem',
-          borderRadius: '0.25rem',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          backgroundColor: isSelected && canToggle ? '#d1fae5' : '#fee2e2',
-          color: isSelected && canToggle ? '#059669' : '#dc2626',
-          cursor: !canToggle || loading ? 'not-allowed' : 'pointer',
-          display: 'inline-block',
-          userSelect: 'none',
-          transition: 'opacity 0.2s',
-          opacity: !canToggle || loading ? 0.7 : 1
-        }}
+        style={style}
         onMouseEnter={(e) => {
           if (canToggle && !loading) {
             e.currentTarget.style.opacity = '0.8';
@@ -68,7 +62,7 @@ export const ImpactPermissionTable: React.FC<ImpactPermissionTableProps> = ({
           }
         }}
       >
-        {isSelected && canToggle ? '✓ Preserva' : '✗ Rimuovi'}
+        {isSelected && canToggle ? ACTION_BADGE_LABELS.preserve : ACTION_BADGE_LABELS.remove}
       </span>
     );
   };
@@ -234,66 +228,87 @@ export const ImpactPermissionTable: React.FC<ImpactPermissionTableProps> = ({
         >
           <thead>
             <tr style={{ backgroundColor: '#f0fdf4', color: '#1f2937' }}>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '2px solid #10b981', width: '120px' }}>
-                Azione
-              </th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '2px solid #10b981' }}>
-                Permission
-              </th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '2px solid #10b981' }}>
-                ItemTypeSet
-              </th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '2px solid #10b981' }}>
-                Match nel nuovo stato
-              </th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '2px solid #10b981' }}>
-                Grant Globali
-              </th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '2px solid #10b981' }}>
-                Grant di Progetto
-              </th>
+              {IMPACT_PERMISSION_TABLE_COLUMNS.map((column) => (
+                <th
+                  key={column.key}
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'left',
+                    fontWeight: 600,
+                    borderBottom: '2px solid #10b981',
+                    width: column.width
+                  }}
+                >
+                  {column.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {permissions.map((permission, index) => {
-              const isSelected = selection.isSelected(permission.id);
+              const backgroundColor = buildRowBackgroundColor(selection, permission, index);
               return (
                 <tr
                   key={permission.key}
                   style={{
                     borderBottom: '1px solid #d1fae5',
-                    backgroundColor: isSelected && permission.canPreserve
-                      ? '#dcfce7'
-                      : index % 2 === 0
-                        ? '#ffffff'
-                        : '#f0fdf4',
+                    backgroundColor,
                     opacity: permission.canPreserve ? 1 : 0.7
                   }}
                 >
-                  <td style={{ padding: '10px 12px' }}>
-                    {renderActionCell(permission)}
-                  </td>
-                  <td style={{ padding: '10px 12px', fontWeight: 500, color: '#1f2937' }}>
-                    {permission.label}
-                  </td>
-                  <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                    {permission.itemTypeSetName || 'N/A'}
-                  </td>
-                  <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                    {permission.canPreserve && permission.matchLabel ? (
-                      <span style={{ color: '#059669', fontSize: '0.875rem' }}>
-                        {permission.matchLabel}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>✗ Rimosso</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                    {renderGlobalAssignments(permission)}
-                  </td>
-                  <td style={{ padding: '10px 12px', color: '#4b5563' }}>
-                    {renderProjectAssignments(permission)}
-                  </td>
+                  {IMPACT_PERMISSION_TABLE_COLUMNS.map((column) => {
+                    const baseCellStyle = { padding: '10px 12px', color: '#4b5563' };
+
+                    switch (column.key) {
+                      case 'action':
+                        return (
+                          <td key={`${permission.key}-${column.key}`} style={{ padding: '10px 12px' }}>
+                            {renderActionCell(permission)}
+                          </td>
+                        );
+                      case 'permission':
+                        return (
+                          <td
+                            key={`${permission.key}-${column.key}`}
+                            style={{ ...baseCellStyle, fontWeight: 500, color: '#1f2937' }}
+                          >
+                            {permission.label}
+                          </td>
+                        );
+                      case 'itemTypeSet':
+                        return (
+                          <td key={`${permission.key}-${column.key}`} style={baseCellStyle}>
+                            {permission.itemTypeSetName || 'N/A'}
+                          </td>
+                        );
+                      case 'match':
+                        return (
+                          <td key={`${permission.key}-${column.key}`} style={baseCellStyle}>
+                            {permission.canPreserve && permission.matchLabel ? (
+                              <span style={{ color: '#059669', fontSize: '0.875rem' }}>
+                                {permission.matchLabel}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>✗ Rimosso</span>
+                            )}
+                          </td>
+                        );
+                      case 'globalGrants':
+                        return (
+                          <td key={`${permission.key}-${column.key}`} style={baseCellStyle}>
+                            {renderGlobalAssignments(permission)}
+                          </td>
+                        );
+                      case 'projectGrants':
+                        return (
+                          <td key={`${permission.key}-${column.key}`} style={baseCellStyle}>
+                            {renderProjectAssignments(permission)}
+                          </td>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
                 </tr>
               );
             })}
