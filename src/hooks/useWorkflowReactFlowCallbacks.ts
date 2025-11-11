@@ -264,6 +264,13 @@ export function useWorkflowReactFlowCallbacks({
             target: newConnection.target,
             sourceHandle: newSourceHandle || undefined,
             targetHandle: newTargetHandle || undefined,
+            data: {
+              ...e.data,
+              sourceStatusId: newSourceStatusId,
+              targetStatusId: newTargetStatusId,
+              sourcePosition: newSourceHandle,
+              targetPosition: newTargetHandle,
+            },
           }
         : e
     ));

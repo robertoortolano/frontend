@@ -5,12 +5,13 @@
  * during the refactoring process
  */
 
-import { 
-  WorkflowNodeData, 
-  WorkflowEdgeData, 
-  ReactFlowNode, 
+import { MarkerType } from 'reactflow';
+import {
+  WorkflowNodeData,
+  WorkflowEdgeData,
+  ReactFlowNode,
   ReactFlowEdge,
-  WorkflowState 
+  WorkflowState
 } from '../types/workflow-unified.types';
 import { 
   WorkflowViewDto, 
@@ -177,7 +178,7 @@ export function convertToReactFlowEdge(
       strokeWidth: 2,
     },
     markerEnd: {
-      type: 'arrowclosed',
+      type: MarkerType.ArrowClosed,
       color: '#2196f3',
     },
   };

@@ -11,6 +11,7 @@ interface GrantDetailsState {
   projectName: string;
   roleId: number;
   details: any;
+  permissionLabel?: string;
 }
 
 interface RolesDetailsState {
@@ -105,7 +106,8 @@ export function EnhancedImpactReportModal<I>({
         projectId: 0,
         projectName: 'Globale',
         roleId: permission.global.grant.permissionId,
-        details: assignment.grant || {}
+        details: assignment.grant || {},
+        permissionLabel: permission.label
       });
     } catch (error) {
       console.error('Errore nel recupero dei dettagli della grant globale:', error);
@@ -135,7 +137,8 @@ export function EnhancedImpactReportModal<I>({
         projectId: project.grant.projectId ?? 0,
         projectName: project.projectName ?? 'Progetto',
         roleId: project.grant.permissionId,
-        details: assignment.grant || {}
+        details: assignment.grant || {},
+        permissionLabel: permission.label
       });
     } catch (error) {
       console.error('Errore nel recupero dei dettagli della grant di progetto:', error);
@@ -416,7 +419,10 @@ export function EnhancedImpactReportModal<I>({
             }}
           >
             <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>
-              Dettagli Grant - {selectedGrantDetails.projectName}
+              Dettagli Grant -{' '}
+              {selectedGrantDetails.permissionLabel
+                ? `${selectedGrantDetails.permissionLabel} (${selectedGrantDetails.projectName})`
+                : selectedGrantDetails.projectName}
             </h2>
 
             {loadingGrantDetails ? (

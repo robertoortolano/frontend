@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusRemovalImpactDto } from '../types/status-impact.types';
-import { GenericImpactReportModal, ImpactReportData, ImpactReportTableColumn } from './GenericImpactReportModal';
+import { GenericImpactReportModal, ImpactReportData } from './GenericImpactReportModal';
 import form from '../styles/common/Forms.module.css';
 import { buildGlobalAssignmentsLabel, buildProjectAssignmentsLabel } from '../utils/assignmentDisplayUtils';
 
@@ -55,26 +55,6 @@ export const StatusImpactReportModal: React.FC<StatusImpactReportModalProps> = (
       populated: perm.hasAssignments ? 'Sì' : 'No'
     }));
 
-  const allPermissions = [
-    ...(impact.statusOwnerPermissions || []).filter(p => p.hasAssignments),
-    ...(impact.executorPermissions || []).filter(p => p.hasAssignments)
-  ].map(perm => ({
-    permissionId: perm.permissionId,
-    permissionType: perm.permissionType || 'N/A',
-    itemTypeSetName: perm.itemTypeSetName || 'N/A',
-    fieldName: '',
-    statusName: perm.statusName || perm.workflowStatusName || null,
-    fromStatusName: perm.fromStatusName || null,
-    toStatusName: perm.toStatusName || null,
-    transitionName: perm.transitionName || null,
-    assignedRoles: perm.assignedRoles || [],
-    grantId: perm.grantId,
-    roleId: perm.roleId,
-    projectGrants: perm.projectGrants,
-    projectAssignedRoles: perm.projectAssignedRoles,
-    canBePreserved: perm.canBePreserved
-  }));
-
   const data: ImpactReportData = {
     title: '📊 Report Impatto Rimozione Status',
     summaryItems: [
@@ -118,7 +98,7 @@ export const StatusImpactReportModal: React.FC<StatusImpactReportModalProps> = (
           { 
             header: 'Popolata', 
             key: 'populated',
-            render: (value) => (
+            render: (value: string) => (
               <span className={value === 'Sì' ? form.badgeWarning : form.badgeInfo}>
                 {value}
               </span>

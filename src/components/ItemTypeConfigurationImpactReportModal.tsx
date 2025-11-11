@@ -1,7 +1,6 @@
 import React from 'react';
 import { ItemTypeConfigurationRemovalImpactDto } from '../types/itemtypeconfiguration-impact.types';
 import { GenericImpactReportModal, ImpactReportData } from './GenericImpactReportModal';
-import form from '../styles/common/Forms.module.css';
 import { buildGlobalAssignmentsLabel, buildProjectAssignmentsLabel } from '../utils/assignmentDisplayUtils';
 
 interface ItemTypeConfigurationImpactReportModalProps {
@@ -42,17 +41,17 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
           { 
             header: 'ItemTypeSet', 
             key: 'itemTypeSetName',
-            render: (value) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
+            render: (value: string) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
           },
           { 
             header: 'ItemType', 
             key: 'itemTypeName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           { 
             header: 'Field', 
             key: 'fieldConfigurationName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           {
             header: 'Grant Globali',
@@ -90,17 +89,17 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
           { 
             header: 'ItemTypeSet', 
             key: 'itemTypeSetName',
-            render: (value) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
+            render: (value: string) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
           },
           { 
             header: 'ItemType', 
             key: 'itemTypeName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           { 
             header: 'Status', 
             key: 'workflowStatusName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           {
             header: 'Grant Globali',
@@ -138,17 +137,17 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
           { 
             header: 'ItemTypeSet', 
             key: 'itemTypeSetName',
-            render: (value) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
+            render: (value: string) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
           },
           { 
             header: 'ItemType', 
             key: 'itemTypeName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           { 
             header: 'Tipo', 
             key: 'permissionType',
-            render: (value) => (
+            render: (value: string) => (
               <span style={{ 
                 display: 'inline-block',
                 padding: '2px 6px',
@@ -164,12 +163,12 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
           { 
             header: 'Field', 
             key: 'fieldConfigurationName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           { 
             header: 'Status', 
             key: 'workflowStatusName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           {
             header: 'Grant Globali',
@@ -209,27 +208,27 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
           { 
             header: 'ItemTypeSet', 
             key: 'itemTypeSetName',
-            render: (value) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
+            render: (value: string) => <span style={{ whiteSpace: 'nowrap' }}>{value}</span>
           },
           { 
             header: 'ItemType', 
             key: 'itemTypeName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           { 
             header: 'Transition', 
             key: 'transitionName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
-          { 
-            header: 'Da Status', 
+          {
+            header: 'Da Status',
             key: 'fromStatusName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
-          { 
-            header: 'A Status', 
+          {
+            header: 'A Status',
             key: 'toStatusName',
-            render: (value) => value || '—'
+            render: (value: string | null | undefined) => value || '—'
           },
           {
             header: 'Grant Globali',
@@ -273,7 +272,7 @@ export const ItemTypeConfigurationImpactReportModal: React.FC<ItemTypeConfigurat
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={onConfirm}
-      onExport={onExport}
+      onExport={onExport ?? (() => {})}
       data={data}
       loading={loading}
     />

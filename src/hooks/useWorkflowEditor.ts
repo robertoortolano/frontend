@@ -10,6 +10,8 @@ import { useNodesState, useEdgesState } from 'reactflow';
 import {
   WorkflowState,
   UseWorkflowEditorReturn,
+  ReactFlowNode,
+  ReactFlowEdge,
 } from '../types/workflow-unified.types';
 import { useWorkflowDataLoader } from './useWorkflowDataLoader';
 import { useWorkflowReactFlowCallbacks } from './useWorkflowReactFlowCallbacks';
@@ -80,26 +82,9 @@ export function useWorkflowEditor({
     reject: (error: any) => void;
   } | null>(null);
 
-  const {
-    impactReport,
-    enhancedImpactDto,
-    setImpactReport,
-    setEnhancedImpactDto,
-    analyzeImpact,
-    saveWorkflow,
-  } = useWorkflowImpactManager({
-    state,
-    setState,
-    mode,
-    scope,
-    projectId,
-    onSave,
-    saveWorkflowResolverRef,
-  });
-
   // React Flow state
-  const [reactFlowNodes, setReactFlowNodes, onNodesChange] = useNodesState([]);
-  const [reactFlowEdges, setReactFlowEdges, onEdgesChange] = useEdgesState([]);
+  const [reactFlowNodes, setReactFlowNodes, onNodesChange] = useNodesState<ReactFlowNode>([]);
+  const [reactFlowEdges, setReactFlowEdges, onEdgesChange] = useEdgesState<ReactFlowEdge>([]);
 
   const {
     handleCategoryChange,

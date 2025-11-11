@@ -212,7 +212,7 @@ export const ImpactPermissionTable: React.FC<ImpactPermissionTableProps> = ({
           type="button"
           className={`${buttons.button} ${buttons.buttonDanger}`}
           onClick={selection.removeAll}
-          disabled={loading}
+          disabled={loading || permissions.every((permission) => !permission.canPreserve)}
         >
           🗑️ Rimuovi Tutto
         </button>

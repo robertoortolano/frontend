@@ -1,7 +1,7 @@
 import { HTMLAttributes, ReactNode } from "react";
 import layout from "../../../styles/common/Layout.module.css";
 
-interface PanelProps extends HTMLAttributes<HTMLDivElement> {
+interface PanelProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   title?: ReactNode;
   description?: ReactNode;
   footer?: ReactNode;

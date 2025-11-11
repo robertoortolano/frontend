@@ -33,14 +33,13 @@ const PROJECT_ROLES = [
   { value: "USER", label: "User", description: "Accesso standard al progetto" }
 ];
 
-export default function ProjectMembersPanel({ 
-  projectId, 
-  token, 
-  members, 
-  onMembersUpdate 
+export default function ProjectMembersPanel({
+  projectId,
+  token,
+  members,
+  onMembersUpdate
 }: ProjectMembersPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
@@ -99,7 +98,6 @@ export default function ProjectMembersPanel({
 
   const fetchMembers = async () => {
     try {
-      setLoading(true);
       setError(null);
       const response = await api.get(`/projects/${projectId}/members`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -109,7 +107,7 @@ export default function ProjectMembersPanel({
       console.error("Errore nel caricamento membri:", err);
       setError(err.response?.data?.message || "Errore nel caricamento dei membri del progetto");
     } finally {
-      setLoading(false);
+      // no state to update
     }
   };
 

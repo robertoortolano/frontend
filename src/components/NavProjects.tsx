@@ -1,8 +1,6 @@
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useFavorites } from "../context/FavoritesContext";
-import { useEffect, useState } from "react";
-import api from "../api/api";
 import "./Nav.css";
 
 export default function NavProjects() {
@@ -10,7 +8,6 @@ export default function NavProjects() {
   const location = useLocation();
   const auth = useAuth() as any;
   const logout = auth?.logout;
-  const token = auth?.token;
   const username = localStorage.getItem("username");
   const { projectId } = useParams<{ projectId?: string }>();
   const { favoriteProjects } = useFavorites();

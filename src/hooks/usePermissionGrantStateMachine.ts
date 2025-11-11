@@ -16,10 +16,12 @@ import {
   fetchProjectGrantDetails,
   fetchProjectRoles,
 } from './permissionGrantStateMachine/loaders';
-import { permissionGrantReducer } from './permissionGrantStateMachine/reducer';
+import {
+  permissionGrantReducer,
+  createPermissionGrantReducerState,
+} from './permissionGrantStateMachine/reducer';
 import { PermissionGrantActionType } from './permissionGrantStateMachine/actions';
 import {
-  createPermissionGrantReducerState,
   GrantCollectionKey,
   GrantCollections,
   PermissionGrantMetadata,
@@ -29,16 +31,54 @@ import {
 
 const permissionTypeMap: Record<string, string> = {
   Workers: 'WorkerPermission',
+  WORKERS: 'WorkerPermission',
   Creators: 'CreatorPermission',
+  CREATORS: 'CreatorPermission',
   'Status Owners': 'StatusOwnerPermission',
+  STATUS_OWNERS: 'StatusOwnerPermission',
   Executors: 'ExecutorPermission',
+  EXECUTORS: 'ExecutorPermission',
   'Field Owners': 'FieldOwnerPermission',
+  FIELD_OWNERS: 'FieldOwnerPermission',
   Editors: 'FieldStatusPermission',
+  EDITORS: 'FieldStatusPermission',
   Viewers: 'FieldStatusPermission',
+  VIEWERS: 'FieldStatusPermission',
+  'Field Viewers': 'FieldStatusPermission',
+  FIELD_VIEWERS: 'FieldStatusPermission',
+  'Field Editors': 'FieldStatusPermission',
+  FIELD_EDITORS: 'FieldStatusPermission',
 };
 
-export const getPermissionType = (permissionName: string): string =>
-  permissionTypeMap[permissionName] || permissionName?.toUpperCase();
+export const getPermissionType = (permissionName: string): string => {
+  if (!permissionName) {
+    return '';
+  }
+
+  const trimmed = permissionName.trim();
+
+  if (/Permission$/i.test(trimmed)) {
+    // Already a canonical permission entity name (respect original casing).
+    return trimmed;
+  }
+
+  const direct = permissionTypeMap[trimmed];
+  if (direct) {
+    return direct;
+  }
+
+  const upper = trimmed.toUpperCase();
+  if (permissionTypeMap[upper]) {
+    return permissionTypeMap[upper];
+  }
+
+  const normalizedKey = upper.replace(/[^A-Z0-9]+/g, '_');
+  if (permissionTypeMap[normalizedKey]) {
+    return permissionTypeMap[normalizedKey];
+  }
+
+  return trimmed;
+};
 
 interface UsePermissionGrantStateMachineParams {
   permission: Permission | null;
@@ -158,7 +198,9 @@ export function usePermissionGrantStateMachine({
         setAvailableGroups(groups);
 
         const permissionId = typeof permission.id === 'number' ? permission.id : null;
-        const permissionType = getPermissionType(permission.name);
+        const rawPermissionType =
+          (permission as any)?.permissionType || (permission as any)?.permission_type || permission.name;
+        const permissionType = getPermissionType(rawPermissionType);
 
         if (!permissionId || !permissionType) {
           resetState();
@@ -279,7 +321,9 @@ export function usePermissionGrantStateMachine({
         return false;
       }
 
-      const permissionType = getPermissionType(permission.name);
+      const rawPermissionType =
+        (permission as any)?.permissionType || (permission as any)?.permission_type || permission.name;
+      const permissionType = getPermissionType(rawPermissionType);
 
       if (!permissionType) {
         setError(`Tipo di permission non riconosciuto: ${permission.name}`);

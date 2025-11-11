@@ -7,15 +7,15 @@
 
 import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import type { NodeProps } from 'reactflow';
 import ReactFlow, {
-  Background,
   Controls,
   MiniMap,
   ReactFlowProvider,
-  MarkerType,
   NodeTypes,
   EdgeTypes,
   Connection,
+  MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -24,15 +24,16 @@ import { WorkflowEditorControls } from './components/WorkflowEditorControls';
 import { WorkflowImpactManager } from './components/WorkflowImpactManager';
 import CustomNode from './components/CustomNode';
 import SelectableEdge from './components/SelectableEdge';
+import type {
+  WorkflowReactFlowNodeData,
+  WorkflowReactFlowEdgeData,
+  ReactFlowEdge
+} from '../../types/workflow-unified.types';
 
 import board from '../../styles/common/WorkflowBoard.module.css';
 
 // Memoized node and edge types to prevent React Flow warnings
 // Defined outside component to prevent recreation on every render
-const nodeTypes: NodeTypes = {
-  customNode: CustomNode,
-};
-
 // Create SelectableEdge wrapper with necessary props
 function createSelectableEdgeWrapper(
   onDelete: (edgeId: string) => void,
@@ -61,7 +62,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
   const workflowId = id ? Number(id) : undefined;
 
   // All hooks must be called at the top level, before any conditional returns
-  const [localEdges, setLocalEdges] = useState<any[]>([]);
+  const [localEdges, setLocalEdges] = useState<ReactFlowEdge[]>([]);
   
   // Track which edges were just updated via onEdgeUpdate to prevent onEdgesChange from reverting them
   const recentlyUpdatedEdgesRef = useRef<Set<string>>(new Set());
@@ -87,7 +88,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     },
   });
 
-  const { state, actions, reactFlowNodes, reactFlowEdges, onEdgesChange, onNodesChange, loading, error, enhancedImpactDto } = workflowEditor;
+  const { state, actions, reactFlowNodes, reactFlowEdges, onEdgesChange, onNodesChange, loading, error } = workflowEditor;
 
   // Keep localEdges in sync with reactFlowEdges for SelectableEdge component
   // Preserve labels from localEdges when syncing to avoid losing unsaved changes
@@ -119,6 +120,15 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
   // Memoize callbacks per evitare che cambino ad ogni render e causino warning React Flow
   // Estrai actions una volta per evitare dipendenze instabili
   const { removeEdge, updateEdge } = actions;
+
+  const nodeTypes: NodeTypes = useMemo(
+    () => ({
+      customNode: (props: NodeProps<WorkflowReactFlowNodeData>) => (
+        <CustomNode {...props} statusCategories={workflowEditor.statusCategories} />
+      )
+    }),
+    [workflowEditor.statusCategories]
+  );
   
   const handleDeleteEdge = useCallback((edgeId: string) => {
     // Call the remove edge action from the hook
@@ -167,13 +177,25 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
       return;
     }
 
-    // Generate tempId that will match the one created by addEdge
-    // Note: addEdge uses Date.now(), so we'll generate a matching one
     const tempId = `temp-${Date.now()}`;
-    
-    // CRITICAL: Add edge to localEdges FIRST before adding to unified state
-    // This ensures React Flow sees the new edge immediately and doesn't lose the connection
-    const newLocalEdge = {
+
+    const newEdgeData: WorkflowReactFlowEdgeData = {
+      edgeId: null,
+      transitionId: null,
+      transitionTempId: tempId,
+      sourceStatusId: Number(params.source),
+      targetStatusId: Number(params.target),
+      sourcePosition: params.sourceHandle ?? null,
+      targetPosition: params.targetHandle ?? null,
+      transitionName: '',
+      isNew: true,
+      isTransitionNew: true,
+      label: '',
+      onDelete: () => handleDeleteEdge(tempId),
+      onUpdateLabel: (label: string) => handleUpdateLabel(tempId, label),
+    };
+
+    const newLocalEdge: ReactFlowEdge = {
       id: tempId,
       type: 'selectableEdge',
       source: params.source!,
@@ -181,19 +203,13 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
       sourceHandle: params.sourceHandle || undefined,
       targetHandle: params.targetHandle || undefined,
       updatable: true,
-      data: {
-        transitionId: null,
-        transitionTempId: tempId,
-        label: '',
-        onDelete: () => handleDeleteEdge(tempId),
-        onUpdateLabel: (label: string) => handleUpdateLabel(tempId, label),
-      },
+      data: newEdgeData,
       style: {
         stroke: '#2196f3',
         strokeWidth: 2,
       },
       markerEnd: {
-        type: 'arrowclosed',
+        type: MarkerType.ArrowClosed,
         color: '#2196f3',
       },
     };
@@ -221,7 +237,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     
     // CRITICAL: Update localEdges FIRST before updating the unified state
     // This ensures React Flow sees the updated edge immediately and doesn't revert it
-    setLocalEdges(prev => prev.map(e => 
+    setLocalEdges(prev => prev.map(e =>
       e.id === oldEdge.id
         ? {
             ...e,
@@ -229,6 +245,13 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
             target: newConnection.target!,
             sourceHandle: newConnection.sourceHandle || undefined,
             targetHandle: newConnection.targetHandle || undefined,
+            data: {
+              ...e.data,
+              sourceStatusId: Number(newConnection.source),
+              targetStatusId: Number(newConnection.target),
+              sourcePosition: newConnection.sourceHandle ?? null,
+              targetPosition: newConnection.targetHandle ?? null,
+            }
           }
         : e
     ));
@@ -327,10 +350,8 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     <div className={board.wrapper}>
       {/* Controls */}
       <WorkflowEditorControls
-        mode={mode}
         workflowEditor={workflowEditor}
         availableStatuses={workflowEditor.availableStatuses}
-        statusCategories={workflowEditor.statusCategories}
         onAddNode={handleAddNode}
         scope={finalScope}
         projectId={finalProjectId}

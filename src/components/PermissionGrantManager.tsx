@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { CSSProperties, MouseEvent } from 'react';
 import { Save, X } from 'lucide-react';
 
 import UserAutocomplete, { UserOption } from './UserAutocomplete';
 import PermissionHeader from './permissions/PermissionHeader';
 import RoleAssignmentSection from './permissions/RoleAssignmentSection';
-import GrantFiltersSection, { GrantViewFilters } from './permissions/grants/GrantFiltersSection';
 import GrantAssignmentsTable from './permissions/grants/GrantAssignmentsTable';
 import GrantDetailsModal from './permissions/grants/GrantDetailsModal';
 
@@ -22,7 +21,7 @@ import type {
   Group,
 } from './permissions/grants/permissionGrantTypes';
 
-type DetailType = 'roles' | 'globalGrant' | 'projectGrant';
+type DetailType = 'roles' | 'globalRoles' | 'projectRoles' | 'globalGrant' | 'projectGrant';
 
 interface PermissionGrantManagerProps {
   permission: Permission | null;
@@ -232,20 +231,7 @@ export default function PermissionGrantManager({
     itemTypeSetId,
   });
 
-  const [filters, setFilters] = useState<GrantViewFilters>({
-    showRoleAssignments: true,
-    showDirectGrant: true,
-    showProjectGrant: scope === 'project',
-  });
-
   const [detailModalData, setDetailModalData] = useState<DetailModalState | null>(null);
-
-  useEffect(() => {
-    setFilters((current) => ({
-      ...current,
-      showProjectGrant: scope === 'project' ? current.showProjectGrant : false,
-    }));
-  }, [scope]);
 
   if (!permission) {
     return null;
@@ -264,11 +250,29 @@ export default function PermissionGrantManager({
   };
 
   const handleShowDetails = (type: DetailType) => {
+    if (type === 'projectRoles') {
+      setDetailModalData({
+        title: 'Ruoli di Progetto',
+        roles: selectedRoles,
+        emptyMessage: 'Nessun ruolo di progetto assegnato a questa permission.',
+      });
+      return;
+    }
+
     if (type === 'roles') {
       setDetailModalData({
-        title: scope === 'project' ? 'Ruoli di Progetto' : 'Ruoli Globali',
+        title: 'Ruoli Globali',
         roles: selectedRoles,
         emptyMessage: 'Nessun ruolo assegnato a questa permission.',
+      });
+      return;
+    }
+
+    if (type === 'globalRoles') {
+      setDetailModalData({
+        title: 'Ruoli Globali',
+        roles: permission.assignedRoles || [],
+        emptyMessage: 'Nessun ruolo globale associato alla permission.',
       });
       return;
     }
@@ -297,9 +301,9 @@ export default function PermissionGrantManager({
 
   const handleCloseModal = () => setDetailModalData(null);
 
-  const showRoleSection = filters.showRoleAssignments;
-  const showGlobalGrantSection = scope !== 'project' && filters.showDirectGrant;
-  const showProjectGrantSection = scope === 'project' && filters.showProjectGrant;
+  const showRoleSection = true;
+  const showGlobalGrantSection = scope !== 'project';
+  const showProjectGrantSection = scope === 'project';
 
   return (
     <div className="w-full">
@@ -326,12 +330,9 @@ export default function PermissionGrantManager({
         </div>
       )}
 
-      <GrantFiltersSection scope={scope} filters={filters} onChange={setFilters} />
-
       <GrantAssignmentsTable
         scope={scope}
         permission={permission}
-        filters={filters}
         roles={selectedRoles}
         globalGrant={grant}
         projectGrant={projectGrant}

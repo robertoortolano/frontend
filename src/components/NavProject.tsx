@@ -1,8 +1,5 @@
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useFavorites } from "../context/FavoritesContext";
-import { Star } from "lucide-react";
 import "./Nav.css";
 
 export default function NavProject() {
@@ -10,12 +7,8 @@ export default function NavProject() {
   const location = useLocation();
   const auth = useAuth() as any;
   const logout = auth?.logout;
-  const token = auth?.token;
   const username = localStorage.getItem("username");
   const { projectId } = useParams<{ projectId?: string }>();
-  const { favoriteProjects, favoriteIds, toggleFavorite } = useFavorites();
-  
-  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   const pathname = location.pathname;
   const roles = auth?.roles || [];

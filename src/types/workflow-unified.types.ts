@@ -5,6 +5,7 @@
  * between WorkflowNodeDto and WorkflowStatusViewDto
  */
 
+import type { Edge, Node } from 'reactflow';
 import { StatusCategory } from './common.types';
 import { StatusViewDto } from './workflow.types';
 import { StatusRemovalImpactDto } from './status-impact.types';
@@ -162,45 +163,23 @@ export interface WorkflowEditorActions {
   cancelRemoval: () => void;
 }
 
-/**
- * React Flow Node - Enhanced with unified data
- */
-export interface ReactFlowNode {
-  id: string;
-  type: string;
-  position: { x: number; y: number };
-  data: WorkflowNodeData & {
-    // React Flow specific
-    label: string; // IMPORTANT: Displayed in the node
-    category: StatusCategory; // Mapped from statusCategory
-    onCategoryChange: (newCategory: StatusCategory) => void;
-    onRemove: () => void;
-    onSetInitial: () => void;
-    categories: StatusCategory[];
-  };
-  style?: any;
-}
+export type WorkflowReactFlowNodeData = WorkflowNodeData & {
+  label: string;
+  category: StatusCategory;
+  onCategoryChange: (newCategory: StatusCategory) => void;
+  onRemove: () => void;
+  onSetInitial: () => void;
+  categories: StatusCategory[];
+};
 
-/**
- * React Flow Edge - Enhanced with unified data
- */
-export interface ReactFlowEdge {
-  id: string;
-  type?: string; // Edge type (e.g., 'selectableEdge')
-  source: string;
-  target: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-  updatable?: boolean;
-  reconnectable?: boolean | 'source' | 'target'; // Enable reconnecting handles
-  data: WorkflowEdgeData & {
-    // React Flow specific
-    label?: string; // Transition name for display
-    onDelete: () => void;
-  };
-  style?: any;
-  markerEnd?: any;
-}
+export type WorkflowReactFlowEdgeData = WorkflowEdgeData & {
+  label?: string;
+  onDelete: () => void;
+  onUpdateLabel?: (label: string) => void;
+};
+
+export type ReactFlowNode = Node<WorkflowReactFlowNodeData>;
+export type ReactFlowEdge = Edge<WorkflowReactFlowEdgeData>;
 
 /**
  * Workflow Editor Props

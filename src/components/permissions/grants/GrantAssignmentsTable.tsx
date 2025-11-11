@@ -5,7 +5,6 @@ import table from '../../../styles/common/Tables.module.css';
 import utilities from '../../../styles/common/Utilities.module.css';
 
 import type { Permission } from './permissionGrantTypes';
-import type { GrantViewFilters } from './GrantFiltersSection';
 import type { PermissionScope, Role, Group } from './permissionGrantTypes';
 import type { UserOption } from '../../UserAutocomplete';
 
@@ -16,12 +15,11 @@ interface GrantCollections {
   negatedGroups: Group[];
 }
 
-type DetailType = 'roles' | 'globalGrant' | 'projectGrant';
+type DetailType = 'roles' | 'globalRoles' | 'projectRoles' | 'globalGrant' | 'projectGrant';
 
 interface GrantAssignmentsTableProps {
   scope: PermissionScope;
   permission: Permission | null;
-  filters: GrantViewFilters;
   roles: Role[];
   globalGrant: GrantCollections;
   projectGrant: GrantCollections;
@@ -52,7 +50,6 @@ const countEntities = (grant: GrantCollections) =>
 export default function GrantAssignmentsTable({
   scope,
   permission,
-  filters,
   roles,
   globalGrant,
   projectGrant,
@@ -67,35 +64,54 @@ export default function GrantAssignmentsTable({
     count: number;
     configured: boolean;
     isProject?: boolean;
+    readOnly?: boolean;
   }> = [];
 
-  if (filters.showRoleAssignments) {
-    rows.push({
-      key: 'roles',
-      label: scope === 'project' ? 'Ruoli di Progetto' : 'Ruoli Globali',
-      description:
-        scope === 'project'
-          ? 'Role template assegnati specifici per questo progetto.'
-          : 'Role template associati alla permission a livello tenant.',
-      count: roles.length,
-      configured: roles.length > 0 || (permission?.assignedRoles?.length ?? 0) > 0,
-    });
+  const shouldShowRoleRows = true;
+
+  if (shouldShowRoleRows) {
+    if (scope === 'project') {
+      const globalRoleCount = permission?.assignedRoles?.length ?? 0;
+      rows.push({
+        key: 'globalRoles',
+        label: 'Ruoli Globali',
+        description: 'Role template ereditati a livello tenant (sola lettura).',
+        count: globalRoleCount,
+        configured: globalRoleCount > 0,
+        readOnly: true,
+      });
+
+      rows.push({
+        key: 'projectRoles',
+        label: 'Ruoli di Progetto',
+        description: 'Role template assegnati specifici per questo progetto.',
+        count: roles.length,
+        configured: roles.length > 0,
+        isProject: true,
+      });
+    } else {
+      rows.push({
+        key: 'roles',
+        label: 'Ruoli Globali',
+        description: 'Role template associati alla permission a livello tenant.',
+        count: roles.length,
+        configured: roles.length > 0,
+      });
+    }
   }
 
-  if (filters.showDirectGrant) {
-    rows.push({
-      key: 'globalGrant',
-      label: scope === 'project' ? 'Grant Diretto Globale' : 'Grant Diretto',
-      description:
-        scope === 'project'
-          ? 'Dettaglio del grant globale (sola lettura) valido per tutti i progetti.'
-          : 'Utenti e gruppi assegnati direttamente alla permission a livello tenant.',
-      count: countEntities(globalGrant),
-      configured: hasGrantDirect,
-    });
-  }
+  rows.push({
+    key: 'globalGrant',
+    label: scope === 'project' ? 'Grant Diretto Globale' : 'Grant Diretto',
+    description:
+      scope === 'project'
+        ? 'Dettaglio del grant globale (sola lettura) valido per tutti i progetti.'
+        : 'Utenti e gruppi assegnati direttamente alla permission a livello tenant.',
+    count: countEntities(globalGrant),
+    configured: hasGrantDirect,
+  });
 
-  if (scope === 'project' && filters.showProjectGrant) {
+  if (scope === 'project') {
     rows.push({
       key: 'projectGrant',
       label: 'Grant Diretto di Progetto',
@@ -143,7 +159,10 @@ export default function GrantAssignmentsTable({
                   onClick={() => onShowDetails(row.key)}
                   className={buttons.button}
                   style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
-                  disabled={row.count === 0 && row.key !== 'roles'}
+                  disabled={
+                    (row.count === 0 && row.key !== 'roles' && row.key !== 'globalRoles') ||
+                    (row.readOnly && row.count === 0)
+                  }
                 >
                   Dettagli
                 </button>

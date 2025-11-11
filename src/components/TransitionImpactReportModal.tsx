@@ -90,10 +90,10 @@ export const TransitionImpactReportModal: React.FC<TransitionImpactReportModalPr
         title: 'Executor Permissions',
         icon: '⚡',
         columns: [
-          { 
-            header: 'Tipo', 
+          {
+            header: 'Tipo',
             key: 'type',
-            render: (value) => (
+            render: (value: string) => (
               <span className={form.badgePrimary}>
                 {value}
               </span>
@@ -105,10 +105,10 @@ export const TransitionImpactReportModal: React.FC<TransitionImpactReportModalPr
           { header: 'A Status', key: 'toStatus' },
           { header: 'Grant Globali', key: 'globalAssignments' },
           { header: 'Grant di Progetto', key: 'projectAssignments' },
-          { 
-            header: 'Popolata', 
+          {
+            header: 'Popolata',
             key: 'populated',
-            render: (value) => (
+            render: (value: string) => (
               <span className={value === 'Sì' ? form.badgeWarning : form.badgeInfo}>
                 {value}
               </span>

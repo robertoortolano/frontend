@@ -30,6 +30,7 @@ export interface PermissionData {
   permissionType: string;
   itemTypeSetName: string;
   fieldName?: string | null;
+  workflowStatusName?: string | null;
   statusName?: string | null;
   transitionName?: string | null;
   fromStatusName?: string | null;
@@ -51,7 +52,7 @@ export interface ProjectRoleInfo {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId?: number;
+  roleId?: number | null;
 }
 
 export interface ExportCsvParams {
@@ -117,20 +118,35 @@ export const formatTransition = (
 /**
  * Genera una riga CSV base per una permission
  */
-const createBaseRow = (
-  permissionName: string,
-  itemTypeSetName: string,
-  action: string,
-  fieldName: string,
-  statusName: string,
-  transitionName: string,
-  roleName: string,
-  grant: string, // "Global" per grant globale, nome progetto per grant di progetto, "" per nessuna grant
-  userName: string,
-  negatedUserName: string,
-  groupName: string,
-  negatedGroupName: string
-): string => {
+interface CreateBaseRowParams {
+  permissionName: string;
+  itemTypeSetName: string;
+  action: string;
+  fieldName: string;
+  statusName: string;
+  transitionName: string;
+  roleName: string;
+  grant: string;
+  userName: string;
+  negatedUserName: string;
+  groupName: string;
+  negatedGroupName: string;
+}
+
+const createBaseRow = ({
+  permissionName,
+  itemTypeSetName,
+  action,
+  fieldName,
+  statusName,
+  transitionName,
+  roleName,
+  grant,
+  userName,
+  negatedUserName,
+  groupName,
+  negatedGroupName
+}: CreateBaseRowParams): string => {
   return [
     escapeCSV(permissionName),
     itemTypeSetName,
@@ -173,24 +189,33 @@ const processPermissionRows = async (
     transitionName = formatTransition(perm.fromStatusName, perm.toStatusName, perm.transitionName);
   }
 
-  // Ruoli globali - sempre esportati con Grant = "Global"
-  if (perm.assignedRoles && perm.assignedRoles.length > 0) {
-    perm.assignedRoles.forEach((roleName: string) => {
-      rows.push(createBaseRow(
+  const pushRow = (overrides: Partial<CreateBaseRowParams> = {}) => {
+    rows.push(
+      createBaseRow({
         permissionName,
         itemTypeSetName,
         action,
         fieldName,
         statusName,
         transitionName,
+        roleName: '',
+        grant: '',
+        userName: '',
+        negatedUserName: '',
+        groupName: '',
+        negatedGroupName: '',
+        ...overrides
+      })
+    );
+  };
+
+  // Ruoli globali - sempre esportati con Grant = "Global"
+  if (perm.assignedRoles && perm.assignedRoles.length > 0) {
+    perm.assignedRoles.forEach((roleName: string) => {
+      pushRow({
         roleName,
-        'Global', // Ruolo globale = Grant = Global
-        '',
-        '',
-        '',
-        '',
-        ''
-      ));
+        grant: 'Global'
+      });
     });
   }
 
@@ -210,60 +235,26 @@ const processPermissionRows = async (
           (!grantDetails.groups || grantDetails.groups.length === 0) &&
           (!grantDetails.negatedUsers || grantDetails.negatedUsers.length === 0) &&
           (!grantDetails.negatedGroups || grantDetails.negatedGroups.length === 0)) {
-        rows.push(createBaseRow(
-          permissionName,
-          itemTypeSetName,
-          action,
-          fieldName,
-          statusName,
-          transitionName,
-          '',
-          'Global',
-          '',
-          '',
-          '',
-          '',
-          ''
-        ));
+        pushRow({ grant: 'Global' });
       } else {
         // Utenti
         if (grantDetails.users && grantDetails.users.length > 0) {
           grantDetails.users.forEach((user: any) => {
             const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-            rows.push(createBaseRow(
-              permissionName,
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              transitionName,
-              '',
-              'Global',
-              userName,
-              '',
-              '',
-              ''
-            ));
+            pushRow({
+              grant: 'Global',
+              userName
+            });
           });
         }
 
         // Gruppi
         if (grantDetails.groups && grantDetails.groups.length > 0) {
           grantDetails.groups.forEach((group: any) => {
-            rows.push(createBaseRow(
-              permissionName,
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              transitionName,
-              '',
-              'Global',
-              '',
-              '',
-              group.name || `Group #${group.id}`,
-              ''
-            ));
+            pushRow({
+              grant: 'Global',
+              groupName: group.name || `Group #${group.id}`
+            });
           });
         }
 
@@ -271,60 +262,26 @@ const processPermissionRows = async (
         if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
           grantDetails.negatedUsers.forEach((user: any) => {
             const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-            rows.push(createBaseRow(
-              permissionName,
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              transitionName,
-              '',
-              'Global',
-              '',
-              userName,
-              '',
-              ''
-            ));
+            pushRow({
+              grant: 'Global',
+              negatedUserName: userName
+            });
           });
         }
 
         // Gruppi negati
         if (grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0) {
           grantDetails.negatedGroups.forEach((group: any) => {
-            rows.push(createBaseRow(
-              permissionName,
-              itemTypeSetName,
-              action,
-              fieldName,
-              statusName,
-              transitionName,
-              '',
-              'Global',
-              '',
-              '',
-              '',
-              group.name || `Group #${group.id}`
-            ));
+            pushRow({
+              grant: 'Global',
+              negatedGroupName: group.name || `Group #${group.id}`
+            });
           });
         }
       }
     } catch (error) {
       // Aggiungi comunque una riga con grant globale ma senza dettagli
-      rows.push(createBaseRow(
-        permissionName,
-        itemTypeSetName,
-        action,
-        fieldName,
-        statusName,
-        transitionName,
-        '',
-        'Global',
-        '',
-        '',
-        '',
-        '',
-        ''
-      ));
+      pushRow({ grant: 'Global' });
     }
   }
 
@@ -334,21 +291,10 @@ const processPermissionRows = async (
       const projectName = escapeCSV(projectRole.projectName);
       if (projectRole.roles && projectRole.roles.length > 0) {
         projectRole.roles.forEach((roleName: string) => {
-          rows.push(createBaseRow(
-            permissionName,
-            itemTypeSetName,
-            action,
-            fieldName,
-            statusName,
-            transitionName,
+          pushRow({
             roleName,
-            projectName, // Nome progetto nella colonna Grant
-            '',
-            '',
-            '',
-            '',
-            ''
-          ));
+            grant: projectName
+          });
         });
       }
     });
@@ -378,59 +324,26 @@ const processPermissionRows = async (
             (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
             (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
             (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
-          rows.push(createBaseRow(
-            permissionName,
-            itemTypeSetName,
-            action,
-            fieldName,
-            statusName,
-            transitionName,
-            '',
-            projectName,
-            '',
-            '',
-            '',
-            ''
-          ));
+          pushRow({ grant: projectName });
         } else {
           // Utenti
           if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
             projectGrantDetails.users.forEach((user: any) => {
               const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-              rows.push(createBaseRow(
-                permissionName,
-                itemTypeSetName,
-                action,
-                fieldName,
-                statusName,
-                transitionName,
-                '',
-                projectName,
-                userName,
-                '',
-                '',
-                ''
-              ));
+              pushRow({
+                grant: projectName,
+                userName
+              });
             });
           }
 
           // Gruppi
           if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
             projectGrantDetails.groups.forEach((group: any) => {
-              rows.push(createBaseRow(
-                permissionName,
-                itemTypeSetName,
-                action,
-                fieldName,
-                statusName,
-                transitionName,
-                '',
-                projectName,
-                '',
-                '',
-                group.name || `Group #${group.id}`,
-                ''
-              ));
+              pushRow({
+                grant: projectName,
+                groupName: group.name || `Group #${group.id}`
+              });
             });
           }
 
@@ -438,59 +351,26 @@ const processPermissionRows = async (
           if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
             projectGrantDetails.negatedUsers.forEach((user: any) => {
               const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-              rows.push(createBaseRow(
-                permissionName,
-                itemTypeSetName,
-                action,
-                fieldName,
-                statusName,
-                transitionName,
-                '',
-                projectName,
-                '',
-                userName,
-                '',
-                ''
-              ));
+              pushRow({
+                grant: projectName,
+                negatedUserName: userName
+              });
             });
           }
 
           // Gruppi negati
           if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
             projectGrantDetails.negatedGroups.forEach((group: any) => {
-              rows.push(createBaseRow(
-                permissionName,
-                itemTypeSetName,
-                action,
-                fieldName,
-                statusName,
-                transitionName,
-                '',
-                projectName,
-                '',
-                '',
-                '',
-                group.name || `Group #${group.id}`
-              ));
+              pushRow({
+                grant: projectName,
+                negatedGroupName: group.name || `Group #${group.id}`
+              });
             });
           }
         }
       } catch (error) {
         // Aggiungi comunque una riga con grant di progetto ma senza dettagli
-        rows.push(createBaseRow(
-          permissionName,
-          itemTypeSetName,
-          action,
-          fieldName,
-          statusName,
-          transitionName,
-          '',
-          escapeCSV(projectGrant.projectName),
-          '',
-          '',
-          '',
-          ''
-        ));
+        pushRow({ grant: escapeCSV(projectGrant.projectName) });
       }
     }
   }
@@ -500,20 +380,7 @@ const processPermissionRows = async (
       !perm.grantId &&
       (!perm.projectGrants || perm.projectGrants.length === 0) &&
       (!perm.projectAssignedRoles || perm.projectAssignedRoles.length === 0)) {
-    rows.push(createBaseRow(
-      permissionName,
-      itemTypeSetName,
-      action,
-      fieldName,
-      statusName,
-      transitionName,
-      '',
-      '',
-      '',
-      '',
-      '',
-      ''
-    ));
+    pushRow();
   }
 };
 

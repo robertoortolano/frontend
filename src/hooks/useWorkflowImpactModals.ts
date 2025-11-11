@@ -7,7 +7,7 @@ import {
   ImpactReportData,
   RemovalOperation,
   ReactFlowNode,
-  ReactFlowEdge,
+  ReactFlowEdge
 } from '../types/workflow-unified.types';
 import { StatusCategory } from '../types/common.types';
 import { StatusRemovalImpactDto } from '../types/status-impact.types';
@@ -66,7 +66,15 @@ export function useWorkflowImpactModals({
 }: UseWorkflowImpactModalsParams): UseWorkflowImpactModalsReturn {
   const [impactReport, setImpactReport] = useState<ImpactReportData | null>(null);
   const [enhancedImpactDto, setEnhancedImpactDto] = useState<StatusRemovalImpactDto | TransitionRemovalImpactDto | null>(null);
-  const saveWorkflowRef = useRef<(skipImpactAnalysis?: boolean) => Promise<void>>();
+  const saveWorkflowRef = useRef<((skipImpactAnalysis?: boolean) => Promise<void>) | null>(null);
+
+  const isNodeOperation = (
+    operation: RemovalOperation
+  ): operation is RemovalOperation & { data: WorkflowNodeData } => operation.type === 'node';
+
+  const isEdgeOperation = (
+    operation: RemovalOperation
+  ): operation is RemovalOperation & { data: WorkflowEdgeData } => operation.type === 'edge';
 
   const registerSaveWorkflow = useCallback((saveWorkflow: (skipImpactAnalysis?: boolean) => Promise<void>) => {
     saveWorkflowRef.current = saveWorkflow;
@@ -84,8 +92,8 @@ export function useWorkflowImpactModals({
     try {
       const currentState = tempState || state;
 
-      const hasNodeRemovals = operations.some(op => op.type === 'node');
-      const hasEdgeRemovals = operations.some(op => op.type === 'edge');
+      const hasNodeRemovals = operations.some(isNodeOperation);
+      const hasEdgeRemovals = operations.some(isEdgeOperation);
 
       let impactType: 'status' | 'transition' | 'fieldset' = 'status';
       if (hasNodeRemovals) impactType = 'status';
@@ -106,7 +114,7 @@ export function useWorkflowImpactModals({
       } else {
         endpoint = `${baseEndpoint}/analyze-transition-removal-impact`;
         const transitionIds = operations
-          .filter(op => op.type === 'edge')
+          .filter(isEdgeOperation)
           .map(op => op.data)
           .filter(edge => edge.transitionId !== null && edge.transitionId !== undefined)
           .map(edge => Number(edge.transitionId));
@@ -431,16 +439,18 @@ export function useWorkflowImpactModals({
         return;
       }
 
-      const hasNodeRemovals = operations.some(op => op.type === 'node');
-      const hasEdgeRemovals = operations.some(op => op.type === 'edge');
+      const nodeRemovalOperations = operations.filter(isNodeOperation);
+      const edgeRemovalOperations = operations.filter(isEdgeOperation);
+      const hasNodeRemovals = nodeRemovalOperations.length > 0;
+      const hasEdgeRemovals = edgeRemovalOperations.length > 0;
 
       setState(prev => ({
         ...prev,
         nodes: prev.nodes.filter(node =>
-          !operations.some(op => op.type === 'node' && op.data.statusId === node.statusId)
+          !nodeRemovalOperations.some(op => op.data.statusId === node.statusId)
         ),
         edges: prev.edges.filter(edge =>
-          !operations.some(op => op.type === 'edge' && op.data === edge)
+          !edgeRemovalOperations.some(op => op.data === edge)
         ),
         ui: {
           ...prev.ui,
@@ -456,10 +466,10 @@ export function useWorkflowImpactModals({
       }));
 
       const remainingNodes = state.nodes.filter(node =>
-        !operations.some(op => op.type === 'node' && op.data.statusId === node.statusId)
+        !nodeRemovalOperations.some(op => op.data.statusId === node.statusId)
       );
       const remainingEdges = state.edges.filter(edge =>
-        !operations.some(op => op.type === 'edge' && op.data === edge)
+        !edgeRemovalOperations.some(op => op.data === edge)
       );
       updateReactFlow(remainingNodes, remainingEdges);
     } catch (err: any) {

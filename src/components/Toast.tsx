@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import alert from '../styles/common/Alerts.module.css';
 
 interface ToastProps {
   message: string;
