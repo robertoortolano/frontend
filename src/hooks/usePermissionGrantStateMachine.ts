@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, Dispatch, SetStateAction } from 'react';
+import { useEffect, useCallback, useMemo, useReducer } from 'react';
 
 import api from '../api/api';
-import groupService from '../services/groupService';
 import { extractErrorMessage } from '../utils/errorUtils';
 import type { UserOption } from '../components/UserAutocomplete';
 import type {
@@ -10,6 +9,23 @@ import type {
   Role,
   Group,
 } from '../components/permissions/grants/permissionGrantTypes';
+import {
+  fetchAvailableRoles,
+  fetchAvailableGroups,
+  fetchGrantDetails,
+  fetchProjectGrantDetails,
+  fetchProjectRoles,
+} from './permissionGrantStateMachine/loaders';
+import { permissionGrantReducer } from './permissionGrantStateMachine/reducer';
+import { PermissionGrantActionType } from './permissionGrantStateMachine/actions';
+import {
+  createPermissionGrantReducerState,
+  GrantCollectionKey,
+  GrantCollections,
+  PermissionGrantMetadata,
+  PermissionGrantState,
+  TargetGrantCollection,
+} from './permissionGrantStateMachine/types';
 
 const permissionTypeMap: Record<string, string> = {
   Workers: 'WorkerPermission',
@@ -29,30 +45,6 @@ interface UsePermissionGrantStateMachineParams {
   scope: PermissionScope;
   projectId?: string;
   itemTypeSetId?: number;
-}
-
-interface GrantCollections {
-  users: UserOption[];
-  groups: Group[];
-  negatedUsers: UserOption[];
-  negatedGroups: Group[];
-}
-
-const emptyGrantCollections: GrantCollections = {
-  users: [],
-  groups: [],
-  negatedUsers: [],
-  negatedGroups: [],
-};
-
-interface PermissionGrantState {
-  loading: boolean;
-  error: string | null;
-  selectedRoles: Role[];
-  availableRoles: Role[];
-  availableGroups: Group[];
-  grant: GrantCollections;
-  projectGrant: GrantCollections;
 }
 
 interface PermissionGrantActions {
@@ -78,12 +70,6 @@ interface PermissionGrantActions {
   resetError: () => void;
 }
 
-interface PermissionGrantMetadata {
-  hasGrantDirect: boolean;
-  hasProjectGrantDirect: boolean;
-  hasRoleTemplate: boolean;
-}
-
 export interface UsePermissionGrantStateMachineReturn {
   state: PermissionGrantState;
   actions: PermissionGrantActions;
@@ -96,227 +82,131 @@ export function usePermissionGrantStateMachine({
   projectId,
   itemTypeSetId,
 }: UsePermissionGrantStateMachineParams): UsePermissionGrantStateMachineReturn {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
-  const [availableGroups, setAvailableGroups] = useState<Group[]>([]);
-  const [grant, setGrant] = useState<GrantCollections>(emptyGrantCollections);
-  const [projectGrant, setProjectGrant] = useState<GrantCollections>(emptyGrantCollections);
+  const [state, dispatch] = useReducer(
+    permissionGrantReducer,
+    undefined,
+    createPermissionGrantReducerState,
+  );
+  const { grant, projectGrant, selectedRoles } = state;
+
+  const setLoading = useCallback((value: boolean) => {
+    dispatch({ type: PermissionGrantActionType.SetLoading, payload: value });
+  }, []);
+
+  const setError = useCallback((value: string | null) => {
+    dispatch({ type: PermissionGrantActionType.SetError, payload: value });
+  }, []);
+
+  const setAvailableRoles = useCallback((roles: Role[]) => {
+    dispatch({ type: PermissionGrantActionType.SetAvailableRoles, payload: roles });
+  }, []);
+
+  const setAvailableGroups = useCallback((groups: Group[]) => {
+    dispatch({ type: PermissionGrantActionType.SetAvailableGroups, payload: groups });
+  }, []);
+
+  const setSelectedRoles = useCallback((roles: Role[]) => {
+    dispatch({ type: PermissionGrantActionType.SetSelectedRoles, payload: roles });
+  }, []);
+
+  const setGrant = useCallback((grantCollections: GrantCollections) => {
+    dispatch({ type: PermissionGrantActionType.SetGrant, payload: grantCollections });
+  }, []);
+
+  const resetGrant = useCallback(() => {
+    dispatch({ type: PermissionGrantActionType.ResetGrant });
+  }, []);
+
+  const setProjectGrant = useCallback((grantCollections: GrantCollections) => {
+    dispatch({ type: PermissionGrantActionType.SetProjectGrant, payload: grantCollections });
+  }, []);
+
+  const resetProjectGrant = useCallback(() => {
+    dispatch({ type: PermissionGrantActionType.ResetProjectGrant });
+  }, []);
 
   const resetState = useCallback(() => {
-    setSelectedRoles([]);
-    setAvailableRoles([]);
-    setGrant(emptyGrantCollections);
-    setProjectGrant(emptyGrantCollections);
-  }, []);
-
-  const resetGrantCollections = useCallback(() => {
-    setGrant(emptyGrantCollections);
-  }, []);
-
-  const resetProjectGrantCollections = useCallback(() => {
-    setProjectGrant(emptyGrantCollections);
+    dispatch({ type: PermissionGrantActionType.ResetState });
   }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadAvailableRoles = async () => {
-      try {
-        const response = await api.get('/itemtypeset-permissions/roles');
-        if (!cancelled) {
-          setAvailableRoles(response.data || []);
-        }
-      } catch (err) {
-        console.error('Error fetching roles:', err);
-        if (!cancelled) {
-          setAvailableRoles([]);
-        }
-      }
-    };
-
-    const loadAvailableGroups = async () => {
-      try {
-        const groups = await groupService.getAll();
-        if (!cancelled) {
-          setAvailableGroups(groups.map((g: any) => ({ id: g.id, name: g.name })));
-        }
-      } catch (err) {
-        console.error('Error fetching groups:', err);
-        if (!cancelled) {
-          setAvailableGroups([]);
-        }
-      }
-    };
-
-    const loadGrantDetails = async (permissionType: string, permissionId: number) => {
-      try {
-        const response = await api.get(`/permission-assignments/${permissionType}/${permissionId}`);
-        const assignment = response.data;
-        const details = assignment?.grant;
-        if (!cancelled) {
-          if (!details) {
-            resetGrantCollections();
-            return;
-          }
-
-          const mappedUsers: UserOption[] = Array.from(details.users || []).map((u: any) => ({
-            id: u.id,
-            username: u.username || '',
-            fullName: u.fullName || u.username || 'Utente',
-          }));
-
-          const mappedGroups: Group[] = Array.from(details.groups || []).map((g: any) => ({
-            id: g.id,
-            name: g.name,
-          }));
-
-          const mappedNegatedUsers: UserOption[] = Array.from(details.negatedUsers || []).map((u: any) => ({
-            id: u.id,
-            username: u.username || '',
-            fullName: u.fullName || u.username || 'Utente',
-          }));
-
-          const mappedNegatedGroups: Group[] = Array.from(details.negatedGroups || []).map((g: any) => ({
-            id: g.id,
-            name: g.name,
-          }));
-
-          setGrant({
-            users: mappedUsers,
-            groups: mappedGroups,
-            negatedUsers: mappedNegatedUsers,
-            negatedGroups: mappedNegatedGroups,
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching grant details:', err);
-        if (!cancelled) {
-          resetGrantCollections();
-        }
-      }
-    };
-
-    const loadProjectGrantDetails = async (permissionType: string, permissionId: number, projectNumericId: number) => {
-      try {
-        const response = await api.get(
-          `/project-permission-assignments/${permissionType}/${permissionId}/project/${projectNumericId}`,
-        );
-        const assignment = response.data;
-        const details = assignment?.grant;
-
-        if (!cancelled) {
-          if (!details) {
-            resetProjectGrantCollections();
-            return;
-          }
-
-          const mappedUsers: UserOption[] = Array.from(details.users || []).map((u: any) => ({
-            id: u.id,
-            username: u.username || '',
-            fullName: u.fullName || u.username || 'Utente',
-          }));
-
-          const mappedGroups: Group[] = Array.from(details.groups || []).map((g: any) => ({
-            id: g.id,
-            name: g.name,
-          }));
-
-          const mappedNegatedUsers: UserOption[] = Array.from(details.negatedUsers || []).map((u: any) => ({
-            id: u.id,
-            username: u.username || '',
-            fullName: u.fullName || u.username || 'Utente',
-          }));
-
-          const mappedNegatedGroups: Group[] = Array.from(details.negatedGroups || []).map((g: any) => ({
-            id: g.id,
-            name: g.name,
-          }));
-
-          setProjectGrant({
-            users: mappedUsers,
-            groups: mappedGroups,
-            negatedUsers: mappedNegatedUsers,
-            negatedGroups: mappedNegatedGroups,
-          });
-        }
-      } catch (err: any) {
-        if (err?.response?.status !== 404) {
-          console.error('Error fetching project grant details:', err);
-        }
-        if (!cancelled) {
-          resetProjectGrantCollections();
-        }
-      }
-    };
-
-    const loadProjectRoles = async (permissionType: string, permissionId: number, projectNumericId: number) => {
-      try {
-        const response = await api.get(
-          `/project-permission-assignments/${permissionType}/${permissionId}/project/${projectNumericId}`,
-        );
-        const roles = response.data?.roles || [];
-
-        if (!cancelled) {
-          setSelectedRoles(
-            Array.from(roles).map((r: any) => ({
-              id: r.id,
-              name: r.name,
-              description: r.description,
-            })),
-          );
-        }
-      } catch (err: any) {
-        if (err?.response?.status !== 404) {
-          console.error('Error fetching project roles:', err);
-        }
-        if (!cancelled) {
-          setSelectedRoles([]);
-        }
-      }
-    };
-
     const initialise = async () => {
-      if (!permission) {
-        resetState();
-        await Promise.all([loadAvailableRoles(), loadAvailableGroups()]);
-        return;
-      }
+      setLoading(true);
+      setError(null);
 
-      await Promise.all([loadAvailableRoles(), loadAvailableGroups()]);
+      try {
+        if (!permission) {
+          resetState();
+          const [roles, groups] = await Promise.all([fetchAvailableRoles(), fetchAvailableGroups()]);
+          if (cancelled) {
+            return;
+          }
 
-      const permissionId = typeof permission.id === 'number' ? permission.id : null;
-      const permissionType = getPermissionType(permission.name);
-
-      if (!permissionId || !permissionType) {
-        resetState();
-        return;
-      }
-
-      if (scope === 'project' && projectId) {
-        const numericProjectId = Number(projectId);
-        await Promise.all([
-          loadProjectRoles(permissionType, permissionId, numericProjectId),
-          loadProjectGrantDetails(permissionType, permissionId, numericProjectId),
-        ]);
-
-        if (permission.grantId) {
-          await loadGrantDetails(permissionType, permissionId);
-        } else {
-          resetGrantCollections();
+          setAvailableRoles(roles);
+          setAvailableGroups(groups);
+          return;
         }
-      } else {
-        setSelectedRoles(permission.assignedRoles || []);
-        if (permission.grantId) {
-          await loadGrantDetails(permissionType, permissionId);
-        } else {
-          resetGrantCollections();
-        }
-      }
 
-      if (scope !== 'project') {
-        resetProjectGrantCollections();
+        const [roles, groups] = await Promise.all([fetchAvailableRoles(), fetchAvailableGroups()]);
+        if (cancelled) {
+          return;
+        }
+
+        setAvailableRoles(roles);
+        setAvailableGroups(groups);
+
+        const permissionId = typeof permission.id === 'number' ? permission.id : null;
+        const permissionType = getPermissionType(permission.name);
+
+        if (!permissionId || !permissionType) {
+          resetState();
+          return;
+        }
+
+        if (scope === 'project' && projectId) {
+          const numericProjectId = Number(projectId);
+          const [projectRoles, projectGrantDetails] = await Promise.all([
+            fetchProjectRoles(permissionType, permissionId, numericProjectId),
+            fetchProjectGrantDetails(permissionType, permissionId, numericProjectId),
+          ]);
+
+          if (cancelled) {
+            return;
+          }
+
+          setSelectedRoles(projectRoles);
+          setProjectGrant(projectGrantDetails);
+
+          if (permission.grantId) {
+            const grantDetails = await fetchGrantDetails(permissionType, permissionId);
+            if (cancelled) {
+              return;
+            }
+            setGrant(grantDetails);
+          } else {
+            resetGrant();
+          }
+        } else {
+          setSelectedRoles(permission.assignedRoles || []);
+
+          if (permission.grantId) {
+            const grantDetails = await fetchGrantDetails(permissionType, permissionId);
+            if (cancelled) {
+              return;
+            }
+            setGrant(grantDetails);
+          } else {
+            resetGrant();
+          }
+
+          resetProjectGrant();
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
@@ -327,56 +217,43 @@ export function usePermissionGrantStateMachine({
     };
   }, [
     permission,
-    scope,
     projectId,
-    resetGrantCollections,
-    resetProjectGrantCollections,
+    scope,
+    resetGrant,
+    resetProjectGrant,
     resetState,
+    setAvailableGroups,
+    setAvailableRoles,
+    setError,
+    setGrant,
+    setLoading,
+    setProjectGrant,
+    setSelectedRoles,
   ]);
 
   const addRole = useCallback((role: Role) => {
-    setSelectedRoles((current) => {
-      if (current.find((r) => r.id === role.id)) {
-        return current;
-      }
-      return [...current, role];
-    });
+    dispatch({ type: PermissionGrantActionType.AddRole, payload: role });
   }, []);
 
   const removeRole = useCallback((roleId: number) => {
-    setSelectedRoles((current) => current.filter((role) => role.id !== roleId));
+    dispatch({ type: PermissionGrantActionType.RemoveRole, payload: roleId });
   }, []);
 
   const addEntity = useCallback(
-    (
-      updater: Dispatch<SetStateAction<GrantCollections>>,
-      key: keyof GrantCollections,
-      value: UserOption | Group,
-    ) => {
-      updater((current) => {
-        const collection = current[key] as (UserOption[] | Group[]);
-        const exists = collection.some((item) => item.id === value.id);
-        if (exists) {
-          return current;
-        }
-
-        const updatedCollection = [...collection, value] as typeof collection;
-        return { ...current, [key]: updatedCollection };
+    (target: TargetGrantCollection, key: GrantCollectionKey, value: UserOption | Group) => {
+      dispatch({
+        type: PermissionGrantActionType.AddGrantEntity,
+        payload: { target, key, value },
       });
     },
     [],
   );
 
   const removeEntity = useCallback(
-    (
-      updater: Dispatch<SetStateAction<GrantCollections>>,
-      key: keyof GrantCollections,
-      id: number,
-    ) => {
-      updater((current) => {
-        const collection = current[key] as (UserOption[] | Group[]);
-        const updatedCollection = collection.filter((item) => item.id !== id) as typeof collection;
-        return { ...current, [key]: updatedCollection };
+    (target: TargetGrantCollection, key: GrantCollectionKey, id: number) => {
+      dispatch({
+        type: PermissionGrantActionType.RemoveGrantEntity,
+        payload: { target, key, id },
       });
     },
     [],
@@ -591,21 +468,7 @@ export function usePermissionGrantStateMachine({
     } finally {
       setLoading(false);
     }
-  }, [
-    grant.groups,
-    grant.negatedGroups,
-    grant.negatedUsers,
-    grant.users,
-    itemTypeSetId,
-    permission,
-    projectGrant.groups,
-    projectGrant.negatedGroups,
-    projectGrant.negatedUsers,
-    projectGrant.users,
-    projectId,
-    scope,
-    selectedRoles,
-  ]);
+  }, [grant, itemTypeSetId, permission, projectGrant, projectId, scope, selectedRoles, setError, setLoading]);
 
   const hasGrantDirect = useMemo(
     () =>
@@ -614,7 +477,13 @@ export function usePermissionGrantStateMachine({
       grant.negatedUsers.length > 0 ||
       grant.negatedGroups.length > 0 ||
       Boolean(permission?.grantId),
-    [grant.groups.length, grant.negatedGroups.length, grant.negatedUsers.length, grant.users.length, permission?.grantId],
+    [
+      permission?.grantId,
+      grant.groups.length,
+      grant.negatedGroups.length,
+      grant.negatedUsers.length,
+      grant.users.length,
+    ],
   );
 
   const hasProjectGrantDirect = useMemo(
@@ -639,34 +508,26 @@ export function usePermissionGrantStateMachine({
   );
 
   return {
-    state: {
-      loading,
-      error,
-      selectedRoles,
-      availableRoles,
-      availableGroups,
-      grant,
-      projectGrant,
-    },
+    state,
     actions: {
       addRole,
       removeRole,
-      addGrantUser: (user) => addEntity(setGrant, 'users', user),
-      removeGrantUser: (userId) => removeEntity(setGrant, 'users', userId),
-      addGrantGroup: (group) => addEntity(setGrant, 'groups', group),
-      removeGrantGroup: (groupId) => removeEntity(setGrant, 'groups', groupId),
-      addGrantNegatedUser: (user) => addEntity(setGrant, 'negatedUsers', user),
-      removeGrantNegatedUser: (userId) => removeEntity(setGrant, 'negatedUsers', userId),
-      addGrantNegatedGroup: (group) => addEntity(setGrant, 'negatedGroups', group),
-      removeGrantNegatedGroup: (groupId) => removeEntity(setGrant, 'negatedGroups', groupId),
-      addProjectGrantUser: (user) => addEntity(setProjectGrant, 'users', user),
-      removeProjectGrantUser: (userId) => removeEntity(setProjectGrant, 'users', userId),
-      addProjectGrantGroup: (group) => addEntity(setProjectGrant, 'groups', group),
-      removeProjectGrantGroup: (groupId) => removeEntity(setProjectGrant, 'groups', groupId),
-      addProjectGrantNegatedUser: (user) => addEntity(setProjectGrant, 'negatedUsers', user),
-      removeProjectGrantNegatedUser: (userId) => removeEntity(setProjectGrant, 'negatedUsers', userId),
-      addProjectGrantNegatedGroup: (group) => addEntity(setProjectGrant, 'negatedGroups', group),
-      removeProjectGrantNegatedGroup: (groupId) => removeEntity(setProjectGrant, 'negatedGroups', groupId),
+      addGrantUser: (user) => addEntity('grant', 'users', user),
+      removeGrantUser: (userId) => removeEntity('grant', 'users', userId),
+      addGrantGroup: (group) => addEntity('grant', 'groups', group),
+      removeGrantGroup: (groupId) => removeEntity('grant', 'groups', groupId),
+      addGrantNegatedUser: (user) => addEntity('grant', 'negatedUsers', user),
+      removeGrantNegatedUser: (userId) => removeEntity('grant', 'negatedUsers', userId),
+      addGrantNegatedGroup: (group) => addEntity('grant', 'negatedGroups', group),
+      removeGrantNegatedGroup: (groupId) => removeEntity('grant', 'negatedGroups', groupId),
+      addProjectGrantUser: (user) => addEntity('projectGrant', 'users', user),
+      removeProjectGrantUser: (userId) => removeEntity('projectGrant', 'users', userId),
+      addProjectGrantGroup: (group) => addEntity('projectGrant', 'groups', group),
+      removeProjectGrantGroup: (groupId) => removeEntity('projectGrant', 'groups', groupId),
+      addProjectGrantNegatedUser: (user) => addEntity('projectGrant', 'negatedUsers', user),
+      removeProjectGrantNegatedUser: (userId) => removeEntity('projectGrant', 'negatedUsers', userId),
+      addProjectGrantNegatedGroup: (group) => addEntity('projectGrant', 'negatedGroups', group),
+      removeProjectGrantNegatedGroup: (groupId) => removeEntity('projectGrant', 'negatedGroups', groupId),
       persistAssignments,
       resetError: () => setError(null),
     },
@@ -677,5 +538,3 @@ export function usePermissionGrantStateMachine({
     },
   };
 }
-
-
