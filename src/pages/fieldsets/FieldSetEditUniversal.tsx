@@ -33,6 +33,7 @@ import form from "../../styles/common/Forms.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
 import alert from "../../styles/common/Alerts.module.css";
 import sidebarStyles from "../../styles/common/FieldSetSidebar.module.css";
+import { PageContainer, PageHeader, PageSection } from "../../components/shared/layout";
 
 interface FieldSetEditUniversalProps {
   scope: 'tenant' | 'project';
@@ -501,12 +502,11 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     .filter(({ configurations }) => configurations.length > 0); // Mostra solo field con configurazioni
 
   return (
-    <div className={layout.container} style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 1rem', width: '100%', boxSizing: 'border-box' }}>
-      {/* Header Section */}
-      <div className={layout.headerSection}>
-        <h1 className={layout.title}>{getTitle()}</h1>
-        <p className={layout.paragraphMuted}>{getDescription()}</p>
-      </div>
+    <PageContainer
+      maxWidth="1600px"
+      style={{ padding: "0 1rem", width: "100%", boxSizing: "border-box" }}
+    >
+      <PageHeader title={getTitle()} description={getDescription()} />
 
       {error && (
         <div className={alert.errorContainer}>
@@ -515,9 +515,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       )}
 
       <form onSubmit={handleSubmit} className={form.form}>
-        {/* Basic Information Section */}
-        <div className={layout.section}>
-          <h2 className={layout.sectionTitle}>Informazioni Base</h2>
+        <PageSection title="Informazioni Base" bodyClassName="space-y-6">
           <div className={form.formGroup}>
             <label htmlFor="name" className={form.label}>
               Nome del Field Set *
@@ -554,8 +552,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
               Aggiungi una descrizione per aiutare gli altri utenti a capire quando utilizzare questo field set.
             </p>
           </div>
-        </div>
-
+        </PageSection>
         {/* Sidebar Layout */}
         <div className={sidebarStyles.fieldSetSidebarContainer}>
           {/* Sidebar: Configurazioni Selezionate */}
@@ -719,6 +716,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         loading={analyzingImpact || saving}
         isProvisional={false}
       />
-    </div>
+    </PageContainer>
   );
 }

@@ -34,6 +34,7 @@ import { TransitionEnhancedImpactReportModal } from "../../components/Transition
 import { StatusRemovalImpactDto } from "../../types/status-impact.types";
 import { StatusEnhancedImpactReportModal } from "../../components/StatusEnhancedImpactReportModal";
 import { Toast } from "../../components/Toast";
+import { PageContainer, PageHeader } from "../../components/shared/layout";
 
 import board from "../../styles/common/WorkflowBoard.module.css";
 import "reactflow/dist/style.css";
@@ -797,75 +798,88 @@ export default function WorkflowEdit() {
 
   return (
     <>
-    <ReactFlowProvider>
-      <div className={board.wrapper}>
-        <WorkflowControls
-          workflowName={workflowName}
-          setWorkflowName={setWorkflowName}
-          selectedStatusId={selectedStatusId}
-          setSelectedStatusId={setSelectedStatusId}
-          availableStatuses={availableStatuses}
-          nodes={nodes}
-          statusCategories={statusCategories}
-          addState={addState}
+      <ReactFlowProvider>
+        <PageContainer maxWidth="100%" style={{ paddingBottom: "2rem" }}>
+          <PageHeader
+            title="Modifica Workflow"
+            description="Aggiorna stati e transizioni del workflow."
+          />
+          <div className={board.wrapper}>
+            <WorkflowControls
+              workflowName={workflowName}
+              setWorkflowName={setWorkflowName}
+              selectedStatusId={selectedStatusId}
+              setSelectedStatusId={setSelectedStatusId}
+              availableStatuses={availableStatuses}
+              nodes={nodes}
+              statusCategories={statusCategories}
+              addState={addState}
+            />
+
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onEdgeUpdate={onEdgeUpdate}
+              fitView
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              className="w-full"
+              style={{ height: "600px" }}
+            >
+              <MiniMap />
+              <Controls />
+              <Background />
+            </ReactFlow>
+
+            <div className={board.buttonBar}>
+              <button
+                className={`${board.button} ${board.cancelButton}`}
+                onClick={() => navigate(-1)}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={saving || !nodes.length}
+                className={board.button}
+                onClick={handleSave}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </PageContainer>
+
+        <TransitionEnhancedImpactReportModal
+          isOpen={showImpactReport}
+          onClose={handleCancelSave}
+          onConfirm={(preservedPermissionIds) =>
+            handleConfirmSave(preservedPermissionIds)
+          }
+          impact={impactReport}
+          loading={analyzingImpact || saving}
         />
+      </ReactFlowProvider>
 
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onEdgeUpdate={onEdgeUpdate}
-          fitView
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          className="w-full"
-          style={{ height: "600px" }}
-        >
-          <MiniMap />
-          <Controls />
-          <Background />
-        </ReactFlow>
-
-        <div className={board.buttonBar}>
-          <button className={`${board.button} ${board.cancelButton}`} onClick={() => navigate(-1)}>
-            Cancel
-          </button>
-          <button disabled={saving || !nodes.length} className={board.button} onClick={handleSave}>
-            {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
-
-      {/* Impact Report Modal */}
-      <TransitionEnhancedImpactReportModal
-        isOpen={showImpactReport}
-        onClose={handleCancelSave}
-        onConfirm={(preservedPermissionIds) => handleConfirmSave(preservedPermissionIds)}
-        impact={impactReport}
-        loading={analyzingImpact || saving}
+      <StatusEnhancedImpactReportModal
+        isOpen={showStatusImpactReport}
+        onClose={handleCancelStatusSave}
+        onConfirm={(preservedPermissionIds) =>
+          handleConfirmStatusSave(preservedPermissionIds)
+        }
+        impact={statusImpactReport}
+        loading={analyzingStatusImpact || saving}
       />
 
-    </ReactFlowProvider>
-    
-    {/* Status Impact Report Modal - Fuori dal ReactFlowProvider */}
-    <StatusEnhancedImpactReportModal
-      isOpen={showStatusImpactReport}
-      onClose={handleCancelStatusSave}
-      onConfirm={(preservedPermissionIds) => handleConfirmStatusSave(preservedPermissionIds)}
-      impact={statusImpactReport}
-      loading={analyzingStatusImpact || saving}
-    />
-    
-    {/* Toast Notification */}
-    {toast && (
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast(null)}
-      />
-    )}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </>
   );
 }
