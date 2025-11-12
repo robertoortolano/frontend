@@ -183,24 +183,26 @@ function ItemTypeSetDetails({
     try {
       setLoading(true);
 
-      if (isTenantAdmin) {
+      if (isTenantAdmin && projectId) {
+        // Per Tenant Admin: tutti gli ITS globali + tutti quelli definiti nel progetto stesso
         try {
-          const [globalResponse, projectResponse] = await Promise.all([
-            api.get('/projects/available-item-type-sets'),
-            api.get('/item-type-sets/project')
-          ]);
-          const globalSets: ItemTypeSetDto[] = globalResponse.data || [];
-          const projectSets: ItemTypeSetDto[] = projectResponse.data || [];
-          const allSets = [...globalSets, ...projectSets];
-          setAvailableItemTypeSets(filterItemTypeSetsForProject(allSets));
+          const response = await api.get(`/item-type-sets/available-for-project/${projectId}`);
+          const sets: ItemTypeSetDto[] = response.data || [];
+          setAvailableItemTypeSets(sets);
         } catch (err: any) {
-          console.warn("Error fetching global ItemTypeSets, trying project only:", err);
+          console.error("Error fetching available ItemTypeSets for project:", err);
+          // Fallback: usa il metodo precedente
           try {
-            const projectResponse = await api.get('/item-type-sets/project');
+            const [globalResponse, projectResponse] = await Promise.all([
+              api.get('/projects/available-item-type-sets'),
+              api.get('/item-type-sets/project')
+            ]);
+            const globalSets: ItemTypeSetDto[] = globalResponse.data || [];
             const projectSets: ItemTypeSetDto[] = projectResponse.data || [];
-            setAvailableItemTypeSets(filterItemTypeSetsForProject(projectSets));
-          } catch (projectErr: any) {
-            console.error("Error fetching project ItemTypeSets:", projectErr);
+            const allSets = [...globalSets, ...projectSets];
+            setAvailableItemTypeSets(filterItemTypeSetsForProject(allSets));
+          } catch (fallbackErr: any) {
+            console.error("Error in fallback fetch:", fallbackErr);
             setAvailableItemTypeSets([]);
           }
         }

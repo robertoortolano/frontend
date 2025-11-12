@@ -103,10 +103,9 @@ export function useWorkflowImpactModals({
       let payload: any;
 
       const workflowIdForEndpoint = currentState.workflow?.id || state.workflow?.id;
-      let baseEndpoint = `/workflows/${workflowIdForEndpoint}`;
-      if (scope === 'project' && projectId) {
-        baseEndpoint = `/workflows/project/${projectId}/${workflowIdForEndpoint}`;
-      }
+      // Gli endpoint di analisi impatto funzionano per entrambi i workflow globali e di progetto
+      // Il controllo viene fatto tramite workflowId e tenant, non tramite il path
+      const baseEndpoint = `/workflows/${workflowIdForEndpoint}`;
 
       if (impactType === 'status') {
         endpoint = `${baseEndpoint}/analyze-status-removal-impact`;
@@ -413,7 +412,11 @@ export function useWorkflowImpactModals({
 
           setTimeout(async () => {
             try {
-              await saveWorkflowRef.current?.(true);
+              if (!saveWorkflowRef.current) {
+                resolver.reject(new Error('saveWorkflowRef.current is null'));
+                return;
+              }
+              await saveWorkflowRef.current(true);
               resolver.resolve();
             } catch (err: any) {
               resolver.reject(err);
@@ -433,7 +436,14 @@ export function useWorkflowImpactModals({
           setEnhancedImpactDto(null);
 
           setTimeout(async () => {
-            await saveWorkflowRef.current?.(true);
+            if (!saveWorkflowRef.current) {
+              return;
+            }
+            try {
+              await saveWorkflowRef.current(true);
+            } catch (err: any) {
+              // Silently handle error - user will see it in the UI
+            }
           }, 0);
         }
         return;

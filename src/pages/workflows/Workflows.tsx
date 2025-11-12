@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 
-import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider } from "reactflow";
+import ReactFlow, { Controls, MiniMap, ReactFlowProvider } from "reactflow";
+import type { Node, Edge } from "reactflow";
 import 'reactflow/dist/style.css';
 
 import CustomNode from "./components/CustomNode";
@@ -12,6 +13,7 @@ import { WorkflowSimpleDto, WorkflowViewDto, WorkflowDetailDto } from "../../typ
 import { StatusCategory } from "../../types/common.types";
 import UsedInItemTypeSetsPopup from "../../components/shared/UsedInItemTypeSetsPopup";
 import { getCategoryColor } from "./components/workflowUtils";
+import type { WorkflowReactFlowNodeData, WorkflowReactFlowEdgeData } from "../../types/workflow-unified.types";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -53,10 +55,6 @@ export default function Workflows() {
   };
   const isTenantAdmin = hasRole("ADMIN", "TENANT");
   const isProjectAdmin = hasRole("ADMIN", "PROJECT");
-
-  const nodeTypes = {
-    customNode: CustomNodeWrapper,
-  };
 
   const handleView = async (id: number) => {
     try {
@@ -224,7 +222,7 @@ export default function Workflows() {
     modalContent = <p className={alert.error}>{viewingError}</p>;
   } else if (viewingWorkflow) {
     // Convert to ReactFlow nodes and edges using the same converters as edit/create
-    const nodes = (viewingWorkflow.workflowNodes || []).map((meta) => {
+    const nodes: Node<WorkflowReactFlowNodeData>[] = (viewingWorkflow.workflowNodes || []).map((meta) => {
       const wfStatus = viewingWorkflow.statuses.find(
         (s) => s.status.id === meta.statusId
       );
@@ -239,12 +237,20 @@ export default function Workflows() {
         type: "customNode",
         position: { x: meta.positionX, y: meta.positionY },
         data: {
+          nodeId: meta.id,
           statusId: meta.statusId,
+          positionX: meta.positionX,
+          positionY: meta.positionY,
+          workflowStatusId: wfStatus?.id || 0,
+          workflowId: viewingWorkflow.id,
+          workflowName: viewingWorkflow.name,
+          statusName: label,
+          statusCategory: category,
+          isInitial,
+          isNew: false,
+          isExisting: true,
           label,
           category,
-          isInitial,
-          statusCategory: category,
-          statusName: label,
           categories: ["BACKLOG", "TODO", "PROGRESS", "REVIEW", "DONE", "CANCELLED"] as StatusCategory[],
           onCategoryChange: () => {}, // No-op for view mode
           onRemove: () => {}, // No-op for view mode
@@ -255,10 +261,10 @@ export default function Workflows() {
           borderRadius: 8,
           opacity: 0.9,
         },
-      };
+      } as Node<WorkflowReactFlowNodeData>;
     });
 
-    const edges = (viewingWorkflow.workflowEdges || []).map((e) => {
+    const edges: Edge<WorkflowReactFlowEdgeData>[] = (viewingWorkflow.workflowEdges || []).map((e) => {
       const transition = (viewingWorkflow.transitions || []).find(t => t.id === e.transitionId);
       const sourceNode = nodes.find(n => n.data.statusId === e.sourceId);
       const targetNode = nodes.find(n => n.data.statusId === e.targetId);
@@ -271,9 +277,18 @@ export default function Workflows() {
         sourceHandle: e.sourcePosition || undefined,
         targetHandle: e.targetPosition || undefined,
         data: {
-          label: transition?.name || "",
+          edgeId: e.id,
           transitionId: e.transitionId,
           transitionTempId: null,
+          sourceStatusId: e.sourceId,
+          targetStatusId: e.targetId,
+          sourcePosition: e.sourcePosition,
+          targetPosition: e.targetPosition,
+          transitionName: transition?.name || "",
+          isNew: false,
+          isTransitionNew: false,
+          label: transition?.name || "",
+          onDelete: () => {},
         },
         style: {
           stroke: '#2196f3',
@@ -283,7 +298,7 @@ export default function Workflows() {
           type: 'arrowclosed',
           color: '#2196f3',
         },
-      };
+      } as Edge<WorkflowReactFlowEdgeData>;
     });
 
     modalContent = (

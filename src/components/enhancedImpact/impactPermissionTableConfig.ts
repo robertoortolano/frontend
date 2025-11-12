@@ -87,3 +87,4 @@ export const buildRowBackgroundColor = (
   return rowIndex % 2 === 0 ? '#ffffff' : '#f0fdf4';
 };
 
+

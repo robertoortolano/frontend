@@ -531,14 +531,18 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      setPendingRemovedConfigurations([]);
-      
       if (!skipNavigation) {
-        if (scope === 'tenant') {
-          navigate("/tenant/field-sets");
-        } else if (scope === 'project' && projectId) {
-          navigate(`/projects/${projectId}/field-sets`);
-        }
+        // Mostra toast
+        showToast('FieldSet aggiornato con successo.', 'success');
+        
+        // Naviga dopo un breve delay per permettere al toast di essere visualizzato
+        setTimeout(() => {
+          if (scope === 'tenant') {
+            navigate("/tenant/field-sets");
+          } else if (scope === 'project' && projectId) {
+            navigate(`/projects/${projectId}/field-sets`);
+          }
+        }, 500);
       }
     } catch (err: any) {
       const message = err.response?.data?.message || "Errore nel salvataggio";
@@ -572,10 +576,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         (impactReport.fieldStatusPermissions && impactReport.fieldStatusPermissions.length > 0);
       
       if (hasPermissions && removedConfigIds.length > 0) {
-        const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
-          entry.fieldConfiguration?.id || entry.fieldConfigurationId
-        ) || [];
-        
         const addedConfigIds = selectedConfigurations.filter(id => 
           !originalConfigIds.includes(id)
         );
@@ -591,13 +591,35 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         });
       }
 
+      // Salva il FieldSet dopo la rimozione delle permission
+      const dto: FieldSetCreateDto = {
+        name: fieldSet.name.trim(),
+        description: fieldSet.description?.trim() || null,
+        entries: selectedConfigurations.map((configId, index) => ({
+          fieldConfigurationId: configId,
+          orderIndex: index
+        })),
+      };
+
+      await api.put(`/field-sets/${id}`, dto, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setShowImpactReport(false);
       setImpactReport(null);
+      setPendingSave(null);
 
-      if (pendingSave) {
-        await pendingSave();
-        setPendingSave(null);
-      }
+      // Mostra toast
+      showToast('FieldSet aggiornato con successo.', 'success');
+      
+      // Naviga dopo un breve delay per permettere al toast di essere visualizzato
+      setTimeout(() => {
+        if (scope === 'tenant') {
+          navigate("/tenant/field-sets");
+        } else if (scope === 'project' && projectId) {
+          navigate(`/projects/${projectId}/field-sets`);
+        }
+      }, 500);
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore durante la rimozione delle permission");
     } finally {

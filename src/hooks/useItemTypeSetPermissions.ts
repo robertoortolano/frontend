@@ -97,34 +97,50 @@ export const useItemTypeSetPermissions = ({
           }
 
           if (includeProjectAssignments && showOnlyProjectGrants && projectId) {
-            try {
-              const projectGrantResponse = await api.get(
-                `/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`
-              );
-              const assignment = projectGrantResponse.data;
-              if (!assignment || !assignment.grant) {
-                grantDetails.isProjectGrant = false;
-              } else {
-                Object.keys(grantDetails).forEach((key) => delete grantDetails[key]);
-                grantDetails.users = Array.from(assignment.grant.users || []);
-                grantDetails.groups = Array.from(assignment.grant.groups || []);
-                grantDetails.negatedUsers = Array.from(
-                  assignment.grant.negatedUsers || []
+            // Se i dettagli del projectGrant sono già disponibili nella risposta iniziale, usali
+            // altrimenti fai una chiamata separata (fallback per compatibilità)
+            if (permission.projectGrant) {
+              const projectGrant = permission.projectGrant;
+              Object.keys(grantDetails).forEach((key) => delete grantDetails[key]);
+              grantDetails.users = Array.from(projectGrant.users || []);
+              grantDetails.groups = Array.from(projectGrant.groups || []);
+              grantDetails.negatedUsers = Array.from(projectGrant.negatedUsers || []);
+              grantDetails.negatedGroups = Array.from(projectGrant.negatedGroups || []);
+              grantDetails.isProjectGrant = true;
+            } else if (permission.projectGrantId) {
+              // Fallback: se projectGrantId è presente ma projectGrant non è disponibile,
+              // fai una chiamata separata (per compatibilità con versioni precedenti)
+              try {
+                const projectGrantResponse = await api.get(
+                  `/project-permission-assignments/${permissionType}/${permissionId}/project/${projectId}`
                 );
-                grantDetails.negatedGroups = Array.from(
-                  assignment.grant.negatedGroups || []
-                );
-                grantDetails.isProjectGrant = true;
+                const assignment = projectGrantResponse.data;
+                if (!assignment || !assignment.grant) {
+                  grantDetails.isProjectGrant = false;
+                } else {
+                  Object.keys(grantDetails).forEach((key) => delete grantDetails[key]);
+                  grantDetails.users = Array.from(assignment.grant.users || []);
+                  grantDetails.groups = Array.from(assignment.grant.groups || []);
+                  grantDetails.negatedUsers = Array.from(
+                    assignment.grant.negatedUsers || []
+                  );
+                  grantDetails.negatedGroups = Array.from(
+                    assignment.grant.negatedGroups || []
+                  );
+                  grantDetails.isProjectGrant = true;
+                }
+              } catch (err: any) {
+                if (err.response?.status === 404) {
+                  grantDetails.isProjectGrant = false;
+                } else {
+                  console.error(
+                    `[buildGrantDetailsMap] Error fetching project grant details for permission ${permissionType}/${permissionId}:`,
+                    err
+                  );
+                }
               }
-            } catch (err: any) {
-              if (err.response?.status === 404) {
-                grantDetails.isProjectGrant = false;
-              } else {
-                console.error(
-                  `[buildGrantDetailsMap] Error fetching project grant details for permission ${permissionType}/${permissionId}:`,
-                  err
-                );
-              }
+            } else {
+              grantDetails.isProjectGrant = false;
             }
           }
 
@@ -236,10 +252,27 @@ export const useItemTypeSetPermissions = ({
         return accumulator;
       }
       const mapKey = `${permissionType}-${permissionId}`;
+      // Se i dettagli sono già disponibili nella risposta iniziale o nella mappa, non fare chiamate separate
       if (
         grantDetailsMap.has(mapKey) ||
-        loadedProjectGrantDetailsRef.current.has(mapKey)
+        loadedProjectGrantDetailsRef.current.has(mapKey) ||
+        permission.projectGrant // I dettagli sono già disponibili nella risposta iniziale
       ) {
+        // Se i dettagli sono nella risposta iniziale ma non nella mappa, aggiungili
+        if (permission.projectGrant && !grantDetailsMap.has(mapKey)) {
+          const projectGrant = permission.projectGrant;
+          setGrantDetailsMap((previous) => {
+            const next = new Map(previous);
+            next.set(mapKey, {
+              isProjectGrant: true,
+              users: Array.from(projectGrant.users || []),
+              groups: Array.from(projectGrant.groups || []),
+              negatedUsers: Array.from(projectGrant.negatedUsers || []),
+              negatedGroups: Array.from(projectGrant.negatedGroups || []),
+            });
+            return next;
+          });
+        }
         return accumulator;
       }
       accumulator.push(mapKey);

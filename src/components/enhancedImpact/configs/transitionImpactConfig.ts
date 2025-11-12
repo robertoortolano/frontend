@@ -7,6 +7,8 @@ export const transitionImpactConfig: EnhancedImpactReportConfig<TransitionRemova
   title: '📊 Report Impatto Rimozione Transition',
   getSubtitle: (impact) => impact.workflowName,
   buildPermissionRows: (impact) => {
+    // Per la rimozione di transizioni, mostriamo solo le ExecutorPermission
+    // Le StatusOwnerPermission e FieldStatusPermission non sono impattate dalla rimozione di transizioni
     const executorPermissions = mapImpactPermissions({
       permissions: impact.executorPermissions || [],
       getLabel: (perm: any) => {
@@ -25,34 +27,13 @@ export const transitionImpactConfig: EnhancedImpactReportConfig<TransitionRemova
       fallbackItemTypeSetName: null
     });
 
-    const statusOwnerPermissions = mapImpactPermissions({
-      permissions: impact.statusOwnerPermissions || [],
-      getLabel: (perm: any) => {
-        const statusName = perm.statusName || perm.workflowStatusName || 'Status';
-        return `Status Owner - ${statusName}`;
-      },
-      fallbackItemTypeSetName: null
-    });
-
-    const fieldStatusPermissions = mapImpactPermissions({
-      permissions: impact.fieldStatusPermissions || [],
-      getLabel: (perm: any) => {
-        const field = perm.fieldName || 'Field';
-        const status = perm.workflowStatusName || perm.statusName || 'Status';
-        const prefix =
-          perm.permissionType === 'FIELD_EDITORS'
-            ? 'Field Editor'
-            : perm.permissionType === 'FIELD_VIEWERS'
-            ? 'Field Viewer'
-            : perm.permissionType || 'Field Permission';
-        return `${prefix} - ${field} @ ${status}`;
-      },
-      fallbackItemTypeSetName: null
-    });
-
-    return [...executorPermissions, ...statusOwnerPermissions, ...fieldStatusPermissions];
+    // Non includiamo statusOwnerPermissions e fieldStatusPermissions per le transizioni
+    // perché la rimozione di una transizione impatta solo le ExecutorPermission
+    return executorPermissions;
   },
   prepareExportPermissions: (impact) => {
+    // Per la rimozione di transizioni, esportiamo solo le ExecutorPermission
+    // Le StatusOwnerPermission e FieldStatusPermission non sono impattate dalla rimozione di transizioni
     const executorPermissions = (impact.executorPermissions || [])
       .filter((perm) => perm.hasAssignments)
       .map((perm) => ({
@@ -72,45 +53,9 @@ export const transitionImpactConfig: EnhancedImpactReportConfig<TransitionRemova
         canBePreserved: Boolean((perm as any).canBePreserved)
       }));
 
-    const statusOwnerPermissions = (impact.statusOwnerPermissions || [])
-      .filter((perm) => perm.hasAssignments)
-      .map((perm) => ({
-        permissionId: perm.permissionId ?? null,
-        permissionType: perm.permissionType || 'STATUS_OWNERS',
-        itemTypeSetName: perm.itemTypeSetName || 'N/A',
-        fieldName: null,
-        statusName: perm.statusName || perm.workflowStatusName || null,
-        fromStatusName: null,
-        toStatusName: null,
-        transitionName: null,
-        assignedRoles: perm.assignedRoles || [],
-        projectAssignedRoles: perm.projectAssignedRoles || [],
-        grantId: perm.grantId ?? null,
-        roleId: perm.permissionId ?? null,
-        projectGrants: perm.projectGrants || [],
-        canBePreserved: Boolean((perm as any).canBePreserved)
-      }));
-
-    const fieldStatusPermissions = (impact.fieldStatusPermissions || [])
-      .filter((perm) => perm.hasAssignments)
-      .map((perm) => ({
-        permissionId: perm.permissionId ?? null,
-        permissionType: perm.permissionType || 'FIELD_VIEWERS',
-        itemTypeSetName: perm.itemTypeSetName || 'N/A',
-        fieldName: perm.fieldName || null,
-        statusName: perm.workflowStatusName || perm.statusName || null,
-        fromStatusName: null,
-        toStatusName: null,
-        transitionName: null,
-        assignedRoles: perm.assignedRoles || [],
-        projectAssignedRoles: perm.projectAssignedRoles || [],
-        grantId: perm.grantId ?? null,
-        roleId: perm.permissionId ?? null,
-        projectGrants: perm.projectGrants || [],
-        canBePreserved: Boolean((perm as any).canBePreserved)
-      }));
-
-    return [...executorPermissions, ...statusOwnerPermissions, ...fieldStatusPermissions];
+    // Non includiamo statusOwnerPermissions e fieldStatusPermissions per le transizioni
+    // perché la rimozione di una transizione impatta solo le ExecutorPermission
+    return executorPermissions;
   },
   getFieldName: (perm: PermissionData) => perm.fieldName || '',
   getStatusName: (perm: PermissionData) => perm.statusName || '',

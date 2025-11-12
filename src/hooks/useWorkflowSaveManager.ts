@@ -52,10 +52,9 @@ export function useWorkflowSaveManager({
     const hasRemovedStatuses = state.pendingChanges.removedNodes.length > 0;
 
     const workflowIdForEndpoint = state.workflow?.id || 0;
-    let baseEndpoint = `/workflows/${workflowIdForEndpoint}`;
-    if (scope === 'project' && projectId) {
-      baseEndpoint = `/workflows/project/${projectId}/${workflowIdForEndpoint}`;
-    }
+    // Gli endpoint di analisi impatto funzionano per entrambi i workflow globali e di progetto
+    // Il controllo viene fatto tramite workflowId e tenant, non tramite il path
+    const baseEndpoint = `/workflows/${workflowIdForEndpoint}`;
 
     if ((hasRemovedStatuses || hasRemovedTransitions) && mode === 'edit' && !skipImpactAnalysis) {
       let statusImpact: ImpactReportData | null = null;
@@ -248,10 +247,6 @@ export function useWorkflowSaveManager({
         };
       }
 
-      const hasRoleAssignments = combinedImpact?.permissions?.some(perm =>
-        perm.items?.some(item => item.hasAssignments)
-      ) || combinedImpact?.totals?.totalRoleAssignments > 0;
-
       let combinedDto: StatusRemovalImpactDto | TransitionRemovalImpactDto | null = null;
       if (statusDto) {
         combinedDto = statusDto;
@@ -263,14 +258,59 @@ export function useWorkflowSaveManager({
         setEnhancedImpactDto(combinedDto);
       }
 
-      if (hasRoleAssignments && combinedImpact) {
-        setImpactReport(combinedImpact);
+      // Calcola hasRoleAssignments controllando sia combinedImpact che i DTO direttamente
+      // Questo è necessario per workflow globali che potrebbero non avere ItemTypeSet associati
+      // ma hanno comunque assegnazioni definite
+      const hasRoleAssignmentsFromImpact = combinedImpact?.permissions?.some(perm =>
+        perm.items?.some(item => item.hasAssignments)
+      ) || combinedImpact?.totals?.totalRoleAssignments > 0;
+      
+      const hasRoleAssignmentsFromDto = (combinedDto?.totalRoleAssignments || 0) > 0 ||
+        (statusDto && (
+          (statusDto.statusOwnerPermissions || []).some((p: any) => p.hasAssignments) ||
+          (statusDto.executorPermissions || []).some((p: any) => p.hasAssignments) ||
+          (statusDto.fieldStatusPermissions || []).some((p: any) => p.hasAssignments)
+        )) ||
+        (transitionDto && (
+          (transitionDto.executorPermissions || []).some((p: any) => p.hasAssignments)
+        ));
+      
+      const hasRoleAssignments = hasRoleAssignmentsFromImpact || hasRoleAssignmentsFromDto;
+      const shouldShowReport = hasRoleAssignments && (combinedImpact || combinedDto);
+
+      if (shouldShowReport) {
+        // Se combinedImpact è null ma combinedDto ha assegnazioni, costruisci un impactReport minimo
+        const impactReportToShow = combinedImpact || (combinedDto ? {
+          type: statusDto ? 'status' as const : 'transition' as const,
+          workflowId: combinedDto.workflowId,
+          workflowName: combinedDto.workflowName,
+          removedItems: {
+            ids: statusDto ? statusDto.removedStatusIds || [] : [],
+            names: statusDto ? statusDto.removedStatusNames || [] : [],
+          },
+          affectedItemTypeSets: (combinedDto.affectedItemTypeSets || []).map((its: any) => ({
+            id: its.itemTypeSetId || its.id,
+            name: its.itemTypeSetName || its.name,
+            projectName: its.projectName || null,
+          })),
+          permissions: [],
+          totals: {
+            affectedItemTypeSets: combinedDto.totalAffectedItemTypeSets || 0,
+            totalPermissions: (statusDto ? statusDto.totalStatusOwnerPermissions || 0 : 0) + 
+                             (statusDto ? statusDto.totalExecutorPermissions || 0 : 0) + 
+                             (statusDto ? statusDto.totalFieldStatusPermissions || 0 : 0) +
+                             (transitionDto ? transitionDto.totalExecutorPermissions || 0 : 0),
+            totalRoleAssignments: combinedDto.totalRoleAssignments || 0,
+          },
+        } : null);
+        
+        setImpactReport(impactReportToShow);
         setState(prev => ({
           ...prev,
           ui: {
             ...prev.ui,
             showImpactReport: true,
-            impactReportType: combinedImpact.type,
+            impactReportType: impactReportToShow?.type || (statusDto ? 'status' : 'transition'),
             pendingSave: true,
           },
         }));
@@ -313,24 +353,30 @@ export function useWorkflowSaveManager({
       if (mode === 'create') {
         response = await api.post(baseEndpoint, dto);
       } else {
+        // Per create/update workflow, usiamo il path specifico per progetto se necessario
         const updateBaseEndpoint = scope === 'project' && projectId
           ? `/workflows/project/${projectId}/${state.workflow.id}`
           : `/workflows/${state.workflow.id}`;
-        try {
-          if (hasRemovedStatuses && hasRemovedTransitions) {
-            response = await api.post(`${updateBaseEndpoint}/confirm-status-removal`, dto);
-          } else if (hasRemovedStatuses) {
-            response = await api.post(`${updateBaseEndpoint}/confirm-status-removal`, dto);
-          } else if (hasRemovedTransitions) {
-            response = await api.post(`${updateBaseEndpoint}/confirm-transition-removal`, dto);
-          } else {
-            response = await api.put(updateBaseEndpoint, dto);
-          }
+        
+        // Gli endpoint di conferma rimozione funzionano per entrambi i workflow globali e di progetto
+        // Il controllo viene fatto tramite workflowId e tenant, non tramite il path
+          const confirmBaseEndpoint = `/workflows/${state.workflow.id}`;
+          
+          try {
+            if (hasRemovedStatuses && hasRemovedTransitions) {
+              response = await api.post(`${confirmBaseEndpoint}/confirm-status-removal`, dto);
+            } else if (hasRemovedStatuses) {
+              response = await api.post(`${confirmBaseEndpoint}/confirm-status-removal`, dto);
+            } else if (hasRemovedTransitions) {
+              response = await api.post(`${confirmBaseEndpoint}/confirm-transition-removal`, dto);
+            } else {
+              response = await api.put(updateBaseEndpoint, dto);
+            }
         } catch (err: any) {
           if (err.response?.data?.message?.includes('TRANSITION_REMOVAL_IMPACT')) {
-            response = await api.post(`${updateBaseEndpoint}/confirm-transition-removal`, dto);
+            response = await api.post(`${confirmBaseEndpoint}/confirm-transition-removal`, dto);
           } else if (err.response?.data?.message?.includes('STATUS_REMOVAL_IMPACT')) {
-            response = await api.post(`${updateBaseEndpoint}/confirm-status-removal`, dto);
+            response = await api.post(`${confirmBaseEndpoint}/confirm-status-removal`, dto);
           } else {
             throw err;
           }
@@ -381,5 +427,6 @@ export function useWorkflowSaveManager({
     saveWorkflow,
   };
 }
+
 
 

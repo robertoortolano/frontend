@@ -7,11 +7,14 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNodesState, useEdgesState } from 'reactflow';
+import type { Node, Edge } from 'reactflow';
 import {
   WorkflowState,
   UseWorkflowEditorReturn,
   ReactFlowNode,
   ReactFlowEdge,
+  WorkflowReactFlowNodeData,
+  WorkflowReactFlowEdgeData,
 } from '../types/workflow-unified.types';
 import { useWorkflowDataLoader } from './useWorkflowDataLoader';
 import { useWorkflowReactFlowCallbacks } from './useWorkflowReactFlowCallbacks';
@@ -83,8 +86,8 @@ export function useWorkflowEditor({
   } | null>(null);
 
   // React Flow state
-  const [reactFlowNodes, setReactFlowNodes, onNodesChange] = useNodesState<ReactFlowNode>([]);
-  const [reactFlowEdges, setReactFlowEdges, onEdgesChange] = useEdgesState<ReactFlowEdge>([]);
+  const [reactFlowNodes, setReactFlowNodes, onNodesChange] = useNodesState<Node<WorkflowReactFlowNodeData>>([]);
+  const [reactFlowEdges, setReactFlowEdges, onEdgesChange] = useEdgesState<Edge<WorkflowReactFlowEdgeData>>([]);
 
   const {
     handleCategoryChange,

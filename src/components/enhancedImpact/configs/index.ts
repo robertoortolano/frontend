@@ -3,3 +3,4 @@ export { itemTypeConfigurationImpactConfig } from './itemTypeConfigurationImpact
 export { statusImpactConfig } from './statusImpactConfig';
 export { transitionImpactConfig } from './transitionImpactConfig';
 
+

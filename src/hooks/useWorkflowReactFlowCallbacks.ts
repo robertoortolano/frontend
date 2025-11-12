@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { WorkflowState, WorkflowNodeData, WorkflowEdgeData, ReactFlowNode, ReactFlowEdge } from '../types/workflow-unified.types';
+import type { Node, Edge } from 'reactflow';
+import { WorkflowState, WorkflowNodeData, WorkflowEdgeData, ReactFlowNode, ReactFlowEdge, WorkflowReactFlowNodeData, WorkflowReactFlowEdgeData } from '../types/workflow-unified.types';
 import { StatusViewDto } from '../types/workflow.types';
 import { StatusCategory } from '../types/common.types';
 import { convertToReactFlowNode, convertToReactFlowEdge } from '../utils/workflow-converters';
@@ -10,9 +11,9 @@ interface UseWorkflowReactFlowCallbacksParams {
   setState: Dispatch<SetStateAction<WorkflowState>>;
   availableStatuses: StatusViewDto[];
   statusCategories: StatusCategory[];
-  reactFlowNodes: ReactFlowNode[];
-  setReactFlowNodes: Dispatch<SetStateAction<ReactFlowNode[]>>;
-  setReactFlowEdges: Dispatch<SetStateAction<ReactFlowEdge[]>>;
+  reactFlowNodes: Node<WorkflowReactFlowNodeData>[];
+  setReactFlowNodes: Dispatch<SetStateAction<Node<WorkflowReactFlowNodeData>[]>>;
+  setReactFlowEdges: Dispatch<SetStateAction<Edge<WorkflowReactFlowEdgeData>[]>>;
   loading: boolean;
 }
 
@@ -185,10 +186,10 @@ export function useWorkflowReactFlowCallbacks({
     }));
 
     const reactEdge = convertToReactFlowEdge(newEdge, (edgeId) => removalHandlersRef.current.removeEdge(edgeId));
-    setReactFlowEdges(prev => [...prev, reactEdge]);
+    setReactFlowEdges(prev => [...prev, reactEdge as Edge<WorkflowReactFlowEdgeData>]);
   }, [setReactFlowEdges, setState]);
 
-  const handleUpdateEdgeConnection = useCallback((oldEdge: any, newConnection: any) => {
+  const handleUpdateEdgeConnection = useCallback((oldEdge: Edge<WorkflowReactFlowEdgeData>, newConnection: { source: string; target: string; sourceHandle?: string; targetHandle?: string }) => {
     const edgeId = oldEdge.id;
     const edge = state.edges.find(e =>
       e.transitionId === Number(edgeId) || e.transitionTempId === edgeId ||
@@ -270,8 +271,9 @@ export function useWorkflowReactFlowCallbacks({
               targetStatusId: newTargetStatusId,
               sourcePosition: newSourceHandle,
               targetPosition: newTargetHandle,
+              transitionTempId: e.data?.transitionTempId || null,
             },
-          }
+          } as Edge<WorkflowReactFlowEdgeData>
         : e
     ));
   }, [setReactFlowEdges, setState, state.edges]);
@@ -291,14 +293,20 @@ export function useWorkflowReactFlowCallbacks({
         String(e.data?.transitionId) === edgeId ||
         e.data?.transitionTempId === edgeId;
 
-      if (edgeIdMatch && updates.transitionName !== undefined) {
+      if (edgeIdMatch) {
         return {
           ...e,
           data: {
             ...e.data,
-            label: updates.transitionName,
+            ...updates,
+            label: updates.transitionName !== undefined ? updates.transitionName : e.data?.label,
+            sourceStatusId: updates.sourceStatusId !== undefined ? updates.sourceStatusId : e.data?.sourceStatusId,
+            targetStatusId: updates.targetStatusId !== undefined ? updates.targetStatusId : e.data?.targetStatusId,
+            sourcePosition: updates.sourcePosition !== undefined ? updates.sourcePosition : e.data?.sourcePosition,
+            targetPosition: updates.targetPosition !== undefined ? updates.targetPosition : e.data?.targetPosition,
+            transitionTempId: updates.transitionTempId !== undefined ? updates.transitionTempId : e.data?.transitionTempId,
           },
-        };
+        } as Edge<WorkflowReactFlowEdgeData>;
       }
       return e;
     }));

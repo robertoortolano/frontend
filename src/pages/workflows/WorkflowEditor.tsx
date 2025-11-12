@@ -7,14 +7,13 @@
 
 import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { NodeProps } from 'reactflow';
+import type { NodeProps, Edge, Connection } from 'reactflow';
 import ReactFlow, {
   Controls,
   MiniMap,
   ReactFlowProvider,
   NodeTypes,
   EdgeTypes,
-  Connection,
   MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -27,7 +26,6 @@ import SelectableEdge from './components/SelectableEdge';
 import type {
   WorkflowReactFlowNodeData,
   WorkflowReactFlowEdgeData,
-  ReactFlowEdge
 } from '../../types/workflow-unified.types';
 
 import board from '../../styles/common/WorkflowBoard.module.css';
@@ -62,7 +60,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
   const workflowId = id ? Number(id) : undefined;
 
   // All hooks must be called at the top level, before any conditional returns
-  const [localEdges, setLocalEdges] = useState<ReactFlowEdge[]>([]);
+  const [localEdges, setLocalEdges] = useState<Edge<WorkflowReactFlowEdgeData>[]>([]);
   
   // Track which edges were just updated via onEdgeUpdate to prevent onEdgesChange from reverting them
   const recentlyUpdatedEdgesRef = useRef<Set<string>>(new Set());
@@ -72,7 +70,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     workflowId,
     scope: finalScope,
     projectId: finalProjectId,
-    onSave: (workflow) => {
+    onSave: () => {
       if (finalScope === 'tenant') {
         navigate('/tenant/workflows');
       } else if (finalScope === 'project' && finalProjectId) {
@@ -109,7 +107,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
               ...reactEdge.data,
               label: localEdge.data.label,
             },
-          };
+          } as Edge<WorkflowReactFlowEdgeData>;
         }
         return reactEdge;
       });
@@ -195,7 +193,7 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
       onUpdateLabel: (label: string) => handleUpdateLabel(tempId, label),
     };
 
-    const newLocalEdge: ReactFlowEdge = {
+    const newLocalEdge: Edge<WorkflowReactFlowEdgeData> = {
       id: tempId,
       type: 'selectableEdge',
       source: params.source!,
@@ -218,12 +216,12 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
     
     // Then add edge to unified state (this will update reactFlowEdges)
     // The useEffect will sync, but we already have it in localEdges so React Flow sees it immediately
-    actions.addEdge(params.source, params.target, '', params.sourceHandle, params.targetHandle);
+    actions.addEdge(params.source, params.target, '', params.sourceHandle || undefined, params.targetHandle || undefined);
   }, [actions, state.edges, localEdges, reactFlowEdges]);
 
   // Handle edge update (moving edge between handles)
   // This is called when user drags an edge to a different handle (onEdgeUpdate)
-  const handleEdgeUpdate = useCallback((oldEdge: any, newConnection: Connection) => {
+  const handleEdgeUpdate = useCallback((oldEdge: Edge<WorkflowReactFlowEdgeData>, newConnection: Connection) => {
     if (!newConnection.source || !newConnection.target) return;
     
     
@@ -251,8 +249,9 @@ export default function WorkflowEditor({ scope = 'tenant', projectId }: Workflow
               targetStatusId: Number(newConnection.target),
               sourcePosition: newConnection.sourceHandle ?? null,
               targetPosition: newConnection.targetHandle ?? null,
-            }
-          }
+              transitionTempId: e.data?.transitionTempId || null,
+            },
+          } as Edge<WorkflowReactFlowEdgeData>
         : e
     ));
     
