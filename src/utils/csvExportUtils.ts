@@ -52,7 +52,9 @@ export interface ProjectRoleInfo {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId?: number | null;
+  assignedRoles?: string[]; // Ruoli assegnati a questa permission per questo progetto
+  grantId?: number | null; // Grant assegnato a questa permission per questo progetto (se presente)
+  grantName?: string | null; // Nome del grant (se presente)
 }
 
 export interface ExportCsvParams {
@@ -300,77 +302,107 @@ const processPermissionRows = async (
     });
   }
 
-  // Grant di progetto - esportate senza ruoli nella colonna ruolo
+  // Ruoli di progetto da projectGrants.assignedRoles
   if (perm.projectGrants && perm.projectGrants.length > 0) {
     for (const projectGrant of perm.projectGrants) {
-      try {
-        // Usa il nuovo endpoint ProjectPermissionAssignment
-        // Nota: projectGrant potrebbe non avere permissionId/permissionType, quindi usiamo quelli di perm
-        if (!perm.permissionId || !perm.permissionType) {
-          console.warn('Permission senza permissionId o permissionType per grant di progetto:', perm);
-          continue;
+      const projectName = escapeCSV(projectGrant.projectName);
+      
+      // Esporta i ruoli di progetto se presenti
+      if (projectGrant.assignedRoles && projectGrant.assignedRoles.length > 0) {
+        projectGrant.assignedRoles.forEach((roleName: string) => {
+          pushRow({
+            roleName,
+            grant: projectName
+          });
+        });
+      }
+      
+      // Esporta il grant di progetto se presente
+      if (projectGrant.grantId) {
+        try {
+          // Usa il nuovo endpoint ProjectPermissionAssignment
+          // Nota: projectGrant potrebbe non avere permissionId/permissionType, quindi usiamo quelli di perm
+          if (!perm.permissionId || !perm.permissionType) {
+            console.warn('Permission senza permissionId o permissionType per grant di progetto:', perm);
+            // Se abbiamo il grantName, esportalo comunque
+            if (projectGrant.grantName) {
+              pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+            } else {
+              pushRow({ grant: projectName });
+            }
+            continue;
+          }
+          // Mappa il tipo di permission al formato backend
+          const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
+          const projectGrantResponse = await api.get(
+            `/project-permission-assignments/${backendPermissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
+          );
+          const assignment = projectGrantResponse.data;
+          const projectGrantDetails = assignment.grant || {};
+
+          // Riga base senza utenti/gruppi se non ci sono
+          if ((!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
+              (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
+              (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
+              (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
+            // Se abbiamo il grantName, esportalo
+            if (projectGrant.grantName) {
+              pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+            } else {
+              pushRow({ grant: projectName });
+            }
+          } else {
+            // Utenti
+            if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
+              projectGrantDetails.users.forEach((user: any) => {
+                const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
+                pushRow({
+                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                  userName
+                });
+              });
+            }
+
+            // Gruppi
+            if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
+              projectGrantDetails.groups.forEach((group: any) => {
+                pushRow({
+                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                  groupName: group.name || `Group #${group.id}`
+                });
+              });
+            }
+
+            // Utenti negati
+            if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
+              projectGrantDetails.negatedUsers.forEach((user: any) => {
+                const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
+                pushRow({
+                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                  negatedUserName: userName
+                });
+              });
+            }
+
+            // Gruppi negati
+            if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
+              projectGrantDetails.negatedGroups.forEach((group: any) => {
+                pushRow({
+                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                  negatedGroupName: group.name || `Group #${group.id}`
+                });
+              });
+            }
+          }
+        } catch (error) {
+          // Aggiungi comunque una riga con grant di progetto ma senza dettagli
+          // Se abbiamo il grantName, esportalo
+          if (projectGrant.grantName) {
+            pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+          } else {
+            pushRow({ grant: projectName });
+          }
         }
-        // Mappa il tipo di permission al formato backend
-        const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
-        const projectGrantResponse = await api.get(
-          `/project-permission-assignments/${backendPermissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
-        );
-        const assignment = projectGrantResponse.data;
-        const projectGrantDetails = assignment.grant || {};
-        const projectName = escapeCSV(projectGrant.projectName);
-
-        // Riga base senza utenti/gruppi se non ci sono
-        if ((!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
-            (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
-            (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
-            (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
-          pushRow({ grant: projectName });
-        } else {
-          // Utenti
-          if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
-            projectGrantDetails.users.forEach((user: any) => {
-              const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-              pushRow({
-                grant: projectName,
-                userName
-              });
-            });
-          }
-
-          // Gruppi
-          if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
-            projectGrantDetails.groups.forEach((group: any) => {
-              pushRow({
-                grant: projectName,
-                groupName: group.name || `Group #${group.id}`
-              });
-            });
-          }
-
-          // Utenti negati
-          if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
-            projectGrantDetails.negatedUsers.forEach((user: any) => {
-              const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-              pushRow({
-                grant: projectName,
-                negatedUserName: userName
-              });
-            });
-          }
-
-          // Gruppi negati
-          if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
-            projectGrantDetails.negatedGroups.forEach((group: any) => {
-              pushRow({
-                grant: projectName,
-                negatedGroupName: group.name || `Group #${group.id}`
-              });
-            });
-          }
-        }
-      } catch (error) {
-        // Aggiungi comunque una riga con grant di progetto ma senza dettagli
-        pushRow({ grant: escapeCSV(projectGrant.projectName) });
       }
     }
   }

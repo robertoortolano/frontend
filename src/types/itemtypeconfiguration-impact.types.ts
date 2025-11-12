@@ -85,7 +85,9 @@ export interface PermissionImpact {
 export interface ProjectGrantInfo {
   projectId: number;
   projectName: string;
-  roleId: number;
+  assignedRoles?: string[]; // Ruoli assegnati a questa permission per questo progetto
+  grantId?: number | null; // Grant assegnato a questa permission per questo progetto (se presente)
+  grantName?: string | null; // Nome del grant (se presente)
 }
 
 export interface ProjectRoleInfo {

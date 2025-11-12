@@ -122,6 +122,13 @@ export const usePermissionsStep = ({
             projectName: grant.projectName,
             roles: [],
           } as ProjectEntry);
+        // Aggiungi i ruoli da projectGrants.assignedRoles se presenti
+        if (grant.assignedRoles && Array.isArray(grant.assignedRoles)) {
+          existing.roles = [
+            ...existing.roles,
+            ...grant.assignedRoles.filter(Boolean),
+          ];
+        }
         existing.grant = grant;
         projectEntriesMap.set(key, existing);
       });
@@ -132,6 +139,8 @@ export const usePermissionsStep = ({
 
   return { configurationSections, getProjectEntries };
 };
+
+
 
 
 

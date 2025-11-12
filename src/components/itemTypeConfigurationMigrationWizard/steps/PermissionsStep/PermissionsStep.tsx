@@ -310,6 +310,7 @@ const PermissionSection: React.FC<PermissionSectionProps> = ({
                           </span>
                         )}
                         {hasGlobalGrant &&
+                          permission.grantId &&
                           permission.permissionId &&
                           permission.permissionType && (
                             <span
@@ -329,7 +330,7 @@ const PermissionSection: React.FC<PermissionSectionProps> = ({
                                 event.currentTarget.style.opacity = '1';
                               }}
                             >
-                              Grant
+                              Grant{permission.grantName ? ` (${permission.grantName})` : ''}
                             </span>
                           )}
                       </div>
@@ -379,7 +380,8 @@ const PermissionSection: React.FC<PermissionSectionProps> = ({
                             );
                           }
 
-                          if (entry.grant) {
+                          // Mostra il link Grant solo se c'è effettivamente un grant (grantId presente)
+                          if (entry.grant && entry.grant.grantId) {
                             nodes.push(
                               <span
                                 key={`proj-grant-${entryIndex}`}
@@ -485,6 +487,8 @@ export const PermissionsStep: React.FC<PermissionsStepProps> = ({
     </div>
   );
 };
+
+
 
 
 

@@ -156,10 +156,25 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         const originalConfig = originalConfigurationsRef.current.find(c => c.id === config.id);
         if (!originalConfig || !config.id) return null;
         
-        const fieldSetChanged = originalConfig.fieldSetId !== config.fieldSetId;
-        const workflowChanged = originalConfig.workflowId !== config.workflowId;
+        // Normalizza gli ID per confronto (tratta undefined/null come null)
+        const originalFieldSetId = originalConfig.fieldSetId ?? null;
+        const newFieldSetId = config.fieldSetId ?? null;
+        const originalWorkflowId = originalConfig.workflowId ?? null;
+        const newWorkflowId = config.workflowId ?? null;
+        
+        const fieldSetChanged = originalFieldSetId !== newFieldSetId;
+        const workflowChanged = originalWorkflowId !== newWorkflowId;
         
         if (fieldSetChanged || workflowChanged) {
+          console.log('Rilevato cambiamento in configurazione:', {
+            configId: config.id,
+            originalWorkflowId,
+            newWorkflowId,
+            workflowChanged,
+            originalFieldSetId,
+            newFieldSetId,
+            fieldSetChanged
+          });
           return { config, originalConfig, index };
         }
         return null;
@@ -208,8 +223,9 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         );
       }
       
-      // Aggiorna le originali con le nuove versioni
-      originalConfigurationsRef.current = [...itemTypeConfigurations];
+      // IMPORTANTE: NON aggiornare originalConfigurationsRef.current qui,
+      // perché performSave ha bisogno di rilevare i cambiamenti per chiamare il cleanup automatico
+      // originalConfigurationsRef.current verrà aggiornato in performSave dopo il salvataggio riuscito
       
       // Se ci sono configurazioni rimosse, rimuovi le permission orfane
       if (removedConfigIds.length > 0) {
@@ -482,7 +498,10 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         const allPermissions = [
           ...(impact.fieldOwnerPermissions || []),
           ...(impact.statusOwnerPermissions || []),
-          ...(impact.executorPermissions || [])
+          ...(impact.fieldStatusPermissions || []),
+          ...(impact.executorPermissions || []),
+          ...(impact.workerPermissions || []),
+          ...(impact.creatorPermissions || [])
         ];
         return allPermissions.some((p: any) => p.hasAssignments);
       });
