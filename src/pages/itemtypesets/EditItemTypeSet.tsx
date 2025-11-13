@@ -250,7 +250,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   };
   
   // Esegue il salvataggio effettivo
-  const performSave = async () => {
+  const performSave = async (forceRemoval: boolean = false) => {
     const dto: ItemTypeSetUpdateDto = {
       name,
       description,
@@ -261,6 +261,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         fieldSetId: conf.fieldSetId || null,
         workflowId: conf.workflowId || null,
       })),
+      forceRemoval: forceRemoval || undefined,
     };
 
     const updateEndpoint = scope === 'project' && projectId
@@ -441,7 +442,8 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
           if (configurationsWithChanges.length > 0) {
             await handleMigrationsThenSave(preservedPermissionIds);
           } else {
-            await performSaveWithRemoval(removedConfigIds, preservedPermissionIds);
+            // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
+            await performSaveWithRemoval(removedConfigIds, preservedPermissionIds, true);
           }
         });
         setShowRemovalImpactModal(true);
@@ -533,11 +535,11 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     
     // Le migrazioni vengono gestite nel handleMigrationConfirm, che chiama performSave
     // Ma dobbiamo anche gestire le rimozioni
-    // TODO: Integrare meglio questa logica
-    await performSaveWithRemoval(removedConfigIds, preservedRemovalPermissionIds);
+    // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
+    await performSaveWithRemoval(removedConfigIds, preservedRemovalPermissionIds, true);
   };
   
-  const performSaveWithRemoval = async (removedConfigIds: number[], preservedPermissionIds?: number[]) => {
+  const performSaveWithRemoval = async (removedConfigIds: number[], preservedPermissionIds?: number[], forceRemoval: boolean = false) => {
     if (removedConfigIds.length > 0) {
       // Chiama il backend per rimuovere le permission orfane (tranne quelle preservate)
       try {
@@ -561,7 +563,8 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     // per riflettere le configurazioni dopo la rimozione
     originalConfigurationsRef.current = [...itemTypeConfigurations];
     
-    await performSave();
+    // Passa forceRemoval: true quando l'utente ha confermato la rimozione nonostante le assegnazioni
+    await performSave(forceRemoval);
   };
 
   const handleCancel = () => {

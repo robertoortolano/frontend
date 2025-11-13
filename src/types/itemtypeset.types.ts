@@ -56,5 +56,6 @@ export interface ItemTypeSetUpdateDto {
     fieldSetId?: number | null;
     workflowId?: number | null;
   }>;
+  forceRemoval?: boolean;
 }
 
