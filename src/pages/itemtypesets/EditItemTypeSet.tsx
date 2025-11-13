@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
@@ -133,7 +133,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   };
 
   // Hook per il salvataggio
-  const { performSave, handleSubmit: handleSaveSubmit, getConfigurationsWithChanges } = useItemTypeSetSave({
+  const { performSave, handleSubmit: handleSaveSubmit } = useItemTypeSetSave({
     token,
     id,
     scope,
@@ -148,7 +148,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   // Hook per la migrazione (prima, senza performSaveWithRemoval - sarà aggiornato dopo)
   const migrationHookResult = useItemTypeSetMigration({
     token,
-    id,
     itemTypeConfigurations,
     originalConfigurationsRef,
     performSave,
@@ -161,7 +160,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     removalImpact,
     removalImpactLoading,
     analyzeRemovalImpact,
-    performSaveWithRemoval,
     handleRemovalImpactConfirm,
     handleRemovalImpactCancel,
   } = useItemTypeSetRemoval({
@@ -184,7 +182,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     analyzeMigrationImpact,
     handleMigrationConfirm,
     handleMigrationCancel,
-    handleMigrationsThenSave,
   } = migrationHookResult;
 
   const handleAddEntry = () => {

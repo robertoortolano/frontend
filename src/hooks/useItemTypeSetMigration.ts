@@ -7,7 +7,6 @@ import { useToast } from "../context/ToastContext";
 
 interface UseItemTypeSetMigrationProps {
   token: string | null;
-  id: string | undefined;
   itemTypeConfigurations: ItemTypeConfigurationDto[];
   originalConfigurationsRef: React.MutableRefObject<ItemTypeConfigurationDto[]>;
   performSave: (forceRemoval?: boolean) => Promise<void>;
@@ -21,7 +20,6 @@ interface UseItemTypeSetMigrationProps {
 
 export function useItemTypeSetMigration({
   token,
-  id,
   itemTypeConfigurations,
   originalConfigurationsRef,
   performSave,
@@ -205,7 +203,11 @@ export function useItemTypeSetMigration({
     // Le migrazioni vengono gestite nel handleMigrationConfirm, che chiama performSave
     // Ma dobbiamo anche gestire le rimozioni
     // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
-    await performSaveWithRemoval(removedConfigIds, preservedRemovalPermissionIds, true);
+    if (performSaveWithRemoval) {
+      await performSaveWithRemoval(removedConfigIds, preservedRemovalPermissionIds, true);
+    } else {
+      await performSave();
+    }
   };
 
   return {

@@ -33,7 +33,6 @@ export function ItemTypeSetChangePanel({
   const [selectedItemTypeSet, setSelectedItemTypeSet] = useState<ItemTypeSetDto | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const isGlobal = itemTypeSet.scope === 'TENANT';
   const hasOtherItemTypeSets = canChangeItemTypeSet && (
     availableItemTypeSets.length > 1 || 
     (availableItemTypeSets.length === 1 && availableItemTypeSets[0].id !== itemTypeSet.id)
