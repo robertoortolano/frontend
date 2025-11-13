@@ -1,23 +1,22 @@
-import { useEffect, useState, FormEvent, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { ItemTypeDto } from "../../types/itemtype.types";
 import { FieldSetViewDto } from "../../types/field.types";
 import { WorkflowSimpleDto } from "../../types/workflow.types";
-import { ItemTypeConfigurationDto, ItemTypeSetUpdateDto } from "../../types/itemtypeset.types";
-import { ItemTypeConfigurationMigrationImpactDto } from "../../types/item-type-configuration-migration.types";
+import { ItemTypeConfigurationDto } from "../../types/itemtypeset.types";
 import { ItemTypeConfigurationMigrationModal } from "../../components/ItemTypeConfigurationMigrationModal";
-import { ItemTypeConfigurationRemovalImpactDto } from "../../types/itemtypeconfiguration-impact.types";
 import { ItemTypeConfigurationEnhancedImpactReportModal } from "../../components/ItemTypeConfigurationEnhancedImpactReportModal";
-import { useToast } from "../../context/ToastContext";
+import { useItemTypeSetMigration } from "../../hooks/useItemTypeSetMigration";
+import { useItemTypeSetRemoval } from "../../hooks/useItemTypeSetRemoval";
+import { useItemTypeSetSave } from "../../hooks/useItemTypeSetSave";
+import { ItemTypeConfigurationsForm } from "../../components/itemtypesets/ItemTypeConfigurationsForm";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
 import form from "../../styles/common/Forms.module.css";
 import alert from "../../styles/common/Alerts.module.css";
-import utilities from "../../styles/common/Utilities.module.css";
-import { extractErrorMessage } from "../../utils/errorUtils";
 import { PageContainer, PageHeader, PageSection } from "../../components/shared/layout";
 
 interface EditItemTypeSetProps {
@@ -50,18 +49,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // State per il modal di migrazione
-  const [showMigrationModal, setShowMigrationModal] = useState(false);
-  const [migrationImpacts, setMigrationImpacts] = useState<ItemTypeConfigurationMigrationImpactDto[]>([]);
-  const [migrationLoading, setMigrationLoading] = useState(false);
-  
-  // State per il modal di rimozione impatto (ora solo al salvataggio)
-  const [showRemovalImpactModal, setShowRemovalImpactModal] = useState(false);
-  const [removalImpact, setRemovalImpact] = useState<ItemTypeConfigurationRemovalImpactDto | null>(null);
-  const [removalImpactLoading, setRemovalImpactLoading] = useState(false);
-  const { showToast } = useToast();
-  const [pendingSave, setPendingSave] = useState<((preservedPermissionIds?: number[]) => Promise<void>) | null>(null);
   
   // Store delle configurazioni originali per il confronto
   const originalConfigurationsRef = useRef<ItemTypeConfigurationDto[]>([]);
@@ -144,174 +131,61 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
       prev.map((e, i) => (i === index ? { ...e, ...updatedFields } : e))
     );
   };
-  
-  // Identifica le configurazioni con cambiamenti
-  const getConfigurationsWithChanges = (): Array<{
-    config: ItemTypeConfigurationDto;
-    originalConfig: ItemTypeConfigurationDto;
-    index: number;
-  }> => {
-    return itemTypeConfigurations
-      .map((config, index) => {
-        const originalConfig = originalConfigurationsRef.current.find(c => c.id === config.id);
-        if (!originalConfig || !config.id) return null;
-        
-        // Normalizza gli ID per confronto (tratta undefined/null come null)
-        const originalFieldSetId = originalConfig.fieldSetId ?? null;
-        const newFieldSetId = config.fieldSetId ?? null;
-        const originalWorkflowId = originalConfig.workflowId ?? null;
-        const newWorkflowId = config.workflowId ?? null;
-        
-        const fieldSetChanged = originalFieldSetId !== newFieldSetId;
-        const workflowChanged = originalWorkflowId !== newWorkflowId;
-        
-        if (fieldSetChanged || workflowChanged) {
-          console.log('Rilevato cambiamento in configurazione:', {
-            configId: config.id,
-            originalWorkflowId,
-            newWorkflowId,
-            workflowChanged,
-            originalFieldSetId,
-            newFieldSetId,
-            fieldSetChanged
-          });
-          return { config, originalConfig, index };
-        }
-        return null;
-      })
-      .filter((item): item is { config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number } => item !== null);
-  };
 
-  // Gestisce la conferma della migrazione (una per ogni configurazione modificata)
-  const handleMigrationConfirm = async (preservePermissionIdsMap: Map<number, number[]>) => {
-    try {
-      setMigrationLoading(true);
-      
-      // Identifica le configurazioni rimosse
-      const removedConfigIds = originalConfigurationsRef.current
-        .map(c => c.id)
-        .filter((id): id is number => id !== undefined && id !== null)
-        .filter(id => !itemTypeConfigurations.some(c => c.id === id));
-      
-      // Applica la migrazione per ogni configurazione
-      // IMPORTANTE: preservePermissionIds può essere un array vuoto [] se l'utente ha deselezionato tutto
-      for (const [configId, preservePermissionIds] of preservePermissionIdsMap) {
-        // Trova la configurazione corrispondente per ottenere i nuovi FieldSetId e WorkflowId
-        const config = itemTypeConfigurations.find(c => c.id === configId);
-        if (!config) {
-          console.error(`Configurazione ${configId} non trovata`);
-          continue;
-        }
-        
-        // Se preservePermissionIds è undefined o null, usa array vuoto
-        // Questo significa che l'utente non ha selezionato nulla intenzionalmente
-        const permissionIdsToPreserve = preservePermissionIds || [];
-        
-        await api.post(
-          `/item-type-configurations/${configId}/migrate-permissions`,
-          {
-            itemTypeConfigurationId: configId,
-            newFieldSetId: config.fieldSetId || null,
-            newWorkflowId: config.workflowId || null,
-            preservePermissionIds: permissionIdsToPreserve, // Può essere [] se l'utente ha deselezionato tutto
-            preserveAllPreservable: null,
-            removeAll: null,
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      }
-      
-      // IMPORTANTE: NON aggiornare originalConfigurationsRef.current qui,
-      // perché performSave ha bisogno di rilevare i cambiamenti per chiamare il cleanup automatico
-      // originalConfigurationsRef.current verrà aggiornato in performSave dopo il salvataggio riuscito
-      
-      // Se ci sono configurazioni rimosse, rimuovi le permission orfane
-      if (removedConfigIds.length > 0) {
-        await performSaveWithRemoval(removedConfigIds, undefined);
-      } else {
-        await performSave();
-      }
-      
-      setShowMigrationModal(false);
-      setMigrationImpacts([]);
-    } catch (err: any) {
-      console.error("Errore nell'applicazione della migrazione:", err);
-      setError(extractErrorMessage(err, "Errore nell'applicazione della migrazione"));
-    } finally {
-      setMigrationLoading(false);
-    }
-  };
-  
-  const handleMigrationCancel = () => {
-    setShowMigrationModal(false);
-    setMigrationImpacts([]);
-  };
-  
-  // Esegue il salvataggio effettivo
-  const performSave = async (forceRemoval: boolean = false) => {
-    const dto: ItemTypeSetUpdateDto = {
-      name,
-      description,
-      itemTypeConfigurations: itemTypeConfigurations.map((conf) => ({
-        id: conf.id,
-        itemTypeId: conf.itemTypeId,
-        category: conf.category,
-        fieldSetId: conf.fieldSetId || null,
-        workflowId: conf.workflowId || null,
-      })),
-      forceRemoval: forceRemoval || undefined,
-    };
+  // Hook per il salvataggio
+  const { performSave, handleSubmit: handleSaveSubmit, getConfigurationsWithChanges } = useItemTypeSetSave({
+    token,
+    id,
+    scope,
+    projectId,
+    name,
+    description,
+    itemTypeConfigurations,
+    originalConfigurationsRef,
+    setError,
+  });
 
-    const updateEndpoint = scope === 'project' && projectId
-      ? `/item-type-sets/project/${projectId}/${id}`
-      : `/item-type-sets/${id}`;
+  // Hook per la migrazione (prima, senza performSaveWithRemoval - sarà aggiornato dopo)
+  const migrationHookResult = useItemTypeSetMigration({
+    token,
+    id,
+    itemTypeConfigurations,
+    originalConfigurationsRef,
+    performSave,
+    setError,
+  });
 
-    try {
-      const response = await api.put(updateEndpoint, dto, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      // Aggiorna automaticamente le permissions per l'ItemTypeSet modificato
-      // Nota: Non c'è più bisogno di eliminare le vecchie permission perché vengono gestite automaticamente
-      // Se necessario, le permission vengono ricreate quando si modifica l'ItemTypeSet
-      try {
-        await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${id}`);
-      } catch (roleError) {
-        console.warn("Errore nell'aggiornamento automatico delle permissions:", roleError);
-      }
+  // Hook per la rimozione (dopo, con accesso alle funzioni di migrazione)
+  const {
+    showRemovalImpactModal,
+    removalImpact,
+    removalImpactLoading,
+    analyzeRemovalImpact,
+    performSaveWithRemoval,
+    handleRemovalImpactConfirm,
+    handleRemovalImpactCancel,
+  } = useItemTypeSetRemoval({
+    token,
+    id,
+    itemTypeConfigurations,
+    originalConfigurationsRef,
+    performSave,
+    analyzeMigrationImpact: migrationHookResult.analyzeMigrationImpact,
+    handleMigrationsThenSave: migrationHookResult.handleMigrationsThenSave,
+    setError,
+    setSaving,
+  });
 
-      // Aggiorna originalConfigurationsRef con lo stato salvato dal backend
-      // Questo è importante perché quando si modifica un FieldSet, le permission vengono ricreate
-      // e dobbiamo riflettere lo stato aggiornato per rilevare correttamente le rimozioni successive
-      const savedData = response.data;
-      if (savedData && savedData.itemTypeConfigurations) {
-        const configs = savedData.itemTypeConfigurations.map((conf: any) => ({
-          id: conf.id,
-          itemTypeId: conf.itemType?.id || conf.itemTypeId,
-          category: conf.category,
-          fieldSetId: conf.fieldSet?.id || conf.fieldSetId,
-          workflowId: conf.workflow?.id || conf.workflowId,
-        }));
-        originalConfigurationsRef.current = [...configs];
-      }
-
-      if (scope === 'tenant') {
-        navigate("/tenant/item-type-sets");
-      } else if (scope === 'project' && projectId) {
-        navigate(`/projects/${projectId}/item-type-sets`);
-      }
-    } catch (err: any) {
-      const message = err.response?.data?.message || "Errore durante il salvataggio dell'ItemTypeSet";
-      if (typeof message === 'string' && message.includes('ITEMTYPESET_REMOVAL_IMPACT')) {
-        setError("Sono presenti permission con assegnazioni per le configurazioni rimosse. Genera e conferma il report d'impatto prima di salvare.");
-      } else {
-        setError(message);
-      }
-      throw err;
-    }
-  };
+  // Usa il risultato del hook di migrazione (performSaveWithRemoval sarà undefined inizialmente ma gestito nell'hook)
+  const {
+    showMigrationModal,
+    migrationImpacts,
+    migrationLoading,
+    analyzeMigrationImpact,
+    handleMigrationConfirm,
+    handleMigrationCancel,
+    handleMigrationsThenSave,
+  } = migrationHookResult;
 
   const handleAddEntry = () => {
     if (!selectedItemTypeId || !selectedCategory || !selectedFieldSetId || !selectedWorkflowId) return;
@@ -344,227 +218,9 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     // Rimuovi visivamente la configurazione
     setItemTypeConfigurations((prev) => prev.filter((_, i) => i !== index));
   };
-  
-  const handleRemovalImpactConfirm = async (preservedPermissionIds?: number[]) => {
-    if (pendingSave) {
-      await pendingSave(preservedPermissionIds);
-    }
-    setShowRemovalImpactModal(false);
-    setRemovalImpact(null);
-    setPendingSave(null);
-  };
-  
-  const handleRemovalImpactCancel = () => {
-    setShowRemovalImpactModal(false);
-    setRemovalImpact(null);
-    setPendingSave(null);
-  };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!id) return;
-    
-    setSaving(true);
-    setError(null);
-
-    try {
-      // Identifica le configurazioni rimosse (quelle originali che non sono più presenti)
-      const originalConfigIds = originalConfigurationsRef.current
-        .map(c => c.id)
-        .filter((id): id is number => id !== undefined && id !== null);
-      
-      const currentConfigIds = itemTypeConfigurations
-        .map(c => c.id)
-        .filter((id): id is number => id !== undefined && id !== null);
-      
-      const removedConfigIds = originalConfigIds.filter(id => !currentConfigIds.includes(id));
-      
-      // Verifica che non sia l'ultima configurazione
-      if (itemTypeConfigurations.length === 0) {
-        setError("Un ItemTypeSet deve avere almeno una configurazione.");
-        setSaving(false);
-        return;
-      }
-      
-      // Identifica le configurazioni con cambiamenti di FieldSet/Workflow
-      const configurationsWithChanges = getConfigurationsWithChanges();
-      
-      // Se ci sono configurazioni rimosse, analizza l'impatto della rimozione
-      if (removedConfigIds.length > 0) {
-        await analyzeRemovalImpact(removedConfigIds, configurationsWithChanges);
-        return; // L'analisi imposterà pendingSave e mostrerà il modal se necessario
-      }
-      
-      // Se ci sono cambiamenti di FieldSet/Workflow, analizza la migrazione
-      if (configurationsWithChanges.length > 0) {
-        await analyzeMigrationImpact(configurationsWithChanges);
-        return; // L'analisi mostrerà il modal se necessario
-      }
-      
-      // Nessuna modifica che richieda analisi, salva direttamente
-      await performSave();
-      setSaving(false);
-    } catch (err: any) {
-      console.error("Errore durante l'aggiornamento", err);
-      setError(extractErrorMessage(err, "Errore durante l'aggiornamento"));
-      setSaving(false);
-    }
-  };
-  
-  const analyzeRemovalImpact = async (removedConfigIds: number[], configurationsWithChanges: Array<{ config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number }>) => {
-    setRemovalImpactLoading(true);
-    setError(null);
-    
-    try {
-      const response = await api.post(
-        `/item-type-sets/${id}/analyze-itemtypeconfiguration-removal-impact`,
-        removedConfigIds,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      
-      const impact: ItemTypeConfigurationRemovalImpactDto = response.data;
-      
-      // Verifica se ci sono permission con assegnazioni
-      const hasPopulatedPermissions = 
-        impact.fieldOwnerPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.statusOwnerPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.fieldStatusPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.executorPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.workerPermissions?.some((p: any) => p.hasAssignments) ||
-        impact.creatorPermissions?.some((p: any) => p.hasAssignments);
-      
-      if (hasPopulatedPermissions) {
-        setRemovalImpact(impact);
-        setPendingSave(() => async (preservedPermissionIds?: number[]) => {
-          // Se ci sono anche migrazioni, gestiscile prima del salvataggio finale
-          if (configurationsWithChanges.length > 0) {
-            await handleMigrationsThenSave(preservedPermissionIds);
-          } else {
-            // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
-            await performSaveWithRemoval(removedConfigIds, preservedPermissionIds, true);
-          }
-        });
-        setShowRemovalImpactModal(true);
-      } else {
-        // Se non ci sono assegnazioni per le rimozioni, controlla se ci sono migrazioni
-        if (configurationsWithChanges.length > 0) {
-          await analyzeMigrationImpact(configurationsWithChanges);
-        } else {
-          await performSaveWithRemoval(removedConfigIds, undefined);
-          showToast('ItemTypeSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');
-        }
-      }
-    } catch (err: any) {
-      console.error("Errore nell'analisi dell'impatto della rimozione:", err);
-      setError(extractErrorMessage(err, "Errore nell'analisi dell'impatto della rimozione"));
-    } finally {
-      setRemovalImpactLoading(false);
-      setSaving(false);
-    }
-  };
-  
-  const analyzeMigrationImpact = async (configurationsWithChanges: Array<{ config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number }>) => {
-    setMigrationLoading(true);
-    setError(null);
-    
-    try {
-      const impacts: ItemTypeConfigurationMigrationImpactDto[] = [];
-      
-      for (const { config } of configurationsWithChanges) {
-        try {
-          const response = await api.get(
-            `/item-type-configurations/${config.id}/migration-impact`,
-            {
-              params: {
-                newFieldSetId: config.fieldSetId || undefined,
-                newWorkflowId: config.workflowId || undefined,
-              },
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          impacts.push(response.data);
-        } catch (err: any) {
-          console.error(`Errore nell'analisi dell'impatto per configurazione ${config.id}:`, err);
-          setError(extractErrorMessage(err, "Errore nell'analisi dell'impatto della migrazione"));
-          setMigrationLoading(false);
-          setSaving(false);
-          return;
-        }
-      }
-      
-      // Verifica se ci sono permission con assegnazioni in almeno un impatto
-      const hasPopulatedPermissions = impacts.some(impact => {
-        const allPermissions = [
-          ...(impact.fieldOwnerPermissions || []),
-          ...(impact.statusOwnerPermissions || []),
-          ...(impact.fieldStatusPermissions || []),
-          ...(impact.executorPermissions || []),
-          ...(impact.workerPermissions || []),
-          ...(impact.creatorPermissions || [])
-        ];
-        return allPermissions.some((p: any) => p.hasAssignments);
-      });
-      
-      if (hasPopulatedPermissions) {
-        setMigrationImpacts(impacts);
-        setShowMigrationModal(true);
-        setSaving(false);
-      } else {
-        // Nessuna permission con assegnazioni: salva direttamente senza mostrare il modal
-        await performSave();
-        setSaving(false);
-        showToast('ItemTypeSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');
-      }
-    } catch (err: any) {
-      console.error("Errore durante l'analisi della migrazione", err);
-      setError(extractErrorMessage(err, "Errore durante l'analisi della migrazione"));
-      setSaving(false);
-    } finally {
-      setMigrationLoading(false);
-    }
-  };
-  
-  const handleMigrationsThenSave = async (preservedRemovalPermissionIds?: number[]) => {
-    // Prima gestisci le migrazioni, poi il salvataggio finale con rimozioni
-    const removedConfigIds = originalConfigurationsRef.current
-      .map(c => c.id)
-      .filter((id): id is number => id !== undefined && id !== null)
-      .filter(id => !itemTypeConfigurations.some(c => c.id === id));
-    
-    // Le migrazioni vengono gestite nel handleMigrationConfirm, che chiama performSave
-    // Ma dobbiamo anche gestire le rimozioni
-    // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
-    await performSaveWithRemoval(removedConfigIds, preservedRemovalPermissionIds, true);
-  };
-  
-  const performSaveWithRemoval = async (removedConfigIds: number[], preservedPermissionIds?: number[], forceRemoval: boolean = false) => {
-    if (removedConfigIds.length > 0) {
-      // Chiama il backend per rimuovere le permission orfane (tranne quelle preservate)
-      try {
-        await api.post(
-          `/item-type-sets/${id}/remove-itemtypeconfiguration-permissions`,
-          {
-            removedItemTypeConfigurationIds: removedConfigIds,
-            preservedPermissionIds: preservedPermissionIds ? Array.from(preservedPermissionIds) : []
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      } catch (err: any) {
-        console.error("Errore nella rimozione delle permission:", err);
-        // Continua comunque con il salvataggio
-      }
-    }
-    
-    // Aggiorna originalConfigurationsRef prima di chiamare performSave
-    // per riflettere le configurazioni dopo la rimozione
-    originalConfigurationsRef.current = [...itemTypeConfigurations];
-    
-    // Passa forceRemoval: true quando l'utente ha confermato la rimozione nonostante le assegnazioni
-    await performSave(forceRemoval);
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    handleSaveSubmit(e, setSaving, analyzeRemovalImpact, analyzeMigrationImpact);
   };
 
   const handleCancel = () => {
@@ -630,7 +286,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
             />
           </div>
 
-          <ItemTypeConfigurationsPanel
+          <ItemTypeConfigurationsForm
             scope={scope}
             saving={saving}
             availableItemTypes={availableItemTypes}
@@ -686,212 +342,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         loading={removalImpactLoading}
       />
     </PageContainer>
-  );
-}
-
-interface ItemTypeConfigurationsPanelProps {
-  scope: "tenant" | "project";
-  saving: boolean;
-  availableItemTypes: ItemTypeDto[];
-  categories: string[];
-  fieldSets: FieldSetViewDto[];
-  workflows: WorkflowSimpleDto[];
-  itemTypeConfigurations: ItemTypeConfigurationDto[];
-  selectedItemTypeId: string;
-  selectedCategory: string;
-  selectedFieldSetId: string;
-  selectedWorkflowId: string;
-  onChangeItemType: (value: string) => void;
-  onChangeCategory: (value: string) => void;
-  onChangeFieldSet: (value: string) => void;
-  onChangeWorkflow: (value: string) => void;
-  onAddEntry: () => void;
-  onRemoveEntry: (index: number) => void;
-  onUpdateEntry: (index: number, updatedFields: Partial<ItemTypeConfigurationDto>) => void;
-  itemTypes: ItemTypeDto[];
-}
-
-function ItemTypeConfigurationsPanel({
-  scope,
-  saving,
-  availableItemTypes,
-  categories,
-  fieldSets,
-  workflows,
-  itemTypeConfigurations,
-  selectedItemTypeId,
-  selectedCategory,
-  selectedFieldSetId,
-  selectedWorkflowId,
-  onChangeItemType,
-  onChangeCategory,
-  onChangeFieldSet,
-  onChangeWorkflow,
-  onAddEntry,
-  onRemoveEntry,
-  onUpdateEntry,
-  itemTypes,
-}: ItemTypeConfigurationsPanelProps) {
-  return (
-    <fieldset className={form.formGroup}>
-      <legend className={form.label}>ItemTypeConfigurations</legend>
-
-      <div className={`${form.inlineGroup} ${utilities.mb4}`}>
-        <select
-          value={selectedItemTypeId}
-          onChange={(event) => onChangeItemType(event.target.value)}
-          className={form.select}
-          disabled={saving}
-        >
-          <option value="">-- Seleziona un item type --</option>
-          {availableItemTypes.map((it) => (
-            <option key={it.id} value={it.id}>
-              {it.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedCategory}
-          onChange={(event) => onChangeCategory(event.target.value)}
-          className={form.select}
-          disabled={saving || categories.length === 0}
-        >
-          <option value="">-- Seleziona una categoria --</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedFieldSetId}
-          onChange={(event) => onChangeFieldSet(event.target.value)}
-          className={form.select}
-          disabled={saving}
-        >
-          <option value="">
-            -- Seleziona un field set {scope === "project" && "(del progetto)"} --
-          </option>
-          {fieldSets.map((fs) => (
-            <option key={fs.id} value={fs.id}>
-              {fs.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedWorkflowId}
-          onChange={(event) => onChangeWorkflow(event.target.value)}
-          className={form.select}
-          disabled={saving}
-        >
-          <option value="">
-            -- Seleziona un workflow {scope === "project" && "(del progetto)"} --
-          </option>
-          {workflows.map((wf) => (
-            <option key={wf.id} value={wf.id}>
-              {wf.name}
-            </option>
-          ))}
-        </select>
-
-        <button
-          type="button"
-          onClick={onAddEntry}
-          className={buttons.button}
-          disabled={
-            saving ||
-            !selectedItemTypeId ||
-            !selectedCategory ||
-            !selectedFieldSetId ||
-            !selectedWorkflowId
-          }
-        >
-          Add Entry
-        </button>
-      </div>
-
-      {itemTypeConfigurations.map((entry, index) => {
-        const itemType = itemTypes.find((it) => it.id === entry.itemTypeId);
-
-        return (
-          <div key={entry.id || `new-${index}`} className={form.inlineGroup}>
-            <input
-              type="text"
-              value={itemType?.name || ""}
-              disabled
-              className={form.input}
-              aria-label="Item Type"
-            />
-
-            <select
-              value={entry.category}
-              onChange={(event) => onUpdateEntry(index, { category: event.target.value })}
-              className={form.select}
-              disabled={saving}
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={entry.fieldSetId || ""}
-              onChange={(event) =>
-                onUpdateEntry(index, {
-                  fieldSetId: Number.parseInt(event.target.value, 10),
-                })
-              }
-              className={form.select}
-              disabled={saving}
-            >
-              <option value="">-- Seleziona un field set --</option>
-              {fieldSets.map((fs) => (
-                <option key={fs.id} value={fs.id}>
-                  {fs.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={entry.workflowId || ""}
-              onChange={(event) =>
-                onUpdateEntry(index, {
-                  workflowId: Number.parseInt(event.target.value, 10),
-                })
-              }
-              className={form.select}
-              disabled={saving}
-            >
-              <option value="">-- Seleziona un workflow --</option>
-              {workflows.map((wf) => (
-                <option key={wf.id} value={wf.id}>
-                  {wf.name}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => onRemoveEntry(index)}
-              className={buttons.button}
-              disabled={saving || itemTypeConfigurations.length === 1}
-              title={
-                itemTypeConfigurations.length === 1
-                  ? "Non è possibile rimuovere l'ultima ItemTypeConfiguration"
-                  : "Rimuovi configurazione"
-              }
-            >
-              Remove
-            </button>
-          </div>
-        );
-      })}
-    </fieldset>
   );
 }
 
