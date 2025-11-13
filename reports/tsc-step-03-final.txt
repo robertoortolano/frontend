@@ -1,0 +1,2 @@
+﻿src/pages/fieldsets/FieldSetEditUniversal.tsx(286,10): error TS6133: 'pendingSave' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurationsLanding.tsx(12,9): error TS6133: '_auth' is declared but its value is never read.

@@ -61,7 +61,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   const [removalImpact, setRemovalImpact] = useState<ItemTypeConfigurationRemovalImpactDto | null>(null);
   const [removalImpactLoading, setRemovalImpactLoading] = useState(false);
   const { showToast } = useToast();
-  const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
+  const [pendingSave, setPendingSave] = useState<((preservedPermissionIds?: number[]) => Promise<void>) | null>(null);
   
   // Store delle configurazioni originali per il confronto
   const originalConfigurationsRef = useRef<ItemTypeConfigurationDto[]>([]);
@@ -333,7 +333,6 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
   const handleRemoveEntry = (index: number) => {
     // Rimuove solo visivamente la configurazione (rimozione "fittizia")
     // L'analisi dell'impatto avverrà solo al salvataggio, come in FieldSet e Workflow
-    const configToRemove = itemTypeConfigurations[index];
     
     // Verifica che non sia l'ultima configurazione
     if (itemTypeConfigurations.length === 1) {

@@ -69,6 +69,14 @@ export interface SimpleFieldSetDto {
 }
 
 /**
+ * Simple ItemTypeSet DTO (used in nested views)
+ */
+export interface SimpleItemTypeSetDto {
+  id: number;
+  name: string;
+}
+
+/**
  * Field set view DTO
  * Maps to: FieldSetViewDto.java
  */
@@ -79,6 +87,7 @@ export interface FieldSetViewDto {
   scope: ScopeType;
   defaultFieldSet: boolean;
   fieldSetEntries: FieldSetEntryViewDto[];
+  usedInItemTypeSets?: SimpleItemTypeSetDto[]; // Opzionale: backend potrebbe non fornire questa informazione
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 
 import OptionsPopup from "../../components/shared/FieldOptionsPopup";

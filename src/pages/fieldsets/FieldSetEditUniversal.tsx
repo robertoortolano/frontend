@@ -283,7 +283,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const [showImpactReport, setShowImpactReport] = useState(false);
   const [impactReport, setImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
   const [analyzingImpact, setAnalyzingImpact] = useState(false);
-  const [pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
+  const [_pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
   const { showToast } = useToast();
 
   const sensors = useSensors(
@@ -318,9 +318,9 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         setFieldConfigurations(configsRes.data);
         
         // Set selected configurations from field set
-        const configIds = fieldSetData.fieldSetEntries?.map(entry => 
+        const configIds = (fieldSetData.fieldSetEntries?.map((entry: any) => 
           entry.fieldConfiguration?.id || entry.fieldConfigurationId
-        ) || [];
+        ).filter((id: number | undefined): id is number => id !== undefined)) || [];
         
         setSelectedConfigurations(configIds);
       } catch (err: any) {
@@ -399,12 +399,14 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       return;
     }
 
-    const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
+    const originalConfigIds = (fieldSet.fieldSetEntries?.map((entry: any) => 
       entry.fieldConfiguration?.id || entry.fieldConfigurationId
-    ) || [];
+    ).filter((id: number | undefined): id is number => id !== undefined)) || [];
     
     // Calcola tutte le configurazioni rimosse (quelle originali che non sono più selezionate)
-    const allRemovedConfigIds = originalConfigIds.filter(id => !selectedConfigurations.includes(id));
+    const allRemovedConfigIds = originalConfigIds.filter((id: number | undefined): id is number => 
+      id !== undefined && !selectedConfigurations.includes(id)
+    );
 
     if (allRemovedConfigIds.length > 0) {
       await analyzeRemovalImpact(allRemovedConfigIds);
@@ -416,7 +418,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       try {
         const dto: FieldSetCreateDto = {
           name: fieldSet.name.trim(),
-          description: fieldSet.description?.trim() || null,
+          description: fieldSet.description?.trim() || undefined,
           entries: selectedConfigurations.map((configId, index) => ({
             fieldConfigurationId: configId,
             orderIndex: index
@@ -520,7 +522,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     try {
       const dto: FieldSetCreateDto = {
         name: fieldSet.name.trim(),
-        description: fieldSet.description?.trim() || null,
+        description: fieldSet.description?.trim() || undefined,
         entries: selectedConfigurations.map((configId, index) => ({
           fieldConfigurationId: configId,
           orderIndex: index
@@ -567,8 +569,8 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
         entry.fieldConfiguration?.id || entry.fieldConfigurationId
       ) || [];
       
-      const removedConfigIds = originalConfigIds.filter(id => 
-        !selectedConfigurations.includes(id)
+      const removedConfigIds = originalConfigIds.filter((id: number | undefined): id is number => 
+        id !== undefined && !selectedConfigurations.includes(id)
       );
 
       const hasPermissions = 
@@ -594,7 +596,7 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       // Salva il FieldSet dopo la rimozione delle permission
       const dto: FieldSetCreateDto = {
         name: fieldSet.name.trim(),
-        description: fieldSet.description?.trim() || null,
+        description: fieldSet.description?.trim() || undefined,
         entries: selectedConfigurations.map((configId, index) => ({
           fieldConfigurationId: configId,
           orderIndex: index

@@ -1,0 +1,18 @@
+﻿src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(200,67): error TS6133: 'key' is declared but its value is never read.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(482,9): error TS2304: Cannot find name 'setPendingSave'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(524,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(598,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(611,7): error TS2304: Cannot find name 'setPendingSave'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(634,5): error TS2304: Cannot find name 'setPendingSave'.
+src/pages/projects/ProjectFieldConfigurationCreate.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurationEdit.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurations.tsx(2,1): error TS6133: 'Wrench' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurations.tsx(4,1): error TS6133: 'layout' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurationsLanding.tsx(12,9): error TS6133: 'auth' is declared but its value is never read.
+src/pages/projects/ProjectFieldSetCreate.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectFieldSetEdit.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectSettings.tsx(286,9): error TS6133: '_handleItemTypeSetSelect' is declared but its value is never read.
+src/pages/workflows/WorkflowEdit.tsx(169,10): error TS6133: 'error' is declared but its value is never read.
+src/pages/workflows/WorkflowEdit.tsx(635,45): error TS6133: 'statusIds' is declared but its value is never read.

@@ -154,6 +154,20 @@ export function EnhancedImpactReportModal<I>({
     }
 
     const permissions = config.prepareExportPermissions(impact);
+    
+    // Debug: verifica i dati preparati per l'export
+    console.log('Permissions prepared for export:', permissions);
+    permissions.forEach((perm, index) => {
+      if (perm.grantId || perm.grantName || (perm.assignedGrants && perm.assignedGrants.length > 0)) {
+        console.log(`Permission ${index} has grant:`, {
+          permissionId: perm.permissionId,
+          permissionType: perm.permissionType,
+          grantId: perm.grantId,
+          grantName: perm.grantName,
+          assignedGrants: perm.assignedGrants
+        });
+      }
+    });
 
     await exportImpactReportToCSV({
       permissions,

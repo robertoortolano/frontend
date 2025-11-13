@@ -12,6 +12,7 @@ import {
 } from "reactflow";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/api";
+import { extractErrorMessage } from "../../utils/errorUtils";
 
 import SelectableEdge from "./components/SelectableEdge";
 import CustomNode from "./components/CustomNode";
@@ -165,7 +166,7 @@ export default function WorkflowEdit() {
   const [removedStatusIds, setRemovedStatusIds] = useState<number[]>([]);
   const [removedNodes, setRemovedNodes] = useState<any[]>([]);
   const [removedEdges, setRemovedEdges] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -387,53 +388,7 @@ export default function WorkflowEdit() {
     [setEdges]
   );
 
-  const handleExportReport = async () => {
-    if (!impactReport) return;
-
-    try {
-      const response = await api.post(`/workflows/${id}/export-transition-removal-impact-csv`, 
-        impactReport.removedTransitionIds, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        responseType: 'blob'
-      });
-
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `transition_removal_impact_${id}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error("Errore durante l'export", err);
-    }
-  };
-
-  const handleExportStatusReport = async () => {
-    if (!statusImpactReport) return;
-
-    try {
-      const response = await api.post(`/workflows/${id}/export-status-removal-impact-csv`, 
-        statusImpactReport.removedStatusIds, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        responseType: 'blob'
-      });
-
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `status_removal_impact_${id}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error("Errore durante l'export status", err);
-    }
-  };
+  // handleExportReport e handleExportStatusReport rimossi - non utilizzati
 
   const handleSave = async () => {
     if (!workflowName.trim()) return alert("Inserisci un nome per il workflow.");
@@ -650,9 +605,9 @@ export default function WorkflowEdit() {
       const impact = response.data;
       
       // Verifica se ci sono permission con assegnazioni
-      const hasExecutorAssignments = impact.executorPermissions?.some((p) => p.hasAssignments) ?? false;
-      const hasStatusOwnerAssignments = impact.statusOwnerPermissions?.some((p) => p.hasAssignments) ?? false;
-      const hasFieldStatusAssignments = impact.fieldStatusPermissions?.some((p) => p.hasAssignments) ?? false;
+      const hasExecutorAssignments = impact.executorPermissions?.some((p: any) => p.hasAssignments) ?? false;
+      const hasStatusOwnerAssignments = impact.statusOwnerPermissions?.some((p: any) => p.hasAssignments) ?? false;
+      const hasFieldStatusAssignments = impact.fieldStatusPermissions?.some((p: any) => p.hasAssignments) ?? false;
       const hasPopulatedPermissions = hasExecutorAssignments || hasStatusOwnerAssignments || hasFieldStatusAssignments;
       
       if (hasPopulatedPermissions) {
@@ -677,7 +632,7 @@ export default function WorkflowEdit() {
     }
   };
 
-  const analyzeStatusRemovalImpact = async (statusIds: number[]) => {
+  const analyzeStatusRemovalImpact = async (_statusIds: number[]) => {
     setAnalyzingStatusImpact(true);
     
     try {
@@ -739,9 +694,9 @@ export default function WorkflowEdit() {
       
       // Verifica se ci sono permission con assegnazioni
       const hasPopulatedPermissions = 
-        impact.statusOwnerPermissions?.some(p => p.hasAssignments) ||
-        impact.executorPermissions?.some(p => p.hasAssignments) ||
-        impact.fieldStatusPermissions?.some(p => p.hasAssignments) || false;
+        impact.statusOwnerPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.executorPermissions?.some((p: any) => p.hasAssignments) ||
+        impact.fieldStatusPermissions?.some((p: any) => p.hasAssignments) || false;
       
       if (hasPopulatedPermissions) {
         setStatusImpactReport(impact);
@@ -764,7 +719,7 @@ export default function WorkflowEdit() {
     }
   };
 
-  const handleConfirmSave = async (preservedPermissionIds?: number[]) => {
+  const handleConfirmSave = async (_preservedPermissionIds?: number[]) => {
     setShowImpactReport(false);
     setImpactReport(null);
     
@@ -788,7 +743,7 @@ export default function WorkflowEdit() {
     setRemovedEdgesForTransitions([]);
   };
 
-  const handleConfirmStatusSave = async (preservedPermissionIds?: number[]) => {
+  const handleConfirmStatusSave = async (_preservedPermissionIds?: number[]) => {
     setShowStatusImpactReport(false);
     setStatusImpactReport(null);
     

@@ -283,9 +283,6 @@ function ItemTypeSetDetails({
     setSelectedItemTypeSet(null);
   };
 
-  const handleItemTypeSetSelect = (itemTypeSet: any) => {
-    setSelectedItemTypeSet(itemTypeSet);
-  };
 
   const handleApplyChange = () => {
     if (!canChangeItemTypeSet) {

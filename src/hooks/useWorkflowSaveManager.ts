@@ -263,7 +263,7 @@ export function useWorkflowSaveManager({
       // ma hanno comunque assegnazioni definite
       const hasRoleAssignmentsFromImpact = combinedImpact?.permissions?.some(perm =>
         perm.items?.some(item => item.hasAssignments)
-      ) || combinedImpact?.totals?.totalRoleAssignments > 0;
+      ) || (combinedImpact?.totals?.totalRoleAssignments ?? 0) > 0;
       
       const hasRoleAssignmentsFromDto = (combinedDto?.totalRoleAssignments || 0) > 0 ||
         (statusDto && (

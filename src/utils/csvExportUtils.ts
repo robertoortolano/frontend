@@ -38,6 +38,8 @@ export interface PermissionData {
   assignedRoles?: string[]; // Ruoli globali
   projectAssignedRoles?: ProjectRoleInfo[]; // Ruoli di progetto per ogni progetto
   grantId?: number | null;
+  grantName?: string | null; // Nome del grant (se presente ma grantId non disponibile)
+  assignedGrants?: string[] | null; // Nomi dei grant assegnati (se presenti ma grantId non disponibile)
   roleId?: number | null;
   projectGrants?: ProjectGrantInfo[];
   canBePreserved?: boolean;
@@ -222,8 +224,12 @@ const processPermissionRows = async (
   }
 
   // Grant globali senza utenti/gruppi ma comunque presenti nel permesso
-  // Grant globale
-  if (perm.grantId && perm.permissionId && perm.permissionType) {
+  // Grant globale - controlla grantId, grantName o assignedGrants
+  const hasGlobalGrant = perm.grantId || perm.grantName || (perm.assignedGrants && perm.assignedGrants.length > 0);
+  
+  if (hasGlobalGrant && perm.permissionId && perm.permissionType) {
+    // Prova sempre a fare la chiamata API per ottenere i dettagli completi del grant
+    // anche se non abbiamo grantId, perché l'endpoint funziona con permissionId
     try {
       // Mappa il tipo di permission al formato backend
       const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
@@ -232,57 +238,110 @@ const processPermissionRows = async (
       const assignment = grantResponse.data;
       const grantDetails = assignment.grant || {};
 
-      // Riga base senza utenti/gruppi se non ci sono
-      if ((!grantDetails.users || grantDetails.users.length === 0) &&
-          (!grantDetails.groups || grantDetails.groups.length === 0) &&
-          (!grantDetails.negatedUsers || grantDetails.negatedUsers.length === 0) &&
-          (!grantDetails.negatedGroups || grantDetails.negatedGroups.length === 0)) {
-        pushRow({ grant: 'Global' });
+      // Se la chiamata API non restituisce grant o è vuoto, usa grantName o assignedGrants
+      if (!grantDetails || Object.keys(grantDetails).length === 0 || 
+          (!grantDetails.id && !grantDetails.name && 
+           (!grantDetails.users || grantDetails.users.length === 0) &&
+           (!grantDetails.groups || grantDetails.groups.length === 0))) {
+        // Se la chiamata API non restituisce grant ma abbiamo grantName o assignedGrants, esportali comunque
+        if (perm.assignedGrants && perm.assignedGrants.length > 0) {
+          perm.assignedGrants.forEach((grantName: string) => {
+            pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
+          });
+        } else if (perm.grantName) {
+          pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+        } else {
+          pushRow({ grant: 'Global' });
+        }
       } else {
-        // Utenti
-        if (grantDetails.users && grantDetails.users.length > 0) {
-          grantDetails.users.forEach((user: any) => {
-            const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-            pushRow({
-              grant: 'Global',
-              userName
+        // Se abbiamo un grant con dettagli, esportali
+        // Riga base senza utenti/gruppi se non ci sono
+        if ((!grantDetails.users || grantDetails.users.length === 0) &&
+            (!grantDetails.groups || grantDetails.groups.length === 0) &&
+            (!grantDetails.negatedUsers || grantDetails.negatedUsers.length === 0) &&
+            (!grantDetails.negatedGroups || grantDetails.negatedGroups.length === 0)) {
+          // Se abbiamo grantName o assignedGrants, includili nel nome del grant
+          if (perm.assignedGrants && perm.assignedGrants.length > 0) {
+            perm.assignedGrants.forEach((grantName: string) => {
+              pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
             });
-          });
-        }
+          } else if (perm.grantName) {
+            pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+          } else {
+            pushRow({ grant: 'Global' });
+          }
+        } else {
+          // Utenti
+          if (grantDetails.users && grantDetails.users.length > 0) {
+            grantDetails.users.forEach((user: any) => {
+              const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
+              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              pushRow({
+                grant: grantLabel,
+                userName
+              });
+            });
+          }
 
-        // Gruppi
-        if (grantDetails.groups && grantDetails.groups.length > 0) {
-          grantDetails.groups.forEach((group: any) => {
-            pushRow({
-              grant: 'Global',
-              groupName: group.name || `Group #${group.id}`
+          // Gruppi
+          if (grantDetails.groups && grantDetails.groups.length > 0) {
+            grantDetails.groups.forEach((group: any) => {
+              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              pushRow({
+                grant: grantLabel,
+                groupName: group.name || `Group #${group.id}`
+              });
             });
-          });
-        }
+          }
 
-        // Utenti negati
-        if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
-          grantDetails.negatedUsers.forEach((user: any) => {
-            const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-            pushRow({
-              grant: 'Global',
-              negatedUserName: userName
+          // Utenti negati
+          if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
+            grantDetails.negatedUsers.forEach((user: any) => {
+              const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
+              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              pushRow({
+                grant: grantLabel,
+                negatedUserName: userName
+              });
             });
-          });
-        }
+          }
 
-        // Gruppi negati
-        if (grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0) {
-          grantDetails.negatedGroups.forEach((group: any) => {
-            pushRow({
-              grant: 'Global',
-              negatedGroupName: group.name || `Group #${group.id}`
+          // Gruppi negati
+          if (grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0) {
+            grantDetails.negatedGroups.forEach((group: any) => {
+              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              pushRow({
+                grant: grantLabel,
+                negatedGroupName: group.name || `Group #${group.id}`
+              });
             });
-          });
+          }
         }
       }
     } catch (error) {
-      // Aggiungi comunque una riga con grant globale ma senza dettagli
+      // Se la chiamata API fallisce, esporta comunque grantName o assignedGrants se disponibili
+      console.warn(`Error fetching grant details for permission ${perm.permissionId}:`, error);
+      if (perm.assignedGrants && perm.assignedGrants.length > 0) {
+        perm.assignedGrants.forEach((grantName: string) => {
+          pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
+        });
+      } else if (perm.grantName) {
+        pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+      } else {
+        // Fallback: esporta comunque "Global" se abbiamo indicato che c'è un grant
+        pushRow({ grant: 'Global' });
+      }
+    }
+  } else if (hasGlobalGrant) {
+    // Se abbiamo un grant ma non abbiamo permissionId o permissionType, esporta comunque
+    // Questo può succedere se i dati non sono completi
+    if (perm.assignedGrants && perm.assignedGrants.length > 0) {
+      perm.assignedGrants.forEach((grantName: string) => {
+        pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
+      });
+    } else if (perm.grantName) {
+      pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+    } else {
       pushRow({ grant: 'Global' });
     }
   }
@@ -318,20 +377,10 @@ const processPermissionRows = async (
       }
       
       // Esporta il grant di progetto se presente
-      if (projectGrant.grantId) {
+      // Prova sempre a fare la chiamata API se abbiamo permissionId e permissionType
+      // anche se grantId è null, perché l'endpoint funziona con permissionId
+      if (perm.permissionId && perm.permissionType) {
         try {
-          // Usa il nuovo endpoint ProjectPermissionAssignment
-          // Nota: projectGrant potrebbe non avere permissionId/permissionType, quindi usiamo quelli di perm
-          if (!perm.permissionId || !perm.permissionType) {
-            console.warn('Permission senza permissionId o permissionType per grant di progetto:', perm);
-            // Se abbiamo il grantName, esportalo comunque
-            if (projectGrant.grantName) {
-              pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
-            } else {
-              pushRow({ grant: projectName });
-            }
-            continue;
-          }
           // Mappa il tipo di permission al formato backend
           const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
           const projectGrantResponse = await api.get(
@@ -340,76 +389,98 @@ const processPermissionRows = async (
           const assignment = projectGrantResponse.data;
           const projectGrantDetails = assignment.grant || {};
 
-          // Riga base senza utenti/gruppi se non ci sono
-          if ((!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
-              (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
-              (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
-              (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
-            // Se abbiamo il grantName, esportalo
+          // Se la chiamata API non restituisce grant o è vuoto, esporta comunque il grant di progetto
+          if (!projectGrantDetails || Object.keys(projectGrantDetails).length === 0 || 
+              (!projectGrantDetails.id && !projectGrantDetails.name && 
+               (!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
+               (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0))) {
+            // Se abbiamo il grantName, esportalo, altrimenti esporta solo il nome del progetto
             if (projectGrant.grantName) {
               pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
             } else {
               pushRow({ grant: projectName });
             }
           } else {
-            // Utenti
-            if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
-              projectGrantDetails.users.forEach((user: any) => {
-                const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-                pushRow({
-                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
-                  userName
+            // Riga base senza utenti/gruppi se non ci sono
+            if ((!projectGrantDetails.users || projectGrantDetails.users.length === 0) &&
+                (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0) &&
+                (!projectGrantDetails.negatedUsers || projectGrantDetails.negatedUsers.length === 0) &&
+                (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
+              // Se abbiamo il grantName, esportalo
+              if (projectGrant.grantName) {
+                pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+              } else {
+                pushRow({ grant: projectName });
+              }
+            } else {
+              // Utenti
+              if (projectGrantDetails.users && projectGrantDetails.users.length > 0) {
+                projectGrantDetails.users.forEach((user: any) => {
+                  const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
+                  pushRow({
+                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    userName
+                  });
                 });
-              });
-            }
+              }
 
-            // Gruppi
-            if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
-              projectGrantDetails.groups.forEach((group: any) => {
-                pushRow({
-                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
-                  groupName: group.name || `Group #${group.id}`
+              // Gruppi
+              if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
+                projectGrantDetails.groups.forEach((group: any) => {
+                  pushRow({
+                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    groupName: group.name || `Group #${group.id}`
+                  });
                 });
-              });
-            }
+              }
 
-            // Utenti negati
-            if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
-              projectGrantDetails.negatedUsers.forEach((user: any) => {
-                const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-                pushRow({
-                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
-                  negatedUserName: userName
+              // Utenti negati
+              if (projectGrantDetails.negatedUsers && projectGrantDetails.negatedUsers.length > 0) {
+                projectGrantDetails.negatedUsers.forEach((user: any) => {
+                  const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
+                  pushRow({
+                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    negatedUserName: userName
+                  });
                 });
-              });
-            }
+              }
 
-            // Gruppi negati
-            if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
-              projectGrantDetails.negatedGroups.forEach((group: any) => {
-                pushRow({
-                  grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
-                  negatedGroupName: group.name || `Group #${group.id}`
+              // Gruppi negati
+              if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
+                projectGrantDetails.negatedGroups.forEach((group: any) => {
+                  pushRow({
+                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    negatedGroupName: group.name || `Group #${group.id}`
+                  });
                 });
-              });
+              }
             }
           }
         } catch (error) {
-          // Aggiungi comunque una riga con grant di progetto ma senza dettagli
-          // Se abbiamo il grantName, esportalo
+          // Se la chiamata API fallisce, esporta comunque il grant di progetto
+          console.warn(`Error fetching project grant details for permission ${perm.permissionId}, project ${projectGrant.projectId}:`, error);
           if (projectGrant.grantName) {
             pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
           } else {
             pushRow({ grant: projectName });
           }
         }
+      } else {
+        // Se non abbiamo permissionId o permissionType ma abbiamo projectGrants, esporta comunque
+        // Questo può succedere se i dati non sono completi
+        if (projectGrant.grantName) {
+          pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+        } else {
+          pushRow({ grant: projectName });
+        }
       }
     }
   }
 
   // Se non ci sono né ruoli né grant, aggiungi almeno una riga base
+  const hasAnyGrant = perm.grantId || perm.grantName || (perm.assignedGrants && perm.assignedGrants.length > 0);
   if ((!perm.assignedRoles || perm.assignedRoles.length === 0) &&
-      !perm.grantId &&
+      !hasAnyGrant &&
       (!perm.projectGrants || perm.projectGrants.length === 0) &&
       (!perm.projectAssignedRoles || perm.projectAssignedRoles.length === 0)) {
     pushRow();

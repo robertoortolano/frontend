@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 import { useFavorites } from "../../context/FavoritesContext";
 import { FolderOpen, ArrowRight } from "lucide-react";
 
@@ -9,7 +8,6 @@ import alert from "../../styles/common/Alerts.module.css";
 
 export default function ProjectFieldConfigurationsLanding() {
   const navigate = useNavigate();
-  const auth = useAuth() as any;
   const { favoriteProjects } = useFavorites();
 
   const handleProjectSelect = (projectId: number) => {

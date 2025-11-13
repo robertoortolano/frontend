@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import {
   DndContext,
@@ -27,7 +27,6 @@ import {
   FieldTypesMap,
   FieldOptionDto,
   FieldConfigurationCreateDto,
-  FieldOptionCreateDto,
 } from "../../types/field.types";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -70,7 +69,7 @@ function SortableOptionItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: option.id });
+  } = useSortable({ id: option.id || uuidv4() });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -464,7 +463,7 @@ export default function FieldConfigurationCreateUniversal({ scope, projectId }: 
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={options.map(opt => opt.id)}
+                  items={options.map(opt => opt.id || uuidv4()).filter((id): id is string => id !== undefined)}
                   strategy={verticalListSortingStrategy}
                 >
                   <div className={form.optionsList}>

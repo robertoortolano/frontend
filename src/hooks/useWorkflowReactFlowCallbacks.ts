@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { Node, Edge } from 'reactflow';
-import { WorkflowState, WorkflowNodeData, WorkflowEdgeData, ReactFlowNode, ReactFlowEdge, WorkflowReactFlowNodeData, WorkflowReactFlowEdgeData } from '../types/workflow-unified.types';
+import { WorkflowState, WorkflowNodeData, WorkflowEdgeData, WorkflowReactFlowNodeData, WorkflowReactFlowEdgeData } from '../types/workflow-unified.types';
 import { StatusViewDto } from '../types/workflow.types';
 import { StatusCategory } from '../types/common.types';
 import { convertToReactFlowNode, convertToReactFlowEdge } from '../utils/workflow-converters';

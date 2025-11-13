@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   DndContext,
   closestCenter,
@@ -227,7 +227,7 @@ export default function FieldSetCreateUniversal({ scope, projectId }: FieldSetCr
     try {
       const dto: FieldSetCreateDto = {
         name: name.trim(),
-        description: description.trim() || null,
+        description: description.trim() || undefined,
         entries: selectedConfigurations.map((configId, index) => ({
           fieldConfigurationId: configId,
           orderIndex: index,

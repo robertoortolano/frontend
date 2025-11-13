@@ -48,6 +48,9 @@ export const transitionImpactConfig: EnhancedImpactReportConfig<TransitionRemova
         assignedRoles: perm.assignedRoles || [],
         projectAssignedRoles: perm.projectAssignedRoles || [],
         grantId: perm.grantId ?? null,
+        grantName: perm.grantName || null,
+        // Allinea alla logica di visualizzazione: se assignedGrants non c'è ma c'è grantName, crea array
+        assignedGrants: perm.assignedGrants ?? (perm.grantName ? [perm.grantName] : null),
         roleId: perm.roleId ?? perm.permissionId ?? null,
         projectGrants: perm.projectGrants || [],
         canBePreserved: Boolean((perm as any).canBePreserved)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -27,7 +27,6 @@ import {
   FieldTypesMap, 
   FieldOptionDto,
   FieldConfigurationUpdateDto,
-  FieldOptionUpdateDto
 } from "../../types/field.types";
 import buttons from "../../styles/common/Buttons.module.css";
 import form from "../../styles/common/Forms.module.css";
@@ -70,7 +69,7 @@ function SortableOptionItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: option.id });
+  } = useSortable({ id: option.id || uuidv4() });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -198,14 +197,14 @@ export default function FieldConfigurationEditUniversal({
         setSelectedFieldId(config.fieldId?.toString() || "");
         
         // Find the field type key by comparing the descriptor with available types
-        const fieldTypeKey = Object.entries(typesRes.data).find(([key, descriptor]) => 
+        const fieldTypeKey = Object.entries(typesRes.data).find(([_key, descriptor]: [string, any]) => 
           descriptor.displayName === config.fieldType?.displayName
         )?.[0] || "";
         setFieldTypeKey(fieldTypeKey);
         
         // Convert FieldOptionViewDto to FieldOptionDto
         // Keep numeric IDs for existing options, use UUID for new ones
-        const convertedOptions = (config.options || []).map(opt => ({
+        const convertedOptions = (config.options || []).map((opt: any) => ({
           id: opt.id?.toString() || uuidv4(),
           label: opt.label,
           value: opt.value,
@@ -304,10 +303,10 @@ export default function FieldConfigurationEditUniversal({
     try {
       const dto: FieldConfigurationUpdateDto = {
         name: fieldConfiguration.name.trim(),
-        alias: fieldConfiguration.alias?.trim() || null,
+        alias: fieldConfiguration.alias?.trim() || undefined,
         fieldId: selectedFieldId ? parseInt(selectedFieldId) : null,
         fieldType: fieldTypeKey,
-        description: fieldConfiguration.description?.trim() || null,
+        description: fieldConfiguration.description?.trim() || undefined,
         options: canEditOptions
           ? options.map((opt, index) => ({
               id: typeof opt.id === 'string' && !isNaN(Number(opt.id)) 
@@ -522,7 +521,7 @@ export default function FieldConfigurationEditUniversal({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={options.map(opt => opt.id)}
+                  items={options.map(opt => opt.id || uuidv4()).filter((id): id is string => id !== undefined)}
                   strategy={verticalListSortingStrategy}
                 >
                   <div className={form.optionsList}>

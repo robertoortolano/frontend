@@ -1,0 +1,82 @@
+﻿src/pages/fieldconfigurations/FieldConfigurationCreateUniversal.tsx(2,23): error TS6133: 'useParams' is declared but its value is never read.
+src/pages/fieldconfigurations/FieldConfigurationCreateUniversal.tsx(30,3): error TS6133: 'FieldOptionCreateDto' is declared but its value is never read.
+src/pages/fieldconfigurations/FieldConfigurationCreateUniversal.tsx(73,21): error TS2322: Type 'string | undefined' is not assignable to type 'UniqueIdentifier'.
+  Type 'undefined' is not assignable to type 'UniqueIdentifier'.
+src/pages/fieldconfigurations/FieldConfigurationCreateUniversal.tsx(467,19): error TS2322: Type '(string | undefined)[]' is not assignable to type '(UniqueIdentifier | { id: UniqueIdentifier; })[]'.
+  Type 'string | undefined' is not assignable to type 'UniqueIdentifier | { id: UniqueIdentifier; }'.
+    Type 'undefined' is not assignable to type 'UniqueIdentifier | { id: UniqueIdentifier; }'.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(30,3): error TS6133: 'FieldOptionUpdateDto' is declared but its value is never read.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(73,21): error TS2322: Type 'string | undefined' is not assignable to type 'UniqueIdentifier'.
+  Type 'undefined' is not assignable to type 'UniqueIdentifier'.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(201,67): error TS6133: 'key' is declared but its value is never read.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(202,11): error TS18046: 'descriptor' is of type 'unknown'.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(208,61): error TS7006: Parameter 'opt' implicitly has an 'any' type.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(307,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(310,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldconfigurations/FieldConfigurationEditUniversal.tsx(525,19): error TS2322: Type '(string | undefined)[]' is not assignable to type '(UniqueIdentifier | { id: UniqueIdentifier; })[]'.
+  Type 'string | undefined' is not assignable to type 'UniqueIdentifier | { id: UniqueIdentifier; }'.
+    Type 'undefined' is not assignable to type 'UniqueIdentifier | { id: UniqueIdentifier; }'.
+src/pages/fieldconfigurations/FieldConfigurationsUniversal.tsx(2,23): error TS6133: 'useParams' is declared but its value is never read.
+src/pages/fieldsets/FieldSetCreateUniversal.tsx(2,23): error TS6133: 'useParams' is declared but its value is never read.
+src/pages/fieldsets/FieldSetCreateUniversal.tsx(230,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(286,10): error TS6133: 'pendingSave' is declared but its value is never read.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(321,61): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(407,97): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(410,34): error TS2345: Argument of type '(number | undefined)[]' is not assignable to parameter of type 'number[]'.
+  Type 'number | undefined' is not assignable to type 'number'.
+    Type 'undefined' is not assignable to type 'number'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(419,11): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(523,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(571,42): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/pages/fieldsets/FieldSetEditUniversal.tsx(597,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(2,23): error TS6133: 'useParams' is declared but its value is never read.
+src/pages/fieldsets/FieldSetsUniversal.tsx(98,19): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(98,50): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(175,30): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(175,56): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(177,34): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(209,36): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(209,62): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(212,35): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/fieldsets/FieldSetsUniversal.tsx(212,61): error TS2339: Property 'usedInItemTypeSets' does not exist on type 'FieldSetViewDto'.
+src/pages/itemtypesets/EditItemTypeSet.tsx(336,11): error TS6133: 'configToRemove' is declared but its value is never read.
+src/pages/itemtypesets/EditItemTypeSet.tsx(350,25): error TS2554: Expected 0 arguments, but got 1.
+src/pages/projects/ProjectFieldConfigurationCreate.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurationEdit.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurations.tsx(2,1): error TS6133: 'Wrench' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurations.tsx(4,1): error TS6133: 'layout' is declared but its value is never read.
+src/pages/projects/ProjectFieldConfigurationsLanding.tsx(12,9): error TS6133: 'auth' is declared but its value is never read.
+src/pages/projects/ProjectFieldSetCreate.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectFieldSetEdit.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/projects/ProjectSettings.tsx(286,9): error TS6133: 'handleItemTypeSetSelect' is declared but its value is never read.
+src/pages/projects/ProjectSettings.tsx(877,11): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/pages/workflows/WorkflowEdit.tsx(168,10): error TS6133: 'error' is declared but its value is never read.
+src/pages/workflows/WorkflowEdit.tsx(390,9): error TS6133: 'handleExportReport' is declared but its value is never read.
+src/pages/workflows/WorkflowEdit.tsx(414,9): error TS6133: 'handleExportStatusReport' is declared but its value is never read.
+src/pages/workflows/WorkflowEdit.tsx(511,16): error TS2304: Cannot find name 'extractErrorMessage'.
+src/pages/workflows/WorkflowEdit.tsx(653,72): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/workflows/WorkflowEdit.tsx(654,78): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/workflows/WorkflowEdit.tsx(655,78): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/workflows/WorkflowEdit.tsx(680,45): error TS6133: 'statusIds' is declared but its value is never read.
+src/pages/workflows/WorkflowEdit.tsx(742,45): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/workflows/WorkflowEdit.tsx(743,42): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/workflows/WorkflowEdit.tsx(744,45): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/workflows/WorkflowEdit.tsx(761,16): error TS2304: Cannot find name 'extractErrorMessage'.
+src/pages/workflows/WorkflowEdit.tsx(767,36): error TS6133: 'preservedPermissionIds' is declared but its value is never read.
+src/pages/workflows/WorkflowEdit.tsx(791,42): error TS6133: 'preservedPermissionIds' is declared but its value is never read.
+src/routes/AppRoutes.tsx(15,1): error TS6133: 'HomeProject' is declared but its value is never read.
+src/routes/AppRoutes.tsx(26,1): error TS6133: 'ProjectFieldConfigurationsLanding' is declared but its value is never read.
+src/routes/AppRoutes.tsx(35,1): error TS6133: 'ItemTypeSets' is declared but its value is never read.
+src/routes/AppRoutes.tsx(37,1): error TS6133: 'ItemTypeSetCreate' is declared but its value is never read.
+src/routes/AppRoutes.tsx(47,1): error TS6133: 'FieldConfigurationEdit' is declared but its value is never read.
+src/routes/AppRoutes.tsx(61,1): error TS6133: 'Workflows' is declared but its value is never read.

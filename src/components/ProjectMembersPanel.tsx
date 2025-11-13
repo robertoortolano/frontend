@@ -23,7 +23,7 @@ interface ProjectMember {
 
 interface ProjectMembersPanelProps {
   projectId: string;
-  token: string;
+  token: string | null;
   members: ProjectMember[];
   onMembersUpdate: (members: ProjectMember[]) => void;
 }

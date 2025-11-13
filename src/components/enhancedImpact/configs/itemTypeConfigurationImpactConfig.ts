@@ -89,6 +89,9 @@ export const itemTypeConfigurationImpactConfig: EnhancedImpactReportConfig<ItemT
         transitionName: perm.transitionName || null,
         assignedRoles: perm.assignedRoles || [],
         grantId: perm.grantId,
+        grantName: perm.grantName || null,
+        // Allinea alla logica di visualizzazione: se assignedGrants non c'è ma c'è grantName, crea array
+        assignedGrants: perm.assignedGrants ?? (perm.grantName ? [perm.grantName] : null),
         roleId: perm.roleId,
         projectGrants: perm.projectGrants,
         projectAssignedRoles: perm.projectAssignedRoles,
