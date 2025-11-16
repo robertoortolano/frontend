@@ -1,4 +1,6 @@
 import api from '../api/api';
+import { CSV_HEADER } from './csv/columnsConfig';
+import { escapeCSV as csvEscapeCSV, formatTransition as csvFormatTransition, createBaseRow as csvCreateBaseRow, CreateBaseRowParams } from './csv/formatters';
 
 /**
  * Utility per esportare report di impatto in CSV
@@ -71,32 +73,12 @@ export interface ExportCsvParams {
 /**
  * Funzione helper per formattare i valori CSV
  */
-export const escapeCSV = (value: any): string => {
-  if (value === null || value === undefined) return '';
-  const str = String(value);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-};
+export { csvEscapeCSV as escapeCSV };
 
 /**
  * Header standardizzato per tutti i report CSV
  */
-export const CSV_HEADER = [
-  'Permission',
-  'Item Type Set',
-  'Azione',
-  'Field',
-  'Status',
-  'Transition',
-  'Ruolo',
-  'Grant',
-  'Utente',
-  'Utente negato',
-  'Gruppo',
-  'Gruppo negato'
-];
+export { CSV_HEADER };
 
 /**
  * Formatta una transition secondo il formato richiesto:
@@ -108,34 +90,14 @@ export const formatTransition = (
   toStatusName: string | null | undefined,
   transitionName: string | null | undefined
 ): string => {
-  if (!fromStatusName || !toStatusName) return '';
-  
-  const from = escapeCSV(fromStatusName);
-  const to = escapeCSV(toStatusName);
-  const transition = transitionName ? escapeCSV(transitionName) : '';
-  
-  return transition 
-    ? `${from} -> ${to} (${transition})`
-    : `${from} -> ${to}`;
+  // mantenuto per compatibilità; delega al modulo formatter
+  return csvFormatTransition(fromStatusName, toStatusName, transitionName);
 };
 
 /**
  * Genera una riga CSV base per una permission
  */
-interface CreateBaseRowParams {
-  permissionName: string;
-  itemTypeSetName: string;
-  action: string;
-  fieldName: string;
-  statusName: string;
-  transitionName: string;
-  roleName: string;
-  grant: string;
-  userName: string;
-  negatedUserName: string;
-  groupName: string;
-  negatedGroupName: string;
-}
+export type { CreateBaseRowParams };
 
 const createBaseRow = ({
   permissionName,
@@ -150,22 +112,20 @@ const createBaseRow = ({
   negatedUserName,
   groupName,
   negatedGroupName
-}: CreateBaseRowParams): string => {
-  return [
-    escapeCSV(permissionName),
-    itemTypeSetName,
-    action,
-    fieldName,
-    statusName,
-    transitionName,
-    escapeCSV(roleName),
-    escapeCSV(grant),
-    escapeCSV(userName),
-    escapeCSV(negatedUserName),
-    escapeCSV(groupName),
-    escapeCSV(negatedGroupName)
-  ].join(',');
-};
+}: CreateBaseRowParams): string => csvCreateBaseRow({
+  permissionName,
+  itemTypeSetName,
+  action,
+  fieldName,
+  statusName,
+  transitionName,
+  roleName,
+  grant,
+  userName,
+  negatedUserName,
+  groupName,
+  negatedGroupName
+});
 
 /**
  * Processa una permission e aggiunge le righe CSV corrispondenti
@@ -182,7 +142,7 @@ const processPermissionRows = async (
   const action = isSelected && (perm.canBePreserved ?? false) ? 'Mantenuta' : 'Rimossa';
   
   const permissionName = perm.permissionType || 'N/A';
-  const itemTypeSetName = escapeCSV(perm.itemTypeSetName || 'N/A');
+  const itemTypeSetName = csvEscapeCSV(perm.itemTypeSetName || 'N/A');
   const fieldName = getFieldName(perm);
   const statusName = getStatusName(perm);
   
@@ -246,10 +206,10 @@ const processPermissionRows = async (
         // Se la chiamata API non restituisce grant ma abbiamo grantName o assignedGrants, esportali comunque
         if (perm.assignedGrants && perm.assignedGrants.length > 0) {
           perm.assignedGrants.forEach((grantName: string) => {
-            pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
+            pushRow({ grant: `Global: ${csvEscapeCSV(grantName)}` });
           });
         } else if (perm.grantName) {
-          pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+          pushRow({ grant: `Global: ${csvEscapeCSV(perm.grantName)}` });
         } else {
           pushRow({ grant: 'Global' });
         }
@@ -263,10 +223,10 @@ const processPermissionRows = async (
           // Se abbiamo grantName o assignedGrants, includili nel nome del grant
           if (perm.assignedGrants && perm.assignedGrants.length > 0) {
             perm.assignedGrants.forEach((grantName: string) => {
-              pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
+              pushRow({ grant: `Global: ${csvEscapeCSV(grantName)}` });
             });
           } else if (perm.grantName) {
-            pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+            pushRow({ grant: `Global: ${csvEscapeCSV(perm.grantName)}` });
           } else {
             pushRow({ grant: 'Global' });
           }
@@ -275,7 +235,7 @@ const processPermissionRows = async (
           if (grantDetails.users && grantDetails.users.length > 0) {
             grantDetails.users.forEach((user: any) => {
               const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              const grantLabel = perm.grantName ? `Global: ${csvEscapeCSV(perm.grantName)}` : 'Global';
               pushRow({
                 grant: grantLabel,
                 userName
@@ -286,7 +246,7 @@ const processPermissionRows = async (
           // Gruppi
           if (grantDetails.groups && grantDetails.groups.length > 0) {
             grantDetails.groups.forEach((group: any) => {
-              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              const grantLabel = perm.grantName ? `Global: ${csvEscapeCSV(perm.grantName)}` : 'Global';
               pushRow({
                 grant: grantLabel,
                 groupName: group.name || `Group #${group.id}`
@@ -298,7 +258,7 @@ const processPermissionRows = async (
           if (grantDetails.negatedUsers && grantDetails.negatedUsers.length > 0) {
             grantDetails.negatedUsers.forEach((user: any) => {
               const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
-              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              const grantLabel = perm.grantName ? `Global: ${csvEscapeCSV(perm.grantName)}` : 'Global';
               pushRow({
                 grant: grantLabel,
                 negatedUserName: userName
@@ -309,7 +269,7 @@ const processPermissionRows = async (
           // Gruppi negati
           if (grantDetails.negatedGroups && grantDetails.negatedGroups.length > 0) {
             grantDetails.negatedGroups.forEach((group: any) => {
-              const grantLabel = perm.grantName ? `Global: ${escapeCSV(perm.grantName)}` : 'Global';
+              const grantLabel = perm.grantName ? `Global: ${csvEscapeCSV(perm.grantName)}` : 'Global';
               pushRow({
                 grant: grantLabel,
                 negatedGroupName: group.name || `Group #${group.id}`
@@ -323,10 +283,10 @@ const processPermissionRows = async (
       console.warn(`Error fetching grant details for permission ${perm.permissionId}:`, error);
       if (perm.assignedGrants && perm.assignedGrants.length > 0) {
         perm.assignedGrants.forEach((grantName: string) => {
-          pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
+          pushRow({ grant: `Global: ${csvEscapeCSV(grantName)}` });
         });
       } else if (perm.grantName) {
-        pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+        pushRow({ grant: `Global: ${csvEscapeCSV(perm.grantName)}` });
       } else {
         // Fallback: esporta comunque "Global" se abbiamo indicato che c'è un grant
         pushRow({ grant: 'Global' });
@@ -337,10 +297,10 @@ const processPermissionRows = async (
     // Questo può succedere se i dati non sono completi
     if (perm.assignedGrants && perm.assignedGrants.length > 0) {
       perm.assignedGrants.forEach((grantName: string) => {
-        pushRow({ grant: `Global: ${escapeCSV(grantName)}` });
+        pushRow({ grant: `Global: ${csvEscapeCSV(grantName)}` });
       });
     } else if (perm.grantName) {
-      pushRow({ grant: `Global: ${escapeCSV(perm.grantName)}` });
+      pushRow({ grant: `Global: ${csvEscapeCSV(perm.grantName)}` });
     } else {
       pushRow({ grant: 'Global' });
     }
@@ -349,7 +309,7 @@ const processPermissionRows = async (
   // Ruoli di progetto - esportati con Grant = nome progetto
   if (perm.projectAssignedRoles && perm.projectAssignedRoles.length > 0) {
     perm.projectAssignedRoles.forEach((projectRole: ProjectRoleInfo) => {
-      const projectName = escapeCSV(projectRole.projectName);
+      const projectName = csvEscapeCSV(projectRole.projectName);
       if (projectRole.roles && projectRole.roles.length > 0) {
         projectRole.roles.forEach((roleName: string) => {
           pushRow({
@@ -364,7 +324,7 @@ const processPermissionRows = async (
   // Ruoli di progetto da projectGrants.assignedRoles
   if (perm.projectGrants && perm.projectGrants.length > 0) {
     for (const projectGrant of perm.projectGrants) {
-      const projectName = escapeCSV(projectGrant.projectName);
+      const projectName = csvEscapeCSV(projectGrant.projectName);
       
       // Esporta i ruoli di progetto se presenti
       if (projectGrant.assignedRoles && projectGrant.assignedRoles.length > 0) {
@@ -396,7 +356,7 @@ const processPermissionRows = async (
                (!projectGrantDetails.groups || projectGrantDetails.groups.length === 0))) {
             // Se abbiamo il grantName, esportalo, altrimenti esporta solo il nome del progetto
             if (projectGrant.grantName) {
-              pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+              pushRow({ grant: `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` });
             } else {
               pushRow({ grant: projectName });
             }
@@ -408,7 +368,7 @@ const processPermissionRows = async (
                 (!projectGrantDetails.negatedGroups || projectGrantDetails.negatedGroups.length === 0)) {
               // Se abbiamo il grantName, esportalo
               if (projectGrant.grantName) {
-                pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+                pushRow({ grant: `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` });
               } else {
                 pushRow({ grant: projectName });
               }
@@ -418,7 +378,7 @@ const processPermissionRows = async (
                 projectGrantDetails.users.forEach((user: any) => {
                   const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
                   pushRow({
-                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    grant: projectGrant.grantName ? `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` : projectName,
                     userName
                   });
                 });
@@ -428,7 +388,7 @@ const processPermissionRows = async (
               if (projectGrantDetails.groups && projectGrantDetails.groups.length > 0) {
                 projectGrantDetails.groups.forEach((group: any) => {
                   pushRow({
-                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    grant: projectGrant.grantName ? `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` : projectName,
                     groupName: group.name || `Group #${group.id}`
                   });
                 });
@@ -439,7 +399,7 @@ const processPermissionRows = async (
                 projectGrantDetails.negatedUsers.forEach((user: any) => {
                   const userName = user.username || user.fullName || (user.id ? `User #${user.id}` : '');
                   pushRow({
-                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    grant: projectGrant.grantName ? `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` : projectName,
                     negatedUserName: userName
                   });
                 });
@@ -449,7 +409,7 @@ const processPermissionRows = async (
               if (projectGrantDetails.negatedGroups && projectGrantDetails.negatedGroups.length > 0) {
                 projectGrantDetails.negatedGroups.forEach((group: any) => {
                   pushRow({
-                    grant: projectGrant.grantName ? `${projectName}: ${escapeCSV(projectGrant.grantName)}` : projectName,
+                    grant: projectGrant.grantName ? `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` : projectName,
                     negatedGroupName: group.name || `Group #${group.id}`
                   });
                 });
@@ -460,7 +420,7 @@ const processPermissionRows = async (
           // Se la chiamata API fallisce, esporta comunque il grant di progetto
           console.warn(`Error fetching project grant details for permission ${perm.permissionId}, project ${projectGrant.projectId}:`, error);
           if (projectGrant.grantName) {
-            pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+            pushRow({ grant: `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` });
           } else {
             pushRow({ grant: projectName });
           }
@@ -469,7 +429,9 @@ const processPermissionRows = async (
         // Se non abbiamo permissionId o permissionType ma abbiamo projectGrants, esporta comunque
         // Questo può succedere se i dati non sono completi
         if (projectGrant.grantName) {
-          pushRow({ grant: `${projectName}: ${escapeCSV(projectGrant.grantName)}` });
+          pushRow({ grant: `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` });
+          pushRow({ grant: `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` });
+          pushRow({ grant: `${projectName}: ${csvEscapeCSV(projectGrant.grantName)}` });
         } else {
           pushRow({ grant: projectName });
         }
@@ -493,7 +455,7 @@ const processPermissionRows = async (
 export const exportImpactReportToCSV = async (params: ExportCsvParams): Promise<void> => {
   const { permissions, preservedPermissionIds, getFieldName, getStatusName, getTransitionName, fileName } = params;
 
-  const rows: string[] = [CSV_HEADER.map(escapeCSV).join(',')];
+  const rows: string[] = [CSV_HEADER.map(csvEscapeCSV).join(',')];
 
   // Processa tutte le permissions
   for (const perm of permissions) {

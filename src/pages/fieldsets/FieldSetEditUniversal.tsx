@@ -1,268 +1,20 @@
 import { useEffect, useState, FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
-import {
-  FieldConfigurationViewDto,
-  FieldSetViewDto,
-  FieldSetCreateDto,
-} from "../../types/field.types";
-import { FieldSetRemovalImpactDto } from "../../types/fieldset-impact.types";
+import { FieldConfigurationViewDto, FieldSetViewDto } from "../../types/field.types";
 import { FieldSetEnhancedImpactReportModal } from "../../components/FieldSetEnhancedImpactReportModal";
 import { useToast } from "../../context/ToastContext";
-
-import layout from "../../styles/common/Layout.module.css";
-import form from "../../styles/common/Forms.module.css";
-import buttons from "../../styles/common/Buttons.module.css";
-import alert from "../../styles/common/Alerts.module.css";
-import sidebarStyles from "../../styles/common/FieldSetSidebar.module.css";
-import { PageContainer, PageHeader, PageSection } from "../../components/shared/layout";
+import { PageContainer } from "../../components/shared/layout";
+import { useFieldSetConfigurations } from "../../hooks/useFieldSetConfigurations";
+import { useFieldSetRemovalImpact } from "../../hooks/useFieldSetRemovalImpact";
+import { useFieldSetSave } from "../../hooks/useFieldSetSave";
+import { FieldSetEditForm } from "./components/FieldSetEditForm";
 
 interface FieldSetEditUniversalProps {
   scope: 'tenant' | 'project';
   projectId?: string;
 }
-
-interface Field {
-  id: number;
-  name: string;
-  defaultField?: boolean;
-}
-
-interface SortableSidebarConfigProps {
-  configId: number;
-  config: FieldConfigurationViewDto;
-  field: Field | undefined;
-  onRemove: () => void;
-}
-
-function SortableSidebarConfig({
-  configId,
-  config,
-  field,
-  onRemove
-}: SortableSidebarConfigProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: configId });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`${sidebarStyles.sidebarConfigCard} ${isDragging ? sidebarStyles.dragging : ''}`}
-    >
-      <div 
-        className={sidebarStyles.sidebarConfigDragHandle}
-        title="Trascina per riordinare"
-        {...attributes}
-        {...listeners}
-      >
-        ⋮⋮
-      </div>
-      <div className={sidebarStyles.sidebarConfigFieldLabel}>
-        {field?.name || 'Field sconosciuto'}
-      </div>
-      <div className={sidebarStyles.sidebarConfigName}>
-        {config.name || "Senza nome"}
-      </div>
-      <div className={sidebarStyles.sidebarConfigDetails}>
-        Tipo: {config.fieldType?.displayName || "Sconosciuto"}
-      </div>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onRemove();
-        }}
-        className={sidebarStyles.sidebarConfigRemove}
-        title="Rimuovi"
-      >
-        ✕
-      </button>
-    </div>
-  );
-}
-
-interface FieldSetConfigurationsPanelProps {
-  selectedConfigurations: number[];
-  sensors: any;
-  handleDragEnd: (event: DragEndEvent) => void;
-  fieldConfigurations: FieldConfigurationViewDto[];
-  fields: Field[];
-  removeConfiguration: (configId: number) => void;
-  configurationsByField: Array<{ field: Field; configurations: FieldConfigurationViewDto[] }>;
-  saving: boolean;
-  handleConfigurationSelect: (configId: number) => void;
-}
-
-function FieldSetConfigurationsPanel({
-  selectedConfigurations,
-  sensors,
-  handleDragEnd,
-  fieldConfigurations,
-  fields,
-  removeConfiguration,
-  configurationsByField,
-  saving,
-  handleConfigurationSelect,
-}: FieldSetConfigurationsPanelProps) {
-  return (
-    <div className={sidebarStyles.fieldSetSidebarContainer}>
-      <div className={sidebarStyles.selectedSidebar}>
-        <div className={sidebarStyles.selectedSidebarHeader}>
-          <div className={sidebarStyles.selectedSidebarTitle}>
-            <span>✅</span>
-            <span>Configurazioni Selezionate</span>
-          </div>
-          <div className={sidebarStyles.selectedSidebarCount}>
-            <span className={sidebarStyles.selectedSidebarCountBadge}>
-              {selectedConfigurations.length}
-            </span>
-            <span>{selectedConfigurations.length === 1 ? "configurazione" : "configurazioni"}</span>
-          </div>
-        </div>
-
-        <div className={sidebarStyles.selectedSidebarBody}>
-          {selectedConfigurations.length === 0 ? (
-            <div className={sidebarStyles.sidebarEmpty}>
-              <div className={sidebarStyles.sidebarEmptyIcon}>📝</div>
-              <div style={{ fontSize: "0.8125rem" }}>Nessuna configurazione selezionata</div>
-            </div>
-          ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={selectedConfigurations} strategy={verticalListSortingStrategy}>
-                {selectedConfigurations.map((configId) => {
-                  const config = fieldConfigurations.find((c) => c.id === configId);
-                  const field = config ? fields.find((f) => f.id === config.fieldId) : undefined;
-                  return config ? (
-                    <SortableSidebarConfig
-                      key={configId}
-                      configId={configId}
-                      config={config}
-                      field={field}
-                      onRemove={() => removeConfiguration(configId)}
-                    />
-                  ) : null;
-                })}
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
-      </div>
-
-      <div className={sidebarStyles.mainContentArea}>
-        <div className={sidebarStyles.sidebarInfo}>
-          <strong>💡 Come funziona:</strong>
-          <div>
-            Seleziona una configurazione per ogni Field. Se selezioni una nuova configurazione per un Field già
-            presente, quella precedente verrà sostituita automaticamente. Puoi riordinare le configurazioni
-            selezionate trascinandole nella sidebar.
-          </div>
-        </div>
-
-        {fields.length === 0 ? (
-          <div className={alert.infoContainer}>
-            <p className={alert.info}>
-              <strong>Nessun campo disponibile</strong>
-              <br />
-              Crea prima dei campi per poter modificare un field set.
-            </p>
-          </div>
-        ) : (
-          configurationsByField.map(({ field, configurations }) => (
-            <div key={field.id} className={sidebarStyles.sidebarFieldCard}>
-              <div className={sidebarStyles.sidebarFieldHeader}>
-                <div className={sidebarStyles.sidebarFieldHeaderContent}>
-                  <span className={sidebarStyles.sidebarFieldIcon}>📋</span>
-                  <span className={sidebarStyles.sidebarFieldName}>{field.name}</span>
-                  <span className={sidebarStyles.sidebarFieldBadge}>{configurations.length} disponibili</span>
-                </div>
-              </div>
-
-              <div className={sidebarStyles.sidebarConfigurationsArea}>
-                {configurations.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "1rem",
-                      textAlign: "center",
-                      color: "#9ca3af",
-                      fontSize: "0.875rem",
-                    }}
-                  >
-                    Nessuna configurazione disponibile
-                  </div>
-                ) : (
-                  <div className={sidebarStyles.sidebarConfigurationsList}>
-                    {configurations.map((config) => {
-                      const isSelected = selectedConfigurations.includes(config.id);
-                      return (
-                        <label
-                          key={config.id}
-                          className={`${sidebarStyles.sidebarConfigItem} ${
-                            isSelected ? sidebarStyles.selected : ""
-                          }`}
-                        >
-                          <div className={sidebarStyles.sidebarConfigItemContent}>
-                            <div className={sidebarStyles.sidebarConfigItemName}>
-                              {config.name || "Senza nome"}
-                            </div>
-                            <div className={sidebarStyles.sidebarConfigItemDetails}>
-                              Tipo: {config.fieldType?.displayName || "Sconosciuto"}
-                              {config.description && ` • ${config.description}`}
-                            </div>
-                          </div>
-                          <input
-                            type="radio"
-                            name={`selectedConfiguration_${field.id}`}
-                            checked={isSelected}
-                            onChange={() => handleConfigurationSelect(config.id)}
-                            disabled={saving}
-                            className={sidebarStyles.sidebarConfigItemCheckbox}
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
 
 export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEditUniversalProps) {
   const { id } = useParams<{ id: string }>();
@@ -272,26 +24,38 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
   const isAuthenticated = auth?.isAuthenticated;
 
   const [fieldSet, setFieldSet] = useState<FieldSetViewDto | null>(null);
-  const [fields, setFields] = useState<Field[]>([]);
+  const [fields, setFields] = useState<Array<{ id: number; name: string; defaultField?: boolean }>>([]);
   const [fieldConfigurations, setFieldConfigurations] = useState<FieldConfigurationViewDto[]>([]);
-  const [selectedConfigurations, setSelectedConfigurations] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Impact report states
-  const [showImpactReport, setShowImpactReport] = useState(false);
-  const [impactReport, setImpactReport] = useState<FieldSetRemovalImpactDto | null>(null);
-  const [analyzingImpact, setAnalyzingImpact] = useState(false);
-  const [_pendingSave, setPendingSave] = useState<(() => Promise<void>) | null>(null);
   const { showToast } = useToast();
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // configurations hook (selected, dnd, selection)
+  const {
+    selectedConfigurations,
+    setSelectedConfigurations,
+    sensors,
+    handleDragEnd,
+    handleConfigurationSelect,
+    removeConfiguration,
+    configurationsByField,
+  } = useFieldSetConfigurations({
+    fields,
+    fieldConfigurations,
+  });
+
+  // impact analysis hook (modal state + analysis)
+  const {
+    showImpactReport,
+    impactReport,
+    analyzingImpact,
+    setShowImpactReport,
+    setImpactReport,
+    analyzeRemovalImpact,
+    handleCancelImpact,
+  } = useFieldSetRemovalImpact();
 
   useEffect(() => {
     if (!id || !token) return;
@@ -333,56 +97,6 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     fetchData();
   }, [id, token, scope, projectId]);
 
-  const handleConfigurationSelect = (configId: number) => {
-    // Radio button behavior: only one configuration per field
-    const selectedConfig = fieldConfigurations.find(config => config.id === configId);
-    if (!selectedConfig) return;
-    
-    // Find the position of any existing configuration for the same field
-    const existingConfigIndex = selectedConfigurations.findIndex(id => {
-      const config = fieldConfigurations.find(c => c.id === id);
-      return config && config.fieldId === selectedConfig.fieldId;
-    });
-    
-    if (selectedConfigurations.includes(configId)) {
-      // If already selected, remove it
-      const newConfigurations = selectedConfigurations.filter(id => id !== configId);
-      setSelectedConfigurations(newConfigurations);
-    } else {
-      // If not selected, replace the existing config for the same field (if any) at the same position, or add at the end
-      let newConfigurations = [...selectedConfigurations];
-      
-      if (existingConfigIndex !== -1) {
-        // Replace the existing configuration at the same position
-        newConfigurations[existingConfigIndex] = configId;
-      } else {
-        // No existing configuration for this field, add at the end
-        newConfigurations.push(configId);
-      }
-      
-      setSelectedConfigurations(newConfigurations);
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = selectedConfigurations.indexOf(active.id as number);
-      const newIndex = selectedConfigurations.indexOf(over.id as number);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        setSelectedConfigurations(arrayMove(selectedConfigurations, oldIndex, newIndex));
-      }
-    }
-  };
-
-  const removeConfiguration = (configId: number) => {
-    // Rimuove solo visivamente la configurazione (rimozione "fittizia")
-    // L'analisi dell'impatto avverrà solo al salvataggio, come nel workflow
-    setSelectedConfigurations(prev => prev.filter(id => id !== configId));
-  };
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!fieldSet) return;
@@ -409,37 +123,35 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     );
 
     if (allRemovedConfigIds.length > 0) {
-      await analyzeRemovalImpact(allRemovedConfigIds);
+      await analyzeRemovalImpact({
+        fieldSetId: id!,
+        authToken: token,
+        selectedConfigurations,
+        originalConfigIds,
+        onNoImpact: async () => {
+          await performSave(true);
+          showToast('FieldSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');
+          setTimeout(() => {
+            if (scope === 'tenant') {
+              navigate("/tenant/field-sets");
+            } else if (scope === 'project' && projectId) {
+              navigate(`/projects/${projectId}/field-sets`);
+            }
+          }, 500);
+        },
+        onImpactDetected: (impact) => {
+          setImpactReport(impact);
+          setShowImpactReport(true);
+        },
+        onError: (message) => setError(message),
+      });
     } else {
       // Nessuna rimozione: salva direttamente e naviga
       setSaving(true);
       setError(null);
       
       try {
-        const dto: FieldSetCreateDto = {
-          name: fieldSet.name.trim(),
-          description: fieldSet.description?.trim() || undefined,
-          entries: selectedConfigurations.map((configId, index) => ({
-            fieldConfigurationId: configId,
-            orderIndex: index
-          })),
-        };
-
-        await api.put(`/field-sets/${id}`, dto, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
-        // Mostra toast
-        showToast('FieldSet aggiornato con successo.', 'success');
-        
-        // Naviga dopo un breve delay per permettere al toast di essere visualizzato
-        setTimeout(() => {
-          if (scope === 'tenant') {
-            navigate("/tenant/field-sets");
-          } else if (scope === 'project' && projectId) {
-            navigate(`/projects/${projectId}/field-sets`);
-          }
-        }, 500);
+        await performSave(false);
       } catch (err: any) {
         setError(err.response?.data?.message || "Errore nel salvataggio");
       } finally {
@@ -448,192 +160,22 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
     }
   };
 
-  const analyzeRemovalImpact = async (removedConfigIds: number[]) => {
-    setAnalyzingImpact(true);
-    setError(null);
-
-    try {
-      const originalConfigIds = fieldSet?.fieldSetEntries?.map(entry => 
-        entry.fieldConfiguration?.id || entry.fieldConfigurationId
-      ) || [];
-      
-      const addedConfigIds = selectedConfigurations.filter(id => 
-        !originalConfigIds.includes(id)
-      );
-
-      const request = {
-        removedFieldConfigIds: removedConfigIds,
-        addedFieldConfigIds: addedConfigIds,
-      };
-
-      const response = await api.post(`/field-sets/${id}/analyze-removal-impact`, request, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const impact: FieldSetRemovalImpactDto = response.data;
-      
-      // Verifica se ci sono permission con assegnazioni
-      const hasPopulatedPermissions = 
-        impact.fieldOwnerPermissions?.some(p => p.hasAssignments) ||
-        impact.fieldStatusPermissions?.some(p => p.hasAssignments);
-      
-      if (hasPopulatedPermissions) {
-        setImpactReport(impact);
-        setShowImpactReport(true);
-        setPendingSave(() => performSave);
-      } else {
-        // Se non ci sono impatti, rimuovi automaticamente le permission orfane senza assegnazioni
-        // PRIMA di salvare il FieldSet
-        try {
-          await api.post(`/field-sets/${id}/remove-orphaned-permissions-without-assignments`, request, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        } catch (removeError: any) {
-          console.warn("Errore nella rimozione automatica delle permission orfane:", removeError);
-          // Continua comunque con il salvataggio
-        }
-        
-        // Poi salva il FieldSet
-        await performSave(true);
-        // Mostra toast
-        showToast('FieldSet aggiornato con successo. Nessun impatto rilevato sulle permission.', 'success');
-        // Naviga dopo un breve delay per permettere al toast di essere visualizzato
-        setTimeout(() => {
-          if (scope === 'tenant') {
-            navigate("/tenant/field-sets");
-          } else if (scope === 'project' && projectId) {
-            navigate(`/projects/${projectId}/field-sets`);
-          }
-        }, 500);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Errore durante l'analisi degli impatti");
-    } finally {
-      setAnalyzingImpact(false);
-    }
-  };
-
-  const performSave = async (skipNavigation: boolean = false) => {
-    if (!fieldSet) return;
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const dto: FieldSetCreateDto = {
-        name: fieldSet.name.trim(),
-        description: fieldSet.description?.trim() || undefined,
-        entries: selectedConfigurations.map((configId, index) => ({
-          fieldConfigurationId: configId,
-          orderIndex: index
-        })),
-      };
-
-      await api.put(`/field-sets/${id}`, dto, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!skipNavigation) {
-        // Mostra toast
-        showToast('FieldSet aggiornato con successo.', 'success');
-        
-        // Naviga dopo un breve delay per permettere al toast di essere visualizzato
-        setTimeout(() => {
-          if (scope === 'tenant') {
-            navigate("/tenant/field-sets");
-          } else if (scope === 'project' && projectId) {
-            navigate(`/projects/${projectId}/field-sets`);
-          }
-        }, 500);
-      }
-    } catch (err: any) {
-      const message = err.response?.data?.message || "Errore nel salvataggio";
-      if (typeof message === 'string' && message.includes('FIELDSET_REMOVAL_IMPACT')) {
-        setError("Sono presenti permission con assegnazioni per i field rimossi. Genera e conferma il report d'impatto prima di salvare.");
-      } else {
-        setError(message);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleConfirmSave = async (preservedPermissionIds?: number[]) => {
-    if (!fieldSet || !impactReport) return;
-    
-    setSaving(true);
-    setError(null);
-    
-    try {
-      const originalConfigIds = fieldSet.fieldSetEntries?.map(entry => 
-        entry.fieldConfiguration?.id || entry.fieldConfigurationId
-      ) || [];
-      
-      const removedConfigIds = originalConfigIds.filter((id: number | undefined): id is number => 
-        id !== undefined && !selectedConfigurations.includes(id)
-      );
-
-      const hasPermissions = 
-        (impactReport.fieldOwnerPermissions && impactReport.fieldOwnerPermissions.length > 0) ||
-        (impactReport.fieldStatusPermissions && impactReport.fieldStatusPermissions.length > 0);
-      
-      if (hasPermissions && removedConfigIds.length > 0) {
-        const addedConfigIds = selectedConfigurations.filter(id => 
-          !originalConfigIds.includes(id)
-        );
-
-        const request = {
-          removedFieldConfigIds: removedConfigIds,
-          addedFieldConfigIds: addedConfigIds,
-          preservedPermissionIds: preservedPermissionIds || [],
-        };
-
-        await api.post(`/field-sets/${id}/remove-orphaned-permissions`, request, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-
-      // Salva il FieldSet dopo la rimozione delle permission
-      const dto: FieldSetCreateDto = {
-        name: fieldSet.name.trim(),
-        description: fieldSet.description?.trim() || undefined,
-        entries: selectedConfigurations.map((configId, index) => ({
-          fieldConfigurationId: configId,
-          orderIndex: index
-        })),
-      };
-
-      await api.put(`/field-sets/${id}`, dto, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+  const { performSave, handleConfirmSave } = useFieldSetSave({
+    fieldSetId: id || "",
+    scope,
+    projectId,
+    authToken: token,
+    selectedConfigurations,
+    fieldSet: fieldSet ? { name: fieldSet.name, description: fieldSet.description } : null,
+    onError: (m) => setError(m),
+    onSavingChange: (s) => setSaving(s),
+    onSuccessNavigate: (path) => navigate(path),
+    showToast,
+    resetImpactModal: () => {
       setShowImpactReport(false);
       setImpactReport(null);
-      setPendingSave(null);
-
-      // Mostra toast
-      showToast('FieldSet aggiornato con successo.', 'success');
-      
-      // Naviga dopo un breve delay per permettere al toast di essere visualizzato
-      setTimeout(() => {
-        if (scope === 'tenant') {
-          navigate("/tenant/field-sets");
-        } else if (scope === 'project' && projectId) {
-          navigate(`/projects/${projectId}/field-sets`);
-        }
-      }, 500);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Errore durante la rimozione delle permission");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancelSave = () => {
-    setShowImpactReport(false);
-    setImpactReport(null);
-    setPendingSave(null);
-  };
+    },
+  });
 
   const handleInputChange = (field: keyof FieldSetViewDto, value: any) => {
     if (fieldSet) {
@@ -668,109 +210,48 @@ export default function FieldSetEditUniversal({ scope, projectId }: FieldSetEdit
       : "Modifica un field set specifico per questo progetto.";
   };
 
-  // Organizza le configurazioni per field e filtra solo i field con almeno una configurazione
-  const configurationsByField = fields
-    .map(field => ({
-      field,
-      configurations: fieldConfigurations.filter(config => config.fieldId === field.id)
-    }))
-    .filter(({ configurations }) => configurations.length > 0); // Mostra solo field con configurazioni
-
   return (
     <PageContainer
       maxWidth="1600px"
       style={{ padding: "0 1rem", width: "100%", boxSizing: "border-box" }}
     >
-      <PageHeader title={getTitle()} description={getDescription()} />
-
-      {error && (
-        <div className={alert.errorContainer}>
-          <p className={alert.error}>{error}</p>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className={form.form}>
-        <PageSection title="Informazioni Base" bodyClassName="space-y-6">
-          <div className={form.formGroup}>
-            <label htmlFor="name" className={form.label}>
-              Nome del Field Set *
-            </label>
-            <input
-              id="name"
-              className={form.input}
-              type="text"
-              value={fieldSet.name || ""}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder="Es. Configurazione Utenti, Campi Progetto, etc."
-              required
-              disabled={saving}
-            />
-            <p className={form.helpText}>
-              Scegli un nome descrittivo per identificare facilmente questo field set.
-            </p>
-          </div>
-
-          <div className={form.formGroup}>
-            <label htmlFor="description" className={form.label}>
-              Descrizione
-            </label>
-            <textarea
-              id="description"
-              className={form.textarea}
-              value={fieldSet.description || ""}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Descrivi lo scopo e l'utilizzo di questo field set (opzionale)"
-              rows={3}
-              disabled={saving}
-            />
-            <p className={form.helpText}>
-              Aggiungi una descrizione per aiutare gli altri utenti a capire quando utilizzare questo field set.
-            </p>
-          </div>
-        </PageSection>
-        <FieldSetConfigurationsPanel
-          selectedConfigurations={selectedConfigurations}
-          sensors={sensors}
-          handleDragEnd={handleDragEnd}
-          fieldConfigurations={fieldConfigurations}
-          fields={fields}
-          removeConfiguration={removeConfiguration}
-          configurationsByField={configurationsByField}
-          saving={saving}
-          handleConfigurationSelect={handleConfigurationSelect}
-        />
-
-        {/* Action Buttons */}
-        <div className={layout.buttonRow} style={{ marginTop: '2rem' }}>
-          <button
-            type="submit"
-            className={buttons.button}
-            disabled={saving || analyzingImpact || !fieldSet.name?.trim() || selectedConfigurations.length === 0}
-          >
-            {analyzingImpact ? "Analisi impatti..." : saving ? "Salvataggio..." : "Salva Modifiche"}
-          </button>
-          <button
-            type="button"
-            className={buttons.button}
-            onClick={() => {
-              if (scope === 'tenant') {
-                navigate("/tenant/field-sets");
-              } else if (scope === 'project' && projectId) {
-                navigate(`/projects/${projectId}/field-sets`);
-              }
-            }}
-            disabled={saving}
-          >
-            Annulla
-          </button>
-        </div>
-      </form>
+      <FieldSetEditForm
+        title={getTitle()}
+        description={getDescription()}
+        error={error}
+        saving={saving}
+        analyzingImpact={analyzingImpact}
+        fieldSetName={fieldSet.name}
+        fieldSetDescription={fieldSet.description}
+        onChangeName={(v) => handleInputChange('name', v)}
+        onChangeDescription={(v) => handleInputChange('description', v)}
+        onSubmit={handleSubmit}
+        onCancel={() => {
+          if (scope === 'tenant') {
+            navigate("/tenant/field-sets");
+          } else if (scope === 'project' && projectId) {
+            navigate(`/projects/${projectId}/field-sets`);
+          }
+        }}
+        selectedConfigurations={selectedConfigurations}
+        sensors={sensors}
+        handleDragEnd={handleDragEnd}
+        fieldConfigurations={fieldConfigurations}
+        fields={fields}
+        removeConfiguration={removeConfiguration}
+        configurationsByField={configurationsByField}
+        handleConfigurationSelect={handleConfigurationSelect}
+      />
 
       {/* Summary Impact Report Modal (before saving) */}
       <FieldSetEnhancedImpactReportModal
         isOpen={showImpactReport}
-        onClose={handleCancelSave}
-        onConfirm={handleConfirmSave}
+        onClose={handleCancelImpact}
+        onConfirm={(preservedIds?: number[]) => {
+          const originalConfigIds =
+            fieldSet.fieldSetEntries?.map((entry) => entry.fieldConfiguration?.id || entry.fieldConfigurationId) || [];
+          return handleConfirmSave(originalConfigIds as number[], preservedIds);
+        }}
         impact={impactReport}
         loading={analyzingImpact || saving}
         isProvisional={false}

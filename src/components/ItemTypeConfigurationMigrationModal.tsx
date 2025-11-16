@@ -1,8 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   ItemTypeConfigurationMigrationImpactDto,
-  ProjectGrantInfo,
-  SelectablePermissionImpact,
 } from '../types/item-type-configuration-migration.types';
 import form from '../styles/common/Forms.module.css';
 import buttons from '../styles/common/Buttons.module.css';
@@ -27,18 +25,6 @@ interface ItemTypeConfigurationMigrationModalProps {
 export const ItemTypeConfigurationMigrationModal: React.FC<
   ItemTypeConfigurationMigrationModalProps
 > = ({ isOpen, onClose, onConfirm, impacts, loading = false }) => {
-  const [selectedGrantDetails, setSelectedGrantDetails] = useState<{
-    projectId: number;
-    projectName: string;
-    roleId: number;
-    details: any;
-  } | null>(null);
-  const [loadingGrantDetails, setLoadingGrantDetails] = useState(false);
-  const [selectedRolesDetails, setSelectedRolesDetails] = useState<{
-    permissionName: string;
-    roles: string[];
-  } | null>(null);
-
   const {
     steps,
     currentStep,
