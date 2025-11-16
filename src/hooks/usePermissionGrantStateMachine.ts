@@ -2,6 +2,7 @@ import { useEffect, useCallback, useMemo, useReducer } from 'react';
 
 import api from '../api/api';
 import { extractErrorMessage } from '../utils/errorUtils';
+import { PERMISSION_TYPES } from '../constants/permissionTypes';
 import type { UserOption } from '../components/UserAutocomplete';
 import type {
   Permission,
@@ -30,24 +31,26 @@ import {
 } from './permissionGrantStateMachine/types';
 
 const permissionTypeMap: Record<string, string> = {
-  Workers: 'WorkerPermission',
-  WORKERS: 'WorkerPermission',
-  Creators: 'CreatorPermission',
-  CREATORS: 'CreatorPermission',
-  'Status Owners': 'StatusOwnerPermission',
-  STATUS_OWNERS: 'StatusOwnerPermission',
-  Executors: 'ExecutorPermission',
-  EXECUTORS: 'ExecutorPermission',
-  'Field Owners': 'FieldOwnerPermission',
-  FIELD_OWNERS: 'FieldOwnerPermission',
-  Editors: 'FieldStatusPermission',
-  EDITORS: 'FieldStatusPermission',
-  Viewers: 'FieldStatusPermission',
-  VIEWERS: 'FieldStatusPermission',
-  'Field Viewers': 'FieldStatusPermission',
-  FIELD_VIEWERS: 'FieldStatusPermission',
-  'Field Editors': 'FieldStatusPermission',
-  FIELD_EDITORS: 'FieldStatusPermission',
+  // Canonical UPPERCASE plural
+  WORKERS: PERMISSION_TYPES.WORKERS,
+  CREATORS: PERMISSION_TYPES.CREATORS,
+  STATUS_OWNERS: PERMISSION_TYPES.STATUS_OWNERS,
+  EXECUTORS: PERMISSION_TYPES.EXECUTORS,
+  FIELD_OWNERS: PERMISSION_TYPES.FIELD_OWNERS,
+  EDITORS: PERMISSION_TYPES.EDITORS,
+  VIEWERS: PERMISSION_TYPES.VIEWERS,
+  FIELD_VIEWERS: PERMISSION_TYPES.VIEWERS,
+  FIELD_EDITORS: PERMISSION_TYPES.EDITORS,
+  // UI Labels (map to canonical)
+  Workers: PERMISSION_TYPES.WORKERS,
+  Creators: PERMISSION_TYPES.CREATORS,
+  'Status Owners': PERMISSION_TYPES.STATUS_OWNERS,
+  Executors: PERMISSION_TYPES.EXECUTORS,
+  'Field Owners': PERMISSION_TYPES.FIELD_OWNERS,
+  Editors: PERMISSION_TYPES.EDITORS,
+  Viewers: PERMISSION_TYPES.VIEWERS,
+  'Field Viewers': PERMISSION_TYPES.VIEWERS,
+  'Field Editors': PERMISSION_TYPES.EDITORS,
 };
 
 export const getPermissionType = (permissionName: string): string => {
@@ -57,27 +60,22 @@ export const getPermissionType = (permissionName: string): string => {
 
   const trimmed = permissionName.trim();
 
-  if (/Permission$/i.test(trimmed)) {
-    // Already a canonical permission entity name (respect original casing).
-    return trimmed;
-  }
-
-  const direct = permissionTypeMap[trimmed];
+  const direct = permissionTypeMap[trimmed as keyof typeof permissionTypeMap];
   if (direct) {
     return direct;
   }
 
   const upper = trimmed.toUpperCase();
-  if (permissionTypeMap[upper]) {
-    return permissionTypeMap[upper];
+  if (permissionTypeMap[upper as keyof typeof permissionTypeMap]) {
+    return permissionTypeMap[upper as keyof typeof permissionTypeMap];
   }
 
   const normalizedKey = upper.replace(/[^A-Z0-9]+/g, '_');
-  if (permissionTypeMap[normalizedKey]) {
-    return permissionTypeMap[normalizedKey];
+  if (permissionTypeMap[normalizedKey as keyof typeof permissionTypeMap]) {
+    return permissionTypeMap[normalizedKey as keyof typeof permissionTypeMap];
   }
 
-  return trimmed;
+  return upper; // fallback to UPPERCASE; server will validate
 };
 
 interface UsePermissionGrantStateMachineParams {
