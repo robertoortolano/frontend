@@ -6,12 +6,8 @@ import {
 } from '../types/item-type-configuration-migration.types';
 import form from '../styles/common/Forms.module.css';
 import buttons from '../styles/common/Buttons.module.css';
-import api from '../api/api';
-import {
-  exportImpactReportToCSV,
-  escapeCSV,
-  PermissionData,
-} from '../utils/csvExportUtils';
+import { useGrantDetailsManager } from '../hooks/useGrantDetailsManager';
+import { useMigrationReportExport } from '../hooks/useMigrationReportExport';
 import { useItemTypeConfigurationMigrationWizard } from '../hooks/useItemTypeConfigurationMigrationWizard';
 import {
   OverviewStep,
@@ -63,149 +59,22 @@ export const ItemTypeConfigurationMigrationModal: React.FC<
     getPermissionName,
   } = useItemTypeConfigurationMigrationWizard(impacts, { isOpen });
 
-  const handleShowRolesDetails = useCallback(
-    (payload: { permissionName: string; roles: string[] }) => {
-      setSelectedRolesDetails(payload);
-    },
-    []
-  );
+  const {
+    selectedGrantDetails,
+    loadingGrantDetails,
+    selectedRolesDetails,
+    clearGrantDetails,
+    clearRolesDetails,
+    handleShowRolesDetails,
+    handleRequestGlobalGrantDetails,
+    handleRequestProjectGrantDetails
+  } = useGrantDetailsManager();
 
-  const handleRequestGlobalGrantDetails = useCallback(
-    async (permission: SelectablePermissionImpact) => {
-      if (!permission.permissionId || !permission.permissionType) {
-        window.alert('Permission senza permissionId o permissionType');
-        return;
-      }
-      setLoadingGrantDetails(true);
-      try {
-        const response = await api.get(
-          `/permission-assignments/${permission.permissionType}/${permission.permissionId}`
-        );
-        const assignment = response.data;
-        setSelectedGrantDetails({
-          projectId: 0,
-          projectName: 'Globale',
-          roleId: permission.permissionId,
-          details: assignment.grant || {},
-        });
-      } catch (error) {
-        window.alert('Errore nel recupero dei dettagli della grant globale');
-      } finally {
-        setLoadingGrantDetails(false);
-      }
-    },
-    []
-  );
-
-  const handleRequestProjectGrantDetails = useCallback(
-    async (
-      permission: SelectablePermissionImpact,
-      projectGrant: ProjectGrantInfo
-    ) => {
-      if (!permission.permissionId || !permission.permissionType) {
-        window.alert('Permission senza permissionId o permissionType');
-        return;
-      }
-      if (!projectGrant.projectId) {
-        window.alert('Grant di progetto senza projectId');
-        return;
-      }
-      setLoadingGrantDetails(true);
-      try {
-        const response = await api.get(
-          `/project-permission-assignments/${permission.permissionType}/${permission.permissionId}/project/${projectGrant.projectId}`
-        );
-        const assignment = response.data;
-        setSelectedGrantDetails({
-          projectId: projectGrant.projectId,
-          projectName: projectGrant.projectName ?? 'Progetto',
-          roleId: permission.permissionId,
-          details: assignment.grant || {},
-        });
-      } catch (error) {
-        window.alert('Errore nel recupero dei dettagli della grant');
-      } finally {
-        setLoadingGrantDetails(false);
-      }
-    },
-    []
-  );
-
-  const handleExportFullReport = useCallback(async () => {
-    if (impacts.length === 0) {
-      return;
-    }
-
-    const permissionsForExport: PermissionData[] = [];
-
-    impacts.forEach((impact) => {
-      const permissionsWithAssignments = getPermissionsForImpact(impact).filter(
-        (permission) => permission.hasAssignments
-      );
-
-      permissionsWithAssignments.forEach((permission) => {
-        let fieldName: string | null = null;
-        if (permission.permissionType === 'FIELD_OWNERS') {
-          fieldName = permission.fieldName || permission.entityName || null;
-        } else if (
-          permission.permissionType === 'FIELD_EDITORS' ||
-          permission.permissionType === 'FIELD_VIEWERS' ||
-          permission.permissionType === 'EDITORS' ||
-          permission.permissionType === 'VIEWERS'
-        ) {
-          fieldName = permission.fieldName || null;
-        }
-
-        permissionsForExport.push({
-          permissionId: permission.permissionId,
-          permissionType: permission.permissionType || 'N/A',
-          itemTypeSetName: permission.itemTypeSetName || 'N/A',
-          fieldName,
-          statusName:
-            permission.permissionType === 'STATUS_OWNERS'
-              ? permission.entityName || null
-              : null,
-          workflowStatusName: permission.workflowStatusName || null,
-          fromStatusName: permission.fromStatusName || null,
-          toStatusName: permission.toStatusName || null,
-          transitionName: permission.transitionName || null,
-          assignedRoles: permission.assignedRoles || [],
-          grantId: permission.grantId || null,
-          roleId: permission.roleId || null,
-          projectGrants: permission.projectGrants || [],
-          projectAssignedRoles: (permission as any).projectAssignedRoles || [],
-          canBePreserved: permission.canBePreserved,
-        });
-      });
-    });
-
-    const getFieldName = (permission: PermissionData) => {
-      const fieldName = permission.fieldName?.trim();
-      return escapeCSV(fieldName && fieldName.length > 0 ? fieldName : '');
-    };
-    const getStatusName = (permission: PermissionData) =>
-      escapeCSV(permission.statusName || permission.workflowStatusName || '');
-    const getTransitionName = () => '';
-
-    const allPreservedPermissionIds = new Set<number>();
-    preservedPermissionIdsMap.forEach((preservedSet) => {
-      preservedSet.forEach((permissionId) => {
-        allPreservedPermissionIds.add(permissionId);
-      });
-    });
-
-    await exportImpactReportToCSV({
-      permissions: permissionsForExport,
-      preservedPermissionIds: allPreservedPermissionIds,
-      getFieldName,
-      getStatusName,
-      getTransitionName,
-      fileName: `itemtypeconfiguration_migration_report_${new Date()
-        .toISOString()
-        .slice(0, 19)
-        .replace(/:/g, '-')}.csv`,
-    });
-  }, [getPermissionsForImpact, impacts, preservedPermissionIdsMap]);
+  const { handleExportFullReport } = useMigrationReportExport({
+    impacts,
+    getPermissionsForImpact,
+    preservedPermissionIdsMap,
+  });
 
   const handleConfirm = useCallback(async () => {
     if (stats.withRoles > 0) {
@@ -461,7 +330,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<
       {selectedRolesDetails && (
         <div
           className={form.modalOverlay}
-          onClick={() => setSelectedRolesDetails(null)}
+              onClick={clearRolesDetails}
           style={{
             position: 'fixed',
             top: 0,
@@ -549,7 +418,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<
 
             <div style={{ marginTop: '24px', textAlign: 'right' }}>
               <button
-                onClick={() => setSelectedRolesDetails(null)}
+                onClick={clearRolesDetails}
                 style={{
                   padding: '8px 16px',
                   backgroundColor: '#6b7280',
@@ -571,7 +440,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<
       {selectedGrantDetails && (
         <div
           className={form.modalOverlay}
-          onClick={() => setSelectedGrantDetails(null)}
+          onClick={clearGrantDetails}
           style={{
             position: 'fixed',
             top: 0,
@@ -809,7 +678,7 @@ export const ItemTypeConfigurationMigrationModal: React.FC<
 
             <div style={{ marginTop: '24px', textAlign: 'right' }}>
               <button
-                onClick={() => setSelectedGrantDetails(null)}
+                onClick={clearGrantDetails}
                 style={{
                   padding: '8px 16px',
                   backgroundColor: '#6b7280',
