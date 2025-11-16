@@ -11,6 +11,7 @@ interface ItemTypeSetInfoProps {
 
 export function ItemTypeSetInfo({ itemTypeSet, title, panelOverrides }: ItemTypeSetInfoProps) {
   const hasEntries = itemTypeSet.itemTypeConfigurations?.length > 0;
+  const isGlobal = itemTypeSet.scope === "TENANT";
 
   return (
     <Panel
@@ -25,8 +26,16 @@ export function ItemTypeSetInfo({ itemTypeSet, title, panelOverrides }: ItemType
             <strong>Name:</strong> {itemTypeSet.name}
           </p>
           <p>
-            <strong>Global:</strong> {itemTypeSet.scope === "TENANT" ? "Yes" : "No"}
+            <strong>Global:</strong> {isGlobal ? "Yes" : "No"}
           </p>
+
+          {isGlobal && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800 border border-amber-200">
+                Globale (sola lettura per Project Admin)
+              </span>
+            </div>
+          )}
         </div>
         <div>
           <p>
