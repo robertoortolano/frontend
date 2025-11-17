@@ -330,7 +330,7 @@ const PermissionSection: React.FC<PermissionSectionProps> = ({
                                 event.currentTarget.style.opacity = '1';
                               }}
                             >
-                              Grant{permission.grantName ? ` (${permission.grantName})` : ''}
+                              Grant
                             </span>
                           )}
                       </div>
