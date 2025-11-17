@@ -16,6 +16,7 @@ interface UseItemTypeSetMigrationProps {
     forceRemoval?: boolean
   ) => Promise<void>;
   setError: (error: string | null) => void;
+  onAfterMigration?: (removedConfigIds: number[]) => Promise<void>;
 }
 
 export function useItemTypeSetMigration({
@@ -25,6 +26,7 @@ export function useItemTypeSetMigration({
   performSave,
   performSaveWithRemoval,
   setError,
+  onAfterMigration,
 }: UseItemTypeSetMigrationProps) {
   const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [migrationImpacts, setMigrationImpacts] = useState<ItemTypeConfigurationMigrationImpactDto[]>([]);
@@ -171,15 +173,20 @@ export function useItemTypeSetMigration({
       // perché performSave ha bisogno di rilevare i cambiamenti per chiamare il cleanup automatico
       // originalConfigurationsRef.current verrà aggiornato in performSave dopo il salvataggio riuscito
       
-      // Se ci sono configurazioni rimosse, rimuovi le permission orfane
-      if (removedConfigIds.length > 0 && performSaveWithRemoval) {
-        await performSaveWithRemoval(removedConfigIds, undefined);
-      } else {
-        await performSave();
-      }
-      
       setShowMigrationModal(false);
       setMigrationImpacts([]);
+      
+      // Se ci sono configurazioni rimosse e c'è un callback per gestirle, chiamalo
+      // (ad esempio, per mostrare il modal di rimozione)
+      if (removedConfigIds.length > 0 && onAfterMigration) {
+        await onAfterMigration(removedConfigIds);
+      } else if (removedConfigIds.length > 0 && performSaveWithRemoval) {
+        // Se non c'è callback ma ci sono rimozioni, rimuovi le permission orfane direttamente
+        await performSaveWithRemoval(removedConfigIds, undefined);
+      } else {
+        // Nessuna rimozione, salva direttamente
+        await performSave();
+      }
     } catch (err: any) {
       console.error("Errore nell'applicazione della migrazione:", err);
       setError(extractErrorMessage(err, "Errore nell'applicazione della migrazione"));
@@ -193,17 +200,49 @@ export function useItemTypeSetMigration({
     setMigrationImpacts([]);
   };
   
-  const handleMigrationsThenSave = async (preservedRemovalPermissionIds?: number[]) => {
-    // Prima gestisci le migrazioni, poi il salvataggio finale con rimozioni
+  const handleMigrationsThenSave = async (
+    preservedRemovalPermissionIds?: number[],
+    preservePermissionIdsMap?: Map<number, number[]>
+  ) => {
+    // Prima gestisci le migrazioni (se ci sono configurazioni modificate)
+    const configurationsWithChanges = getConfigurationsWithChanges();
+    
+    if (configurationsWithChanges.length > 0 && preservePermissionIdsMap) {
+      // Applica la migrazione per ogni configurazione modificata
+      for (const [configId, preservePermissionIds] of preservePermissionIdsMap) {
+        const config = itemTypeConfigurations.find(c => c.id === configId);
+        if (!config) {
+          console.error(`Configurazione ${configId} non trovata`);
+          continue;
+        }
+        
+        const permissionIdsToPreserve = preservePermissionIds || [];
+        
+        await api.post(
+          `/item-type-configurations/${configId}/migrate-permissions`,
+          {
+            itemTypeConfigurationId: configId,
+            newFieldSetId: config.fieldSetId || null,
+            newWorkflowId: config.workflowId || null,
+            preservePermissionIds: permissionIdsToPreserve,
+            preserveAllPreservable: null,
+            removeAll: null,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
+    }
+    
+    // Poi gestisci le rimozioni e il salvataggio finale
     const removedConfigIds = originalConfigurationsRef.current
       .map(c => c.id)
       .filter((id): id is number => id !== undefined && id !== null)
       .filter(id => !itemTypeConfigurations.some(c => c.id === id));
     
-    // Le migrazioni vengono gestite nel handleMigrationConfirm, che chiama performSave
-    // Ma dobbiamo anche gestire le rimozioni
     // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
-    if (performSaveWithRemoval) {
+    if (removedConfigIds.length > 0 && performSaveWithRemoval) {
       await performSaveWithRemoval(removedConfigIds, preservedRemovalPermissionIds, true);
     } else {
       await performSave();

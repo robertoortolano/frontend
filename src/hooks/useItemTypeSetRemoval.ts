@@ -14,7 +14,6 @@ interface UseItemTypeSetRemovalProps {
   analyzeMigrationImpact?: (
     configurationsWithChanges: Array<{ config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number }>
   ) => Promise<void>;
-  handleMigrationsThenSave?: (preservedRemovalPermissionIds?: number[]) => Promise<void>;
   setError: (error: string | null) => void;
   setSaving: (saving: boolean) => void;
 }
@@ -26,7 +25,6 @@ export function useItemTypeSetRemoval({
   originalConfigurationsRef,
   performSave,
   analyzeMigrationImpact,
-  handleMigrationsThenSave,
   setError,
   setSaving,
 }: UseItemTypeSetRemovalProps) {
@@ -67,15 +65,26 @@ export function useItemTypeSetRemoval({
       if (hasPopulatedPermissions) {
         setRemovalImpact(impact);
         setPendingSave(() => async (preservedPermissionIds?: number[]) => {
-          // Se ci sono anche migrazioni, gestiscile prima del salvataggio finale
-          if (configurationsWithChanges.length > 0 && handleMigrationsThenSave) {
-            await handleMigrationsThenSave(preservedPermissionIds);
-          } else {
-            // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
-            await performSaveWithRemoval(removedConfigIds, preservedPermissionIds, true);
-          }
+          // Se ci sono anche migrazioni, devono essere gestite prima delle rimozioni
+          // In questo caso, le migrazioni dovrebbero essere già state completate
+          // perché il flusso corretto è: migrazioni -> rimozioni -> salvataggio
+          // Passa forceRemoval: true perché l'utente ha confermato la rimozione nonostante le assegnazioni
+          await performSaveWithRemoval(removedConfigIds, preservedPermissionIds, true);
         });
-        setShowRemovalImpactModal(true);
+        
+        // Se ci sono anche migrazioni, mostra prima il modal di migrazione
+        // Il modal di rimozione verrà mostrato dopo che l'utente ha confermato la migrazione
+        if (configurationsWithChanges.length > 0 && analyzeMigrationImpact) {
+          // Salva le informazioni per la rimozione e mostra prima il modal di migrazione
+          // Il modal di rimozione verrà mostrato dopo la conferma della migrazione
+          // Passa un callback che mostra il modal di rimozione dopo le migrazioni
+          // Nota: questo richiede che analyzeMigrationImpact supporti un callback onAfterMigration
+          // Per ora, mostriamo il modal di rimozione direttamente dopo le migrazioni
+          // Il flusso corretto sarà gestito in EditItemTypeSet.tsx
+          await analyzeMigrationImpact(configurationsWithChanges);
+        } else {
+          setShowRemovalImpactModal(true);
+        }
       } else {
         // Se non ci sono assegnazioni per le rimozioni, controlla se ci sono migrazioni
         if (configurationsWithChanges.length > 0 && analyzeMigrationImpact) {
@@ -144,6 +153,14 @@ export function useItemTypeSetRemoval({
     setPendingSave(null);
   };
 
+  // Funzione helper per mostrare il modal di rimozione per configurazioni specifiche
+  const showRemovalModalForConfigIds = async (removedConfigIds: number[]) => {
+    if (removedConfigIds.length === 0) return;
+    
+    const configurationsWithChanges: Array<{ config: ItemTypeConfigurationDto; originalConfig: ItemTypeConfigurationDto; index: number }> = [];
+    await analyzeRemovalImpact(removedConfigIds, configurationsWithChanges);
+  };
+
   return {
     showRemovalImpactModal,
     removalImpact,
@@ -153,6 +170,7 @@ export function useItemTypeSetRemoval({
     performSaveWithRemoval,
     handleRemovalImpactConfirm,
     handleRemovalImpactCancel,
+    showRemovalModalForConfigIds,
   };
 }
 

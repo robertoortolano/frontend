@@ -145,6 +145,9 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     setError,
   });
 
+  // Ref per gestire la dipendenza circolare tra migrazione e rimozione
+  const showRemovalModalForConfigIdsRef = useRef<((removedConfigIds: number[]) => Promise<void>) | null>(null);
+
   // Hook per la migrazione (prima, senza performSaveWithRemoval - sarà aggiornato dopo)
   const migrationHookResult = useItemTypeSetMigration({
     token,
@@ -152,6 +155,12 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     originalConfigurationsRef,
     performSave,
     setError,
+    onAfterMigration: async (removedConfigIds: number[]) => {
+      // Dopo le migrazioni, se ci sono rimozioni, mostra il modal di rimozione
+      if (removedConfigIds.length > 0 && showRemovalModalForConfigIdsRef.current) {
+        await showRemovalModalForConfigIdsRef.current(removedConfigIds);
+      }
+    },
   });
 
   // Hook per la rimozione (dopo, con accesso alle funzioni di migrazione)
@@ -162,6 +171,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     analyzeRemovalImpact,
     handleRemovalImpactConfirm,
     handleRemovalImpactCancel,
+    showRemovalModalForConfigIds,
   } = useItemTypeSetRemoval({
     token,
     id,
@@ -169,10 +179,14 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     originalConfigurationsRef,
     performSave,
     analyzeMigrationImpact: migrationHookResult.analyzeMigrationImpact,
-    handleMigrationsThenSave: migrationHookResult.handleMigrationsThenSave,
     setError,
     setSaving,
   });
+
+  // Aggiorna il ref con la funzione reale quando è disponibile
+  useEffect(() => {
+    showRemovalModalForConfigIdsRef.current = showRemovalModalForConfigIds;
+  }, [showRemovalModalForConfigIds]);
 
   // Usa il risultato del hook di migrazione (performSaveWithRemoval sarà undefined inizialmente ma gestito nell'hook)
   const {
