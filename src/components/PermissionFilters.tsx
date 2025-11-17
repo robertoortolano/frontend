@@ -21,6 +21,7 @@ interface PermissionFiltersProps {
   totalCount: number;
   filteredCount: number;
   hideGrantFilter?: boolean; // Se true, nasconde il filtro "Assegnazioni"
+  initialFilters?: FilterValues; // Filtri iniziali da applicare
 }
 
 // Helper for keyboard accessibility
@@ -37,18 +38,40 @@ export default function PermissionFilters({
   totalCount,
   filteredCount,
   hideGrantFilter = false,
+  initialFilters,
 }: PermissionFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isItemTypeDropdownOpen, setIsItemTypeDropdownOpen] = useState(false);
   const itemTypeDropdownRef = useRef<HTMLDivElement>(null);
-  const [filters, setFilters] = useState<FilterValues>({
-    permission: "All",
-    itemTypes: ["All"],
-    status: "All",
-    field: "All",
-    workflow: "All",
-    grant: "All",
-  });
+  const [filters, setFilters] = useState<FilterValues>(
+    initialFilters || {
+      permission: "All",
+      itemTypes: ["All"],
+      status: "All",
+      field: "All",
+      workflow: "All",
+      grant: "All",
+    }
+  );
+
+  // Sincronizza i filtri quando cambiano le prop initialFilters (solo se sono diversi)
+  useEffect(() => {
+    if (initialFilters) {
+      // Confronta i filtri per evitare aggiornamenti non necessari
+      const filtersChanged = 
+        initialFilters.permission !== filters.permission ||
+        JSON.stringify(initialFilters.itemTypes) !== JSON.stringify(filters.itemTypes) ||
+        initialFilters.status !== filters.status ||
+        initialFilters.field !== filters.field ||
+        initialFilters.workflow !== filters.workflow ||
+        initialFilters.grant !== filters.grant;
+      
+      if (filtersChanged) {
+        setFilters(initialFilters);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFilters]);
 
   // Opzioni disponibili
   const [availableOptions, setAvailableOptions] = useState({

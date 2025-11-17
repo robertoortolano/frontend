@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { Users, Shield, Edit, Eye, Plus } from "lucide-react";
 import api from "../api/api";
 import PermissionFilters, { FilterValues } from "./PermissionFilters";
@@ -132,6 +132,56 @@ const buildPermissionName = (role: any): string => {
   return parts.length > 0 ? parts.join(", ") : "Permission";
 };
 
+// Funzione helper per ottenere la chiave localStorage univoca per i filtri
+const getFiltersStorageKey = (itemTypeSetId: number, projectId?: string): string => {
+  const baseKey = `permission-filters-${itemTypeSetId}`;
+  return projectId ? `${baseKey}-project-${projectId}` : baseKey;
+};
+
+// Funzione helper per caricare i filtri da localStorage
+const loadFiltersFromStorage = (
+  itemTypeSetId: number,
+  projectId: string | undefined,
+  showOnlyWithAssignments: boolean
+): FilterValues => {
+  try {
+    const storageKey = getFiltersStorageKey(itemTypeSetId, projectId);
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Assicuriamoci che i filtri caricati abbiano la struttura corretta
+      return {
+        permission: parsed.permission || DEFAULT_FILTERS.permission,
+        itemTypes: Array.isArray(parsed.itemTypes) ? parsed.itemTypes : DEFAULT_FILTERS.itemTypes,
+        status: parsed.status || DEFAULT_FILTERS.status,
+        field: parsed.field || DEFAULT_FILTERS.field,
+        workflow: parsed.workflow || DEFAULT_FILTERS.workflow,
+        grant: showOnlyWithAssignments ? "Y" : (parsed.grant || DEFAULT_FILTERS.grant),
+      };
+    }
+  } catch (error) {
+    console.warn("Errore nel caricamento dei filtri da localStorage:", error);
+  }
+  return {
+    ...DEFAULT_FILTERS,
+    grant: showOnlyWithAssignments ? "Y" : "All",
+  };
+};
+
+// Funzione helper per salvare i filtri in localStorage
+const saveFiltersToStorage = (
+  filters: FilterValues,
+  itemTypeSetId: number,
+  projectId: string | undefined
+): void => {
+  try {
+    const storageKey = getFiltersStorageKey(itemTypeSetId, projectId);
+    localStorage.setItem(storageKey, JSON.stringify(filters));
+  } catch (error) {
+    console.warn("Errore nel salvataggio dei filtri in localStorage:", error);
+  }
+};
+
 export default function ItemTypeSetRoleManager({
   itemTypeSetId,
   onPermissionGrantClick,
@@ -141,10 +191,21 @@ export default function ItemTypeSetRoleManager({
   showOnlyProjectGrants = false,
   includeProjectAssignments = true,
 }: ItemTypeSetRoleManagerProps) {
-  const [filters, setFilters] = useState<FilterValues>({
-    ...DEFAULT_FILTERS,
-    grant: showOnlyWithAssignments ? "Y" : "All",
-  });
+  // Carica i filtri da localStorage all'inizializzazione
+  const [filters, setFilters] = useState<FilterValues>(() =>
+    loadFiltersFromStorage(itemTypeSetId, projectId, showOnlyWithAssignments)
+  );
+
+  // Ricarica i filtri quando cambiano itemTypeSetId o projectId
+  useEffect(() => {
+    const loadedFilters = loadFiltersFromStorage(itemTypeSetId, projectId, showOnlyWithAssignments);
+    setFilters(loadedFilters);
+  }, [itemTypeSetId, projectId, showOnlyWithAssignments]);
+
+  // Salva i filtri in localStorage quando cambiano
+  useEffect(() => {
+    saveFiltersToStorage(filters, itemTypeSetId, projectId);
+  }, [filters, itemTypeSetId, projectId]);
 
   const [selectedRolesDetails, setSelectedRolesDetails] =
     useState<RolesDetailsState | null>(null);
@@ -275,10 +336,13 @@ export default function ItemTypeSetRoleManager({
         <>
           <PermissionFilters
             permissions={allPermissions}
-            onFilterChange={setFilters}
+            onFilterChange={(newFilters) => {
+              setFilters(newFilters);
+            }}
             totalCount={totalCount}
             filteredCount={filteredCount}
             hideGrantFilter={showOnlyWithAssignments}
+            initialFilters={filters}
           />
 
           {visibleRoleTypes.length === 0 ? (
