@@ -291,6 +291,12 @@ export function useWorkflowImpactModals({
     );
 
     const isInitialNode = node.isInitial;
+    
+    // Calculate the new initial node ID before updating state
+    const remainingNodes = state.nodes.filter(n => n.statusId !== targetStatusId);
+    const newInitialStatusId = isInitialNode && remainingNodes.length > 0
+      ? remainingNodes[0]?.statusId ?? null
+      : (isInitialNode ? null : state.workflow?.initialStatusId ?? null);
 
     let snapshot: WorkflowState | null = null;
 
@@ -306,10 +312,6 @@ export function useWorkflowImpactModals({
             isInitial: index === 0,
           }))
         : filteredNodes;
-
-      const newInitialStatusId = isInitialNode
-        ? (normalizedNodes[0]?.statusId ?? null)
-        : prev.workflow?.initialStatusId ?? null;
 
       const removedEdges = connectedEdges.filter(edge => !edge.isNew);
       const addedEdgesToKeep = prev.pendingChanges.addedEdges.filter(edge =>
@@ -353,7 +355,38 @@ export function useWorkflowImpactModals({
       return nextState;
     });
 
-    setReactFlowNodes(prev => prev.filter(n => n.id !== nodeId));
+    // Update React Flow nodes: remove the deleted node and update initial status
+    setReactFlowNodes(prev => {
+      const filtered = prev.filter(n => n.id !== nodeId);
+      
+      // If we removed the initial node and there are remaining nodes,
+      // update the first remaining node to be initial
+      if (isInitialNode && filtered.length > 0 && newInitialStatusId !== null) {
+        const newInitialNodeId = String(newInitialStatusId);
+        return filtered.map(reactNode => ({
+          ...reactNode,
+          data: {
+            ...reactNode.data,
+            isInitial: reactNode.id === newInitialNodeId,
+          },
+        }));
+      }
+      
+      // If we removed the initial node but there are no remaining nodes,
+      // or if the removed node was not initial, just remove isInitial from all nodes
+      if (isInitialNode) {
+        return filtered.map(reactNode => ({
+          ...reactNode,
+          data: {
+            ...reactNode.data,
+            isInitial: false,
+          },
+        }));
+      }
+      
+      return filtered;
+    });
+    
     setReactFlowEdges(prev => prev.filter(edge =>
       edge.source !== nodeId && edge.target !== nodeId
     ));
