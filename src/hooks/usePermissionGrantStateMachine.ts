@@ -31,26 +31,23 @@ import {
 } from './permissionGrantStateMachine/types';
 
 const permissionTypeMap: Record<string, string> = {
-  // Canonical UPPERCASE plural
+  // Canonical UPPERCASE plural - only these are supported
   WORKERS: PERMISSION_TYPES.WORKERS,
   CREATORS: PERMISSION_TYPES.CREATORS,
   STATUS_OWNERS: PERMISSION_TYPES.STATUS_OWNERS,
   EXECUTORS: PERMISSION_TYPES.EXECUTORS,
   FIELD_OWNERS: PERMISSION_TYPES.FIELD_OWNERS,
-  EDITORS: PERMISSION_TYPES.EDITORS,
-  VIEWERS: PERMISSION_TYPES.VIEWERS,
-  FIELD_VIEWERS: PERMISSION_TYPES.VIEWERS,
-  FIELD_EDITORS: PERMISSION_TYPES.EDITORS,
-  // UI Labels (map to canonical)
+  FIELD_EDITORS: PERMISSION_TYPES.FIELD_EDITORS,
+  FIELD_VIEWERS: PERMISSION_TYPES.FIELD_VIEWERS,
+  // Legacy UI Labels (map to canonical) - kept for backward compatibility with existing data
   Workers: PERMISSION_TYPES.WORKERS,
   Creators: PERMISSION_TYPES.CREATORS,
   'Status Owners': PERMISSION_TYPES.STATUS_OWNERS,
   Executors: PERMISSION_TYPES.EXECUTORS,
   'Field Owners': PERMISSION_TYPES.FIELD_OWNERS,
-  Editors: PERMISSION_TYPES.EDITORS,
-  Viewers: PERMISSION_TYPES.VIEWERS,
-  'Field Viewers': PERMISSION_TYPES.VIEWERS,
-  'Field Editors': PERMISSION_TYPES.EDITORS,
+  // Note: Editors/Viewers are deprecated - use FIELD_EDITORS/FIELD_VIEWERS
+  'Field Viewers': PERMISSION_TYPES.FIELD_VIEWERS,
+  'Field Editors': PERMISSION_TYPES.FIELD_EDITORS,
 };
 
 export const getPermissionType = (permissionName: string): string => {

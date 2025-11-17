@@ -17,12 +17,10 @@ export const fieldSetImpactConfig: EnhancedImpactReportConfig<FieldSetRemovalImp
         case 'FIELD_OWNERS':
           return `Field Owner - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'}`;
         case 'FIELD_EDITORS':
-        case 'EDITORS':
           return `Editor - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${
             perm.statusName || 'N/A'
           }`;
         case 'FIELD_VIEWERS':
-        case 'VIEWERS':
           return `Viewer - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${
             perm.statusName || 'N/A'
           }`;

@@ -261,10 +261,8 @@ export const useItemTypeConfigurationMigrationWizard = (
       case 'STATUS_OWNERS':
         return `Status Owner - ${perm.entityName || 'N/A'}`;
       case 'FIELD_EDITORS':
-      case 'EDITORS':
         return `Editor - ${perm.fieldName || 'N/A'} @ ${perm.workflowStatusName || 'N/A'}`;
       case 'FIELD_VIEWERS':
-      case 'VIEWERS':
         return `Viewer - ${perm.fieldName || 'N/A'} @ ${perm.workflowStatusName || 'N/A'}`;
       case 'EXECUTORS': {
         const fromStatus = perm.fromStatusName || 'N/A';
@@ -322,6 +320,7 @@ export const useItemTypeConfigurationMigrationWizard = (
     getPermissionName,
   };
 };
+
 
 
 

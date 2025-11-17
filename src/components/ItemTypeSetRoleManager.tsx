@@ -49,53 +49,53 @@ const DEFAULT_FILTERS: FilterValues = {
 };
 
 const ROLE_ORDER = [
-  "Workers",
-  "Creators",
-  "Status Owners",
-  "Executors",
-  "Field Owners",
-  "Editors",
-  "Viewers",
+  "WORKERS",
+  "CREATORS",
+  "STATUS_OWNERS",
+  "EXECUTORS",
+  "FIELD_OWNERS",
+  "FIELD_EDITORS",
+  "FIELD_VIEWERS",
 ];
 
 const ROLE_TYPES: Record<string, RoleTypeSectionMeta> = {
-  Workers: {
+  WORKERS: {
     label: "Workers",
     icon: Users,
     color: "blue",
     description: "Per ogni ItemType",
   },
-  "Status Owners": {
+  STATUS_OWNERS: {
     label: "Status Owners",
     icon: Shield,
     color: "green",
     description: "Per ogni WorkflowStatus",
   },
-  "Field Owners": {
+  FIELD_OWNERS: {
     label: "Field Owners",
     icon: Edit,
     color: "purple",
     description: "Per ogni FieldConfiguration (sempre)",
   },
-  Creators: {
+  CREATORS: {
     label: "Creators",
     icon: Plus,
     color: "orange",
     description: "Per ogni Workflow",
   },
-  Executors: {
+  EXECUTORS: {
     label: "Executors",
     icon: Shield,
     color: "red",
     description: "Per ogni Transition",
   },
-  Editors: {
+  FIELD_EDITORS: {
     label: "Editors",
     icon: Edit,
     color: "indigo",
     description: "Per coppia (Field + Status)",
   },
-  Viewers: {
+  FIELD_VIEWERS: {
     label: "Viewers",
     icon: Eye,
     color: "gray",

@@ -32,9 +32,7 @@ export function useMigrationReportExport({
 					fieldName = permission.fieldName || permission.entityName || null;
 				} else if (
 					permission.permissionType === 'FIELD_EDITORS' ||
-					permission.permissionType === 'FIELD_VIEWERS' ||
-					permission.permissionType === 'EDITORS' ||
-					permission.permissionType === 'VIEWERS'
+					permission.permissionType === 'FIELD_VIEWERS'
 				) {
 					fieldName = permission.fieldName || null;
 				}
@@ -85,5 +83,6 @@ export function useMigrationReportExport({
 
 	return { handleExportFullReport };
 }
+
 
 

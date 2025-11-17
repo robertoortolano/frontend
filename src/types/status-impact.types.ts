@@ -113,7 +113,7 @@ export interface ExecutorPermissionImpact {
 
 export interface FieldStatusPermissionImpact {
   permissionId: number;
-  permissionType: string; // "EDITORS" o "VIEWERS"
+  permissionType: string; // "FIELD_EDITORS" o "FIELD_VIEWERS"
   itemTypeSetId: number;
   itemTypeSetName: string;
   projectId: number | null;

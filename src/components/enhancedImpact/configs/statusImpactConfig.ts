@@ -25,13 +25,11 @@ export const statusImpactConfig: EnhancedImpactReportConfig<StatusRemovalImpactD
           return `Executor - ${fromStatus} -> ${toStatus}${transitionPart}`;
         }
         case 'FIELD_EDITORS':
-        case 'FIELD_VIEWERS':
-        case 'EDITORS':
-        case 'VIEWERS': {
+        case 'FIELD_VIEWERS': {
           const fieldName = perm.fieldName || 'N/A';
           const statusName = perm.statusName || perm.workflowStatusName || 'N/A';
           const label =
-            perm.permissionType === 'FIELD_EDITORS' || perm.permissionType === 'EDITORS'
+            perm.permissionType === 'FIELD_EDITORS'
               ? 'Editor'
               : 'Viewer';
           return `${label} - ${fieldName} in ${statusName}`;

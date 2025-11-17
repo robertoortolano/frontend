@@ -8,24 +8,10 @@ import { escapeCSV as csvEscapeCSV, formatTransition as csvFormatTransition, cre
  */
 
 /**
- * Funzione helper per mappare il tipo di permission dal formato frontend al formato backend
+ * NOTA: Questa funzione è stata rimossa perché ora backend e frontend usano lo stesso formato display unificato.
+ * Il backend normalizza automaticamente dal formato display al formato entity internamente.
+ * Non è più necessario mappare i tipi di permission nel frontend.
  */
-const mapPermissionTypeToBackend = (permissionType: string): string => {
-  const mapping: { [key: string]: string } = {
-    'FIELD_OWNERS': 'FieldOwnerPermission',
-    'FIELD_EDITORS': 'FieldStatusPermission',
-    'FIELD_VIEWERS': 'FieldStatusPermission',
-    'EDITORS': 'FieldStatusPermission', // retrocompatibilità
-    'VIEWERS': 'FieldStatusPermission', // retrocompatibilità
-    'STATUS_OWNERS': 'StatusOwnerPermission',
-    'STATUS_OWNER': 'StatusOwnerPermission',
-    'EXECUTORS': 'ExecutorPermission',
-    'EXECUTOR': 'ExecutorPermission',
-    'WORKERS': 'WorkerPermission',
-    'CREATORS': 'CreatorPermission'
-  };
-  return mapping[permissionType] || permissionType;
-};
 
 export interface PermissionData {
   permissionId: number | null;
@@ -191,10 +177,8 @@ const processPermissionRows = async (
     // Prova sempre a fare la chiamata API per ottenere i dettagli completi del grant
     // anche se non abbiamo grantId, perché l'endpoint funziona con permissionId
     try {
-      // Mappa il tipo di permission al formato backend
-      const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
-      // Usa il nuovo endpoint PermissionAssignment
-      const grantResponse = await api.get(`/permission-assignments/${backendPermissionType}/${perm.permissionId}`);
+      // Usa il formato display unificato (backend normalizza automaticamente)
+      const grantResponse = await api.get(`/permission-assignments/${perm.permissionType}/${perm.permissionId}`);
       const assignment = grantResponse.data;
       const grantDetails = assignment.grant || {};
 
@@ -341,10 +325,9 @@ const processPermissionRows = async (
       // anche se grantId è null, perché l'endpoint funziona con permissionId
       if (perm.permissionId && perm.permissionType) {
         try {
-          // Mappa il tipo di permission al formato backend
-          const backendPermissionType = mapPermissionTypeToBackend(perm.permissionType);
+          // Usa il formato display unificato (backend normalizza automaticamente)
           const projectGrantResponse = await api.get(
-            `/project-permission-assignments/${backendPermissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
+            `/project-permission-assignments/${perm.permissionType}/${perm.permissionId}/project/${projectGrant.projectId}`
           );
           const assignment = projectGrantResponse.data;
           const projectGrantDetails = assignment.grant || {};

@@ -32,8 +32,8 @@ export function runPermissionTypesSelfCheck(): { ok: boolean; issues: string[] }
     PERMISSION_TYPES.STATUS_OWNERS,
     PERMISSION_TYPES.EXECUTORS,
     PERMISSION_TYPES.FIELD_OWNERS,
-    PERMISSION_TYPES.EDITORS,
-    PERMISSION_TYPES.VIEWERS,
+    PERMISSION_TYPES.FIELD_EDITORS,
+    PERMISSION_TYPES.FIELD_VIEWERS,
   ];
   for (const r of required) {
     if (!ALL_PERMISSION_TYPES.includes(r)) {
@@ -43,5 +43,6 @@ export function runPermissionTypesSelfCheck(): { ok: boolean; issues: string[] }
 
   return { ok: issues.length === 0, issues };
 }
+
 
 

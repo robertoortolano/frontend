@@ -66,7 +66,7 @@ export interface TransitionInfo {
 
 export interface SelectablePermissionImpact {
   permissionId: number;
-  permissionType: string; // "FIELD_OWNERS", "STATUS_OWNERS", "EDITORS", "VIEWERS", "EXECUTORS", "WORKERS", "CREATORS"
+  permissionType: string; // "FIELD_OWNERS", "STATUS_OWNERS", "FIELD_EDITORS", "FIELD_VIEWERS", "EXECUTORS", "WORKERS", "CREATORS"
   
   // Info entity attuale (Field, WorkflowStatus, Transition)
   entityId: number | null; // FieldId, WorkflowStatusId, TransitionId

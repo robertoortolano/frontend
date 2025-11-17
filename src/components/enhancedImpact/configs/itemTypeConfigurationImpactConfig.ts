@@ -24,12 +24,10 @@ export const itemTypeConfigurationImpactConfig: EnhancedImpactReportConfig<ItemT
           case 'STATUS_OWNERS':
             return `Status Owner - ${perm.statusName || perm.workflowStatusName || 'N/A'}`;
           case 'FIELD_EDITORS':
-          case 'EDITORS':
             return `Editor - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${
               perm.statusName || perm.workflowStatusName || 'N/A'
             }`;
           case 'FIELD_VIEWERS':
-          case 'VIEWERS':
             return `Viewer - ${perm.fieldName || perm.fieldConfigurationName || 'N/A'} @ ${
               perm.statusName || perm.workflowStatusName || 'N/A'
             }`;

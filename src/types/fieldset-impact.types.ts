@@ -34,7 +34,7 @@ export interface ProjectImpact {
 
 export interface PermissionImpact {
   permissionId: number;
-  permissionType: string; // "FIELD_OWNERS", "EDITORS", "VIEWERS"
+  permissionType: string; // "FIELD_OWNERS", "FIELD_EDITORS", "FIELD_VIEWERS"
   itemTypeSetId: number;
   itemTypeSetName: string;
   fieldConfigurationId: number;
