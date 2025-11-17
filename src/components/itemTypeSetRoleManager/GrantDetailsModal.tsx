@@ -44,7 +44,6 @@ const renderBadgeList = (
     >
       {item?.fullName ||
         item?.username ||
-        item?.email ||
         item?.name ||
         `#${item?.id ?? index}`}
     </span>

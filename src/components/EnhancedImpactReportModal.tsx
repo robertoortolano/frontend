@@ -459,7 +459,7 @@ export function EnhancedImpactReportModal<I>({
                             fontSize: '0.875rem'
                           }}
                         >
-                          {user.username || user.email || `User #${user.id}`}
+                          {user.username || `User #${user.id}`}
                         </span>
                       ))
                     ) : (
@@ -510,7 +510,7 @@ export function EnhancedImpactReportModal<I>({
                             fontSize: '0.875rem'
                           }}
                         >
-                          {user.username || user.email || `User #${user.id}`}
+                          {user.username || `User #${user.id}`}
                         </span>
                       ))
                     ) : (

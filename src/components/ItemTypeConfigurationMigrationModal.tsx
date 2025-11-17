@@ -507,7 +507,6 @@ export const ItemTypeConfigurationMigrationModal: React.FC<
                             }}
                           >
                             {user.username ||
-                              user.email ||
                               `User #${user.id}`}
                           </span>
                         )
@@ -598,7 +597,6 @@ export const ItemTypeConfigurationMigrationModal: React.FC<
                             }}
                           >
                             {user.username ||
-                              user.email ||
                               `User #${user.id}`}
                           </span>
                         )

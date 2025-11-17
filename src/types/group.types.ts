@@ -6,7 +6,6 @@ export interface UserDto {
   id: number;
   username: string;
   fullName?: string;
-  email?: string;
 }
 
 export interface GroupDto {
