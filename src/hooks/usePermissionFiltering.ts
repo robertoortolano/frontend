@@ -46,14 +46,35 @@ export const usePermissionFiltering = ({
         if (permission.workflowStatus) {
           return false;
         }
-      } else if (filters.status !== "All") {
-        if (!permission.workflowStatus) {
+        // Per EXECUTORS, controlla anche che non abbiano fromStatus o toStatus
+        if (permission.name === "EXECUTORS" && (permission.fromStatus || permission.toStatus)) {
           return false;
         }
-        const statusId = permission.workflowStatus.id.toString();
-        const statusName = permission.workflowStatus.name;
-        if (statusId !== filters.status && statusName !== filters.status) {
-          return false;
+      } else if (filters.status !== "All") {
+        // Se la permission è EXECUTORS, controlla le transizioni entranti/uscenti
+        if (permission.name === "EXECUTORS") {
+          const matchesFromStatus = permission.fromStatus && (
+            permission.fromStatus.id?.toString() === filters.status ||
+            permission.fromStatus.name === filters.status
+          );
+          const matchesToStatus = permission.toStatus && (
+            permission.toStatus.id?.toString() === filters.status ||
+            permission.toStatus.name === filters.status
+          );
+          // Include se la transizione ha lo status selezionato come fromStatus o toStatus
+          if (!matchesFromStatus && !matchesToStatus) {
+            return false;
+          }
+        } else {
+          // Per le altre permission, usa la logica esistente
+          if (!permission.workflowStatus) {
+            return false;
+          }
+          const statusId = permission.workflowStatus.id.toString();
+          const statusName = permission.workflowStatus.name;
+          if (statusId !== filters.status && statusName !== filters.status) {
+            return false;
+          }
         }
       }
 

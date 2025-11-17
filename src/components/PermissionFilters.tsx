@@ -100,6 +100,29 @@ export default function PermissionFilters({
             }
           }
         }
+        // Per le permission EXECUTORS, includi anche gli stati delle transizioni (fromStatus e toStatus)
+        if (perm.name === "EXECUTORS") {
+          if (perm.fromStatus) {
+            const fromStatusName = perm.fromStatus.name;
+            const fromStatusId = perm.fromStatus.id?.toString();
+            if (fromStatusName && !statusNamesSet.has(fromStatusName)) {
+              statusNamesSet.add(fromStatusName);
+              if (fromStatusId && !statusIdToNameMap.has(fromStatusId)) {
+                statusIdToNameMap.set(fromStatusId, fromStatusName);
+              }
+            }
+          }
+          if (perm.toStatus) {
+            const toStatusName = perm.toStatus.name;
+            const toStatusId = perm.toStatus.id?.toString();
+            if (toStatusName && !statusNamesSet.has(toStatusName)) {
+              statusNamesSet.add(toStatusName);
+              if (toStatusId && !statusIdToNameMap.has(toStatusId)) {
+                statusIdToNameMap.set(toStatusId, toStatusName);
+              }
+            }
+          }
+        }
         if (perm.fieldConfiguration) {
           fieldsMap.set(perm.fieldConfiguration.id.toString(), perm.fieldConfiguration.name);
         }
@@ -170,7 +193,7 @@ export default function PermissionFilters({
     }
 
     // Determina quali filtri sono applicabili
-    const hasStatus = filteredPerms.some((p: any) => p.workflowStatus);
+    const hasStatus = filteredPerms.some((p: any) => p.workflowStatus || (p.name === "EXECUTORS" && (p.fromStatus || p.toStatus)));
     const hasField = filteredPerms.some((p: any) => p.fieldConfiguration);
     const hasWorkflow = filteredPerms.some((p: any) => p.workflow);
 
@@ -191,6 +214,29 @@ export default function PermissionFilters({
           // Mantieni anche la mappa ID->nome per il filtro, usando il primo ID trovato per questo nome
           if (!validStatusIdToNameMap.has(statusId)) {
             validStatusIdToNameMap.set(statusId, statusName);
+          }
+        }
+      }
+      // Per le permission EXECUTORS, includi anche gli stati delle transizioni (fromStatus e toStatus)
+      if (p.name === "EXECUTORS") {
+        if (p.fromStatus) {
+          const fromStatusName = p.fromStatus.name;
+          const fromStatusId = p.fromStatus.id?.toString();
+          if (fromStatusName && !validStatusNamesSet.has(fromStatusName)) {
+            validStatusNamesSet.add(fromStatusName);
+            if (fromStatusId && !validStatusIdToNameMap.has(fromStatusId)) {
+              validStatusIdToNameMap.set(fromStatusId, fromStatusName);
+            }
+          }
+        }
+        if (p.toStatus) {
+          const toStatusName = p.toStatus.name;
+          const toStatusId = p.toStatus.id?.toString();
+          if (toStatusName && !validStatusNamesSet.has(toStatusName)) {
+            validStatusNamesSet.add(toStatusName);
+            if (toStatusId && !validStatusIdToNameMap.has(toStatusId)) {
+              validStatusIdToNameMap.set(toStatusId, toStatusName);
+            }
           }
         }
       }
@@ -287,7 +333,35 @@ export default function PermissionFilters({
       }
 
       // Se status non è più valido, resettalo su "All" (non "None")
-      if (!testPerms.some((p: any) => p.workflowStatus) && newFilters.status !== "All" && newFilters.status !== "None") {
+      // Considera anche le permission EXECUTORS con fromStatus/toStatus
+      const hasStatusPermission = testPerms.some((p: any) => 
+        p.workflowStatus || (p.name === "EXECUTORS" && (p.fromStatus || p.toStatus))
+      );
+      if (hasStatusPermission && newFilters.status !== "All" && newFilters.status !== "None") {
+        // Verifica che lo stato selezionato sia effettivamente presente nelle permission filtrate
+        const statusMatches = testPerms.some((p: any) => {
+          if (p.workflowStatus) {
+            return p.workflowStatus.id?.toString() === newFilters.status || 
+                   p.workflowStatus.name === newFilters.status;
+          }
+          if (p.name === "EXECUTORS") {
+            const fromMatches = p.fromStatus && (
+              p.fromStatus.id?.toString() === newFilters.status ||
+              p.fromStatus.name === newFilters.status
+            );
+            const toMatches = p.toStatus && (
+              p.toStatus.id?.toString() === newFilters.status ||
+              p.toStatus.name === newFilters.status
+            );
+            return fromMatches || toMatches;
+          }
+          return false;
+        });
+        
+        if (!statusMatches) {
+          newFilters.status = "All";
+        }
+      } else if (!hasStatusPermission && newFilters.status !== "All" && newFilters.status !== "None") {
         newFilters.status = "All";
       }
       // Se field non è più valido, resettalo su "All"
