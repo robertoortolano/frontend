@@ -57,6 +57,13 @@ export const getPermissionType = (permissionName: string): string => {
 
   const trimmed = permissionName.trim();
 
+  if (trimmed.startsWith('Editor')) {
+    return PERMISSION_TYPES.FIELD_EDITORS;
+  }
+  if (trimmed.startsWith('Viewer')) {
+    return PERMISSION_TYPES.FIELD_VIEWERS;
+  }
+
   const direct = permissionTypeMap[trimmed as keyof typeof permissionTypeMap];
   if (direct) {
     return direct;
@@ -193,9 +200,27 @@ export function usePermissionGrantStateMachine({
         setAvailableGroups(groups);
 
         const permissionId = typeof permission.id === 'number' ? permission.id : null;
-        const rawPermissionType =
-          (permission as any)?.permissionType || (permission as any)?.permission_type || permission.name;
-        const permissionType = getPermissionType(rawPermissionType);
+        const canonicalSet = new Set(Object.values(PERMISSION_TYPES));
+        const rawTypePrimary = (permission as any)?.permissionType;
+        const rawTypeSecondary = (permission as any)?.permission_type;
+        const rawName = (permission as any)?.name;
+        let permissionType = '';
+        if (rawTypePrimary) {
+          const mapped = getPermissionType(rawTypePrimary);
+          if (canonicalSet.has(mapped as any)) {
+            permissionType = mapped;
+          }
+        }
+        if (!permissionType && rawName) {
+          const mappedByName = getPermissionType(rawName);
+          if (canonicalSet.has(mappedByName as any)) {
+            permissionType = mappedByName;
+          }
+        }
+        if (!permissionType) {
+          const fallbackRaw = rawTypePrimary || rawTypeSecondary || '';
+          permissionType = getPermissionType(fallbackRaw);
+        }
 
         if (!permissionId || !permissionType) {
           resetState();

@@ -90,9 +90,9 @@ export const RoleAssignmentsCell = ({
   onShowGrant,
 }: RoleAssignmentsCellProps) => {
   const permissionId = role?.id;
-  const permissionType = role?.permissionType;
+  const permissionTypeRaw = role?.permissionType;
 
-  if (!permissionId || typeof permissionId !== "number" || !permissionType) {
+  if (!permissionId || typeof permissionId !== "number" || !permissionTypeRaw) {
     return (
       <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
         N/A
@@ -100,7 +100,7 @@ export const RoleAssignmentsCell = ({
     );
   }
 
-  const mapKey = `${permissionType}-${permissionId}`;
+  const mapKey = `${permissionTypeRaw}-${permissionId}`;
   const grantDetails = grantDetailsMap.get(mapKey);
   const grantInfo = useMemo(() => mapGrantDetails(grantDetails), [grantDetails]);
 
@@ -134,22 +134,30 @@ export const RoleAssignmentsCell = ({
 
         {grantInfo.hasAny && (
           <div>
-            <InlineActionLink
-              label="Grant"
-              onClick={
-                projectId
-                  ? () =>
+          <InlineActionLink
+            label="Grant"
+            onClick={
+              projectId
+                ? () =>
                       onShowGrant({
                         permissionId,
-                        permissionType,
+                        permissionType: (() => {
+                          const label = getPermissionName(role) || '';
+                          if (permissionTypeRaw === 'FIELD_EDITORS' || permissionTypeRaw === 'FIELD_VIEWERS') {
+                            return permissionTypeRaw;
+                          }
+                          if (label.startsWith('Editor')) return 'FIELD_EDITORS';
+                          if (label.startsWith('Viewer')) return 'FIELD_VIEWERS';
+                          return String(permissionTypeRaw || '').toUpperCase();
+                        })(),
                         variant: "project",
                         projectId: Number(projectId),
                         projectName: "Progetto",
                       })
                   : undefined
-              }
-              disabled={!projectId}
-            />
+            }
+            disabled={!projectId}
+          />
           </div>
         )}
       </div>
@@ -217,7 +225,15 @@ export const RoleAssignmentsCell = ({
             onClick={() =>
               onShowGrant({
                 permissionId,
-                permissionType,
+                permissionType: (() => {
+                  const label = getPermissionName(role) || '';
+                  if (permissionTypeRaw === 'FIELD_EDITORS' || permissionTypeRaw === 'FIELD_VIEWERS') {
+                    return permissionTypeRaw;
+                  }
+                  if (label.startsWith('Editor')) return 'FIELD_EDITORS';
+                  if (label.startsWith('Viewer')) return 'FIELD_VIEWERS';
+                  return String(permissionTypeRaw || '').toUpperCase();
+                })(),
                 variant: "global",
                 projectName: "Globale",
               })
@@ -253,23 +269,30 @@ export const RoleAssignmentsCell = ({
 
         return (
           <div key={`project-grant-${index}`}>
-            <InlineActionLink
-              label="Grant"
-              onClick={() =>
-                onShowGrant({
-                  permissionId,
-                  permissionType,
-                  variant: "project",
-                  projectId: Number(projectGrant.projectId),
-                  projectName: projectGrant.projectName || "Progetto",
-                })
-              }
-            />
-          </div>
-        );
-      })}
+          <InlineActionLink
+            label="Grant"
+            onClick={() =>
+              onShowGrant({
+                permissionId,
+                permissionType: (() => {
+                  const label = getPermissionName(role) || '';
+                  if (permissionTypeRaw === 'FIELD_EDITORS' || permissionTypeRaw === 'FIELD_VIEWERS') {
+                    return permissionTypeRaw;
+                  }
+                  if (label.startsWith('Editor')) return 'FIELD_EDITORS';
+                  if (label.startsWith('Viewer')) return 'FIELD_VIEWERS';
+                  return String(permissionTypeRaw || '').toUpperCase();
+                })(),
+                variant: "project",
+                projectId: Number(projectGrant.projectId),
+                projectName: projectGrant.projectName || "Progetto",
+              })
+            }
+          />
+        </div>
+      );
+    })}
     </div>
   );
 };
-
 
