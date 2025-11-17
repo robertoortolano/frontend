@@ -151,6 +151,7 @@ export function useItemTypeSetRemoval({
     setShowRemovalImpactModal(false);
     setRemovalImpact(null);
     setPendingSave(null);
+    setSaving(false);
   };
 
   // Funzione helper per mostrare il modal di rimozione per configurazioni specifiche

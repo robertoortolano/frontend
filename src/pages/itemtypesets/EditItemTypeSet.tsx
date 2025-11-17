@@ -155,6 +155,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
     originalConfigurationsRef,
     performSave,
     setError,
+    setSaving,
     onAfterMigration: async (removedConfigIds: number[]) => {
       // Dopo le migrazioni, se ci sono rimozioni, mostra il modal di rimozione
       if (removedConfigIds.length > 0 && showRemovalModalForConfigIdsRef.current) {

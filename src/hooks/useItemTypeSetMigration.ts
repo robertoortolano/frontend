@@ -16,6 +16,7 @@ interface UseItemTypeSetMigrationProps {
     forceRemoval?: boolean
   ) => Promise<void>;
   setError: (error: string | null) => void;
+  setSaving: (saving: boolean) => void;
   onAfterMigration?: (removedConfigIds: number[]) => Promise<void>;
 }
 
@@ -26,6 +27,7 @@ export function useItemTypeSetMigration({
   performSave,
   performSaveWithRemoval,
   setError,
+  setSaving,
   onAfterMigration,
 }: UseItemTypeSetMigrationProps) {
   const [showMigrationModal, setShowMigrationModal] = useState(false);
@@ -198,6 +200,7 @@ export function useItemTypeSetMigration({
   const handleMigrationCancel = () => {
     setShowMigrationModal(false);
     setMigrationImpacts([]);
+    setSaving(false);
   };
   
   const handleMigrationsThenSave = async (
