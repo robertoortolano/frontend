@@ -304,7 +304,8 @@ export default function FieldConfigurationEditUniversal({
       const dto: FieldConfigurationUpdateDto = {
         name: fieldConfiguration.name.trim(),
         alias: fieldConfiguration.alias?.trim() || undefined,
-        fieldId: selectedFieldId ? parseInt(selectedFieldId) : null,
+        // Usa sempre il fieldId originale dalla configurazione, non può essere modificato
+        fieldId: fieldConfiguration.fieldId || null,
         fieldType: fieldTypeKey,
         description: fieldConfiguration.description?.trim() || undefined,
         options: canEditOptions
@@ -427,9 +428,8 @@ export default function FieldConfigurationEditUniversal({
             <select
               id="field"
               value={selectedFieldId}
-              onChange={(e) => setSelectedFieldId(e.target.value)}
               required
-              disabled={saving}
+              disabled={true}
               className={form.select}
             >
               <option value="">-- seleziona campo --</option>
@@ -440,7 +440,7 @@ export default function FieldConfigurationEditUniversal({
               ))}
             </select>
             <p className={form.helpText}>
-              Seleziona il campo per cui vuoi creare questa configurazione.
+              Il campo non può essere modificato durante l'edit di una configurazione esistente.
             </p>
           </div>
 
