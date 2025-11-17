@@ -71,16 +71,6 @@ export default function GrantAssignmentsTable({
 
   if (shouldShowRoleRows) {
     if (scope === 'project') {
-      const globalRoleCount = permission?.assignedRoles?.length ?? 0;
-      rows.push({
-        key: 'globalRoles',
-        label: 'Ruoli Globali',
-        description: 'Role template ereditati a livello tenant (sola lettura).',
-        count: globalRoleCount,
-        configured: globalRoleCount > 0,
-        readOnly: true,
-      });
-
       rows.push({
         key: 'projectRoles',
         label: 'Ruoli di Progetto',
@@ -100,16 +90,15 @@ export default function GrantAssignmentsTable({
     }
   }
 
-  rows.push({
-    key: 'globalGrant',
-    label: scope === 'project' ? 'Grant Diretto Globale' : 'Grant Diretto',
-    description:
-      scope === 'project'
-        ? 'Dettaglio del grant globale (sola lettura) valido per tutti i progetti.'
-        : 'Utenti e gruppi assegnati direttamente alla permission a livello tenant.',
-    count: countEntities(globalGrant),
-    configured: hasGrantDirect,
-  });
+  if (scope !== 'project') {
+    rows.push({
+      key: 'globalGrant',
+      label: 'Grant Diretto',
+      description: 'Utenti e gruppi assegnati direttamente alla permission a livello tenant.',
+      count: countEntities(globalGrant),
+      configured: hasGrantDirect,
+    });
+  }
 
   if (scope === 'project') {
     rows.push({
