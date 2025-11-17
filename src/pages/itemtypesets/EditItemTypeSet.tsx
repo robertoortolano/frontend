@@ -268,7 +268,7 @@ export default function EditItemTypeSet({ scope: scopeProp, projectId: projectId
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className={form.form}>
+      <form onSubmit={handleSubmit} className={form.form} style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         <PageSection title="Informazioni Base" bodyClassName="space-y-6">
           <div className={form.formGroup}>
             <label htmlFor="name" className={form.label}>
