@@ -90,14 +90,6 @@ export function useItemTypeSetSave({
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      // Aggiorna automaticamente le permissions per l'ItemTypeSet modificato
-      // Nota: Non c'è più bisogno di eliminare le vecchie permission perché vengono gestite automaticamente
-      // Se necessario, le permission vengono ricreate quando si modifica l'ItemTypeSet
-      try {
-        await api.post(`/itemtypeset-permissions/create-for-itemtypeset/${id}`);
-      } catch (roleError) {
-        console.warn("Errore nell'aggiornamento automatico delle permissions:", roleError);
-      }
 
       // Aggiorna originalConfigurationsRef con lo stato salvato dal backend
       // Questo è importante perché quando si modifica un FieldSet, le permission vengono ricreate
