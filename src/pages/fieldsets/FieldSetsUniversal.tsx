@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 
 import { useAuth } from "../../context/AuthContext";
 import { FieldSetViewDto } from "../../types/field.types";
+import Accordion from "../../components/shared/Accordion";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -29,13 +30,6 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
 
   // Stato per gestire quali field sets sono espansi
   const [expandedFieldSets, setExpandedFieldSets] = useState<Record<number, boolean>>({});
-
-  const handleToggleExpand = useCallback((id: number) => {
-    setExpandedFieldSets((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -145,86 +139,84 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
     content = (
       <ul className={layout.verticalList}>
         {fieldSets.map((set) => (
-          <li key={set.id} className={layout.block}>
-            <button
-              type="button"
-              className={`${layout.blockHeader} cursor-pointer flex items-center justify-between`}
-              onClick={() => handleToggleExpand(set.id)}
+          <li key={set.id}>
+            <Accordion
+              id={set.id}
+              title={<h2>{set.name}</h2>}
+              isExpanded={expandedFieldSets[set.id] || false}
+              onToggle={() => setExpandedFieldSets((prev) => ({
+                ...prev,
+                [set.id]: !prev[set.id],
+              }))}
             >
-              <h2>{set.name}</h2>
-            </button>
+              <table className={table.table}>
+                <thead>
+                  <tr>
+                    <th className="w-20">Nome</th>
+                    <th className="w-30">Descrizione</th>
+                    <th className="w-20">Configurazioni</th>
+                    <th className="w-20">ItemTypeSet</th>
+                    <th className="w-15"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{set.name}</td>
+                    <td>{set.description || "-"}</td>
+                    <td>{set.fieldSetEntries?.length || 0} configurazioni</td>
+                    <td>
+                      {set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0 ? (
+                        <span className="text-blue-600">
+                          {set.usedInItemTypeSets.length} ItemTypeSet
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          className={buttons.button}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(set.id, set.defaultFieldSet);
+                          }}
+                          disabled={set.defaultFieldSet}
+                          title={
+                            set.defaultFieldSet
+                              ? "Field Set di default non modificabile"
+                              : "Modifica Field Set"
+                          }
+                        >
+                          ✎ Edit
+                        </button>
 
-            {expandedFieldSets[set.id] && (
-              <div className={layout.mt4}>
-                <table className={table.table}>
-                  <thead>
-                    <tr>
-                      <th className="w-20">Nome</th>
-                      <th className="w-30">Descrizione</th>
-                      <th className="w-20">Configurazioni</th>
-                      <th className="w-20">ItemTypeSet</th>
-                      <th className="w-15"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>{set.name}</td>
-                      <td>{set.description || "-"}</td>
-                      <td>{set.fieldSetEntries?.length || 0} configurazioni</td>
-                      <td>
-                        {set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0 ? (
-                          <span className="text-blue-600">
-                            {set.usedInItemTypeSets.length} ItemTypeSet
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        <div className="flex flex-col gap-1">
-                          <button
-                            className={buttons.button}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(set.id, set.defaultFieldSet);
-                            }}
-                            disabled={set.defaultFieldSet}
-                            title={
-                              set.defaultFieldSet
-                                ? "Field Set di default non modificabile"
-                                : "Modifica Field Set"
-                            }
-                          >
-                            ✎ Edit
-                          </button>
-
-                          <button
-                            className={`${buttons.button}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(set.id);
-                            }}
-                            disabled={
-                              set.defaultFieldSet ||
-                              (set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0)
-                            }
-                            title={
-                              set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0
-                                ? "Non puoi eliminare: usato in uno o più ItemTypeSet"
-                                : set.defaultFieldSet
-                                  ? "FieldSet di default non eliminabile"
-                                  : "Elimina Field Set"
-                            }
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        <button
+                          className={`${buttons.button}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(set.id);
+                          }}
+                          disabled={
+                            set.defaultFieldSet ||
+                            (set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0)
+                          }
+                          title={
+                            set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0
+                              ? "Non puoi eliminare: usato in uno o più ItemTypeSet"
+                              : set.defaultFieldSet
+                                ? "FieldSet di default non eliminabile"
+                                : "Elimina Field Set"
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Accordion>
           </li>
         ))}
         <div className="mt-6">

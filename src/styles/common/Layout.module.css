@@ -122,7 +122,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.65rem;
+  font-size: 1rem;
 
   padding: 0.4rem 0.8rem;
   font-weight: 600;
@@ -138,11 +138,22 @@
 }
 
 .blockHeader:hover {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: white;
-  background-color: #00ddd4;
+  /* Hover rimosso per evitare evidenziazione del nome del field */
+}
+
+/* Rimuovi margini dagli heading dentro l'accordion per allineamento corretto */
+.blockHeader h1,
+.blockHeader h2,
+.blockHeader h3,
+.blockHeader h4,
+.blockHeader h5,
+.blockHeader h6 {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.5 !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  display: inline-block !important;
 }
 
 .verticalList {

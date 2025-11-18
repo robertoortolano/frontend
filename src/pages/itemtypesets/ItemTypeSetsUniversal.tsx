@@ -1,12 +1,13 @@
-import { useEffect, useState, useCallback, MouseEvent } from "react";
+import { useEffect, useState, MouseEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import api from "../../api/api";
 
 import { useAuth } from "../../context/AuthContext";
 import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
 import PermissionGrantManager from "../../components/PermissionGrantManager";
+import Accordion from "../../components/shared/Accordion";
 import { ItemTypeSetDto } from "../../types/itemtypeset.types";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -43,13 +44,6 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  const handleToggleExpand = useCallback((id: number) => {
-    setExpandedItemTypeSets((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  }, []);
 
   const handleMouseDown = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest(".modal-header")) {
@@ -217,57 +211,76 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
     content = (
       <ul className={layout.verticalList}>
         {itemTypeSets.map((set) => (
-          <li key={set.id} className={layout.block}>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
-              <button
-                type="button"
-                className={`${layout.blockHeader} cursor-pointer flex items-center justify-between`}
-                style={{ flex: '0 0 auto' }}
-                onClick={() => handleToggleExpand(set.id)}
-              >
-                <h2 className={layout.blockTitleBlue}>{set.name}</h2>
-                {expandedItemTypeSets[set.id] ? <ChevronDown /> : <ChevronRight />}
-              </button>
-
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem', flexShrink: 0, flexWrap: 'nowrap' }}>
-                <button
-                  className={buttons.button}
-                  style={{ 
-                    padding: "0.5rem 0.75rem", 
-                    fontSize: "0.875rem",
-                    backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0",
-                    height: "36px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    whiteSpace: "nowrap"
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (showRoles && selectedSetForRoles?.id === set.id) {
-                      setShowRoles(false);
-                      setSelectedSetForRoles(null);
-                    } else {
-                      setShowRoles(true);
-                      setSelectedSetForRoles(set);
-                      // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
-                      setExpandedItemTypeSets(prev => ({
-                        ...prev,
-                        [set.id]: true
-                      }));
+          <li key={set.id}>
+            <Accordion
+              id={set.id}
+              title={<h2 className={layout.blockTitleBlue}>{set.name}</h2>}
+              isExpanded={expandedItemTypeSets[set.id] || false}
+              onToggle={() => setExpandedItemTypeSets((prev) => ({
+                ...prev,
+                [set.id]: !prev[set.id],
+              }))}
+              headerActions={
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem', flexShrink: 0, flexWrap: 'nowrap' }}>
+                  <button
+                    className={buttons.button}
+                    style={{ 
+                      padding: "0.5rem 0.75rem", 
+                      fontSize: "0.875rem",
+                      backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0",
+                      height: "36px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      whiteSpace: "nowrap"
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (showRoles && selectedSetForRoles?.id === set.id) {
+                        setShowRoles(false);
+                        setSelectedSetForRoles(null);
+                      } else {
+                        setShowRoles(true);
+                        setSelectedSetForRoles(set);
+                        // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
+                        setExpandedItemTypeSets(prev => ({
+                          ...prev,
+                          [set.id]: true
+                        }));
+                      }
+                    }}
+                    title={
+                      showRoles && selectedSetForRoles?.id === set.id
+                        ? "Nascondi Permissions"
+                        : "Gestisci Permissions"
                     }
-                  }}
-                  title={
-                    showRoles && selectedSetForRoles?.id === set.id
-                      ? "Nascondi Permissions"
-                      : "Gestisci Permissions"
-                  }
-                  type="button"
-                >
-                  <Shield size={16} className="mr-1" />
-                  {showRoles && selectedSetForRoles?.id === set.id ? "Nascondi" : "Mostra"} Permissions
-                </button>
-                {!set.defaultItemTypeSet && (
+                    type="button"
+                  >
+                    <Shield size={16} className="mr-1" />
+                    {showRoles && selectedSetForRoles?.id === set.id ? "Nascondi" : "Mostra"} Permissions
+                  </button>
+                  {!set.defaultItemTypeSet && (
+                    <button
+                      className={buttons.button}
+                      style={{ 
+                        padding: "0.5rem 0.75rem", 
+                        fontSize: "0.875rem",
+                        height: "36px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        whiteSpace: "nowrap"
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(set.id, set.defaultItemTypeSet);
+                      }}
+                      title="Modifica Item Type Set"
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                  )}
                   <button
                     className={buttons.button}
                     style={{ 
@@ -281,91 +294,67 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleEdit(set.id, set.defaultItemTypeSet);
+                      handleDelete(set.id);
                     }}
-                    title="Modifica Item Type Set"
+                    disabled={set.defaultItemTypeSet || (set.projectsAssociation && set.projectsAssociation.length > 0)}
+                    title={
+                      set.defaultItemTypeSet
+                        ? "Item Type Set di default non eliminabile"
+                        : set.projectsAssociation && set.projectsAssociation.length > 0
+                        ? `Non puoi eliminare: usato in ${set.projectsAssociation.length} progetto/i`
+                        : "Elimina Item Type Set"
+                    }
                     type="button"
                   >
-                    Edit
+                    Delete
                   </button>
-                )}
-                <button
-                  className={buttons.button}
-                  style={{ 
-                    padding: "0.5rem 0.75rem", 
-                    fontSize: "0.875rem",
-                    height: "36px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    whiteSpace: "nowrap"
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(set.id);
-                  }}
-                  disabled={set.defaultItemTypeSet || (set.projectsAssociation && set.projectsAssociation.length > 0)}
-                  title={
-                    set.defaultItemTypeSet
-                      ? "Item Type Set di default non eliminabile"
-                      : set.projectsAssociation && set.projectsAssociation.length > 0
-                      ? `Non puoi eliminare: usato in ${set.projectsAssociation.length} progetto/i`
-                      : "Elimina Item Type Set"
-                  }
-                  type="button"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-
-            {expandedItemTypeSets[set.id] && (
-              <div className={utilities.mt4}>
-                {set.itemTypeConfigurations?.length > 0 ? (
-                  <table className={table.table}>
-                    <thead>
-                      <tr>
-                        <th>Item Type</th>
-                        <th>Categoria</th>
-                        <th>Workflow</th>
-                        <th>Field Set</th>
+                </div>
+              }
+            >
+              {set.itemTypeConfigurations?.length > 0 ? (
+                <table className={table.table}>
+                  <thead>
+                    <tr>
+                      <th>Item Type</th>
+                      <th>Categoria</th>
+                      <th>Workflow</th>
+                      <th>Field Set</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {set.itemTypeConfigurations.map((conf) => (
+                      <tr key={conf.id}>
+                        <td>{conf.itemType?.name}</td>
+                        <td>{conf.category}</td>
+                        <td>{conf.workflow?.name || "-"}</td>
+                        <td>{conf.fieldSet?.name || "-"}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {set.itemTypeConfigurations.map((conf) => (
-                        <tr key={conf.id}>
-                          <td>{conf.itemType?.name}</td>
-                          <td>{conf.category}</td>
-                          <td>{conf.workflow?.name || "-"}</td>
-                          <td>{conf.fieldSet?.name || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className={layout.paragraphMuted}>Nessuna configurazione in questo set.</p>
-                )}
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className={layout.paragraphMuted}>Nessuna configurazione in questo set.</p>
+              )}
 
-                {/* Panel per gestione permissions - integrato sotto ogni ItemTypeSet */}
-                {showRoles && selectedSetForRoles?.id === set.id && (
-                  <div className="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Gestione Permissions: {selectedSetForRoles.name}
-                      </h3>
-                    </div>
-
-                    <ItemTypeSetRoleManager
-                      itemTypeSetId={selectedSetForRoles.id}
-                      onPermissionGrantClick={setSelectedPermissionForGrants}
-                      refreshTrigger={refreshTrigger}
-                      projectId={projectId}
-                      showOnlyProjectGrants={scope === 'project'}
-                    />
+              {/* Panel per gestione permissions - integrato sotto ogni ItemTypeSet */}
+              {showRoles && selectedSetForRoles?.id === set.id && (
+                <div className="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Gestione Permissions: {selectedSetForRoles.name}
+                    </h3>
                   </div>
-                )}
-              </div>
-            )}
+
+                  <ItemTypeSetRoleManager
+                    itemTypeSetId={selectedSetForRoles.id}
+                    onPermissionGrantClick={setSelectedPermissionForGrants}
+                    refreshTrigger={refreshTrigger}
+                    projectId={projectId}
+                    showOnlyProjectGrants={scope === 'project'}
+                  />
+                </div>
+              )}
+            </Accordion>
           </li>
         ))}
       </ul>

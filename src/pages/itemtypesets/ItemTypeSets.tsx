@@ -1,11 +1,12 @@
 import { useEffect, useState, MouseEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
 import PermissionGrantManager from "../../components/PermissionGrantManager";
+import Accordion from "../../components/shared/Accordion";
 import { ItemTypeSetDto } from "../../types/itemtypeset.types";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -135,107 +136,100 @@ export default function ItemTypeSets() {
     content = (
       <ul className={layout.verticalList}>
         {itemTypeSets.map((set) => (
-          <li key={set.id} className={layout.block}>
-            <div className="flex justify-between items-center">
-              <button
-                type="button"
-                className={`${layout.blockHeader} cursor-pointer flex items-center justify-between flex-grow`}
-                onClick={() => toggleExpand(set.id)}
-              >
-                <h2 className={layout.blockTitleBlue}>{set.name}</h2>
-                {expandedSets[set.id] ? <ChevronDown /> : <ChevronRight />}
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  className={buttons.button}
-                  style={{ 
-                    padding: "0.25rem 0.5rem", 
-                    fontSize: "0.75rem",
-                    backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0"
-                  }}
-                  onClick={() => {
-                    if (showRoles && selectedSetForRoles?.id === set.id) {
-                      setShowRoles(false);
-                      setSelectedSetForRoles(null);
-                    } else {
-                      setShowRoles(true);
-                      setSelectedSetForRoles(set);
-                      // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
-                      setExpandedSets(prev => ({
-                        ...prev,
-                        [set.id]: true
-                      }));
-                    }
-                  }}
-                  title={
-                    showRoles && selectedSetForRoles?.id === set.id
-                      ? "Nascondi Permissions"
-                      : "Gestisci Permissions"
-                  }
-                  type="button"
-                >
-                  <Shield size={16} className="mr-1" />
-                  {showRoles && selectedSetForRoles?.id === set.id ? "Nascondi" : "Mostra"} Permissions
-                </button>
-                {!set.defaultItemTypeSet && (
+          <li key={set.id}>
+            <Accordion
+              id={set.id}
+              title={<h2 className={layout.blockTitleBlue}>{set.name}</h2>}
+              isExpanded={expandedSets[set.id] || false}
+              onToggle={() => toggleExpand(set.id)}
+              headerActions={
+                <div className="flex gap-2">
                   <button
-                    className={`${buttons.button} ${buttons.buttonSmall}`}
-                    onClick={() => navigate(`/tenant/item-type-sets/edit/${set.id}`)}
-                    title="Modifica Item Type Set"
+                    className={buttons.button}
+                    style={{ 
+                      padding: "0.25rem 0.5rem", 
+                      fontSize: "0.75rem",
+                      backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0"
+                    }}
+                    onClick={() => {
+                      if (showRoles && selectedSetForRoles?.id === set.id) {
+                        setShowRoles(false);
+                        setSelectedSetForRoles(null);
+                      } else {
+                        setShowRoles(true);
+                        setSelectedSetForRoles(set);
+                        // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
+                        setExpandedSets(prev => ({
+                          ...prev,
+                          [set.id]: true
+                        }));
+                      }
+                    }}
+                    title={
+                      showRoles && selectedSetForRoles?.id === set.id
+                        ? "Nascondi Permissions"
+                        : "Gestisci Permissions"
+                    }
                     type="button"
                   >
-                    Edit
+                    <Shield size={16} className="mr-1" />
+                    {showRoles && selectedSetForRoles?.id === set.id ? "Nascondi" : "Mostra"} Permissions
                   </button>
-                )}
-              </div>
-            </div>
-
-            {expandedSets[set.id] && (
-              <div className={utilities.mt4}>
-                {set.itemTypeConfigurations?.length > 0 ? (
-                  <table className={table.table}>
-                    <thead>
-                      <tr>
-                        <th>Item Type</th>
-                        <th>Categoria</th>
-                        <th>Workflow</th>
-                        <th>Field Set</th>
+                  {!set.defaultItemTypeSet && (
+                    <button
+                      className={`${buttons.button} ${buttons.buttonSmall}`}
+                      onClick={() => navigate(`/tenant/item-type-sets/edit/${set.id}`)}
+                      title="Modifica Item Type Set"
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              }
+            >
+              {set.itemTypeConfigurations?.length > 0 ? (
+                <table className={table.table}>
+                  <thead>
+                    <tr>
+                      <th>Item Type</th>
+                      <th>Categoria</th>
+                      <th>Workflow</th>
+                      <th>Field Set</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {set.itemTypeConfigurations.map((conf) => (
+                      <tr key={conf.id}>
+                        <td>{conf.itemType?.name}</td>
+                        <td>{conf.category}</td>
+                        <td>{conf.workflow?.name || "-"}</td>
+                        <td>{conf.fieldSet?.name || "-"}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {set.itemTypeConfigurations.map((conf) => (
-                        <tr key={conf.id}>
-                          <td>{conf.itemType?.name}</td>
-                          <td>{conf.category}</td>
-                          <td>{conf.workflow?.name || "-"}</td>
-                          <td>{conf.fieldSet?.name || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className={layout.paragraphMuted}>Nessuna configurazione in questo set.</p>
-                )}
-                
-                {/* Panel per gestione permissions - integrato sotto ogni ItemTypeSet */}
-                {showRoles && selectedSetForRoles?.id === set.id && (
-                  <div className="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Gestione Permissions: {selectedSetForRoles.name}
-                      </h3>
-                    </div>
-
-                    <ItemTypeSetRoleManager
-                      itemTypeSetId={selectedSetForRoles.id}
-                      onPermissionGrantClick={setSelectedPermissionForGrants}
-                      refreshTrigger={refreshTrigger}
-                    />
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className={layout.paragraphMuted}>Nessuna configurazione in questo set.</p>
+              )}
+              
+              {/* Panel per gestione permissions - integrato sotto ogni ItemTypeSet */}
+              {showRoles && selectedSetForRoles?.id === set.id && (
+                <div className="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Gestione Permissions: {selectedSetForRoles.name}
+                    </h3>
                   </div>
-                )}
-              </div>
-            )}
+
+                  <ItemTypeSetRoleManager
+                    itemTypeSetId={selectedSetForRoles.id}
+                    onPermissionGrantClick={setSelectedPermissionForGrants}
+                    refreshTrigger={refreshTrigger}
+                  />
+                </div>
+              )}
+            </Accordion>
           </li>
         ))}
       </ul>

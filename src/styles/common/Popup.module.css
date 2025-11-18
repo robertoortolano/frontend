@@ -1,11 +1,32 @@
 .trigger {
-  background: none;
-  border: none;
+  background: none !important;
+  border: none !important;
   color: #1e3a8a;
   cursor: pointer;
   text-decoration: underline;
   font-weight: bold;
-  padding: 0;
+  padding: 0 !important;
+  margin: 0 !important;
+  transition: none !important;
+  transform: none !important;
+  scale: 1 !important;
+}
+
+.trigger:hover,
+.trigger:focus,
+.trigger:active {
+  background: none !important;
+  border: none !important;
+  color: #1e3a8a !important;
+  text-decoration: underline !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+  scale: 1 !important;
+  width: auto !important;
+  height: auto !important;
 }
 
 .portal {

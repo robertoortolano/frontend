@@ -32,9 +32,23 @@
 .table tbody tr:nth-child(odd) {
 }
 
+.table tbody tr {
+  border-left: 3px solid transparent;
+  transition: border-left-color 0.2s ease, background-color 0.2s ease;
+}
+
 .table tbody tr:hover {
-  background-color: #f0f0f0;
+  border-left-color: #00ddd4;
+  background-color: rgba(0, 221, 212, 0.05);
   cursor: pointer;
+}
+
+/* Rimuovi qualsiasi effetto hover dai bottoni/link dentro le righe */
+.table tbody tr:hover button,
+.table tbody tr:hover .trigger {
+  background: none !important;
+  color: inherit !important;
+  text-decoration: underline !important;
 }
 
 /* === Table Column Widths === */

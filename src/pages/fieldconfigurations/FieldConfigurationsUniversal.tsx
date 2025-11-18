@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 
 import OptionsPopup from "../../components/shared/FieldOptionsPopup";
 import UsedInFieldSetsPopup from "../../components/shared/UsedInFieldSetsPopup";
 import AliasPopup from "../../components/shared/FieldConfigurationAliasPopup";
+import Accordion from "../../components/shared/Accordion";
 
 import { useAuth } from "../../context/AuthContext";
 import { FieldConfigurationViewDto } from "../../types/field.types";
@@ -31,13 +32,6 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
 
   // Stato per gestire quali campi sono espansi
   const [expandedFields, setExpandedFields] = useState<Record<string, boolean>>({});
-
-  const handleToggleExpand = useCallback((id: number) => {
-    setExpandedFields((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -135,97 +129,89 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
     content = (
       <ul className={layout.verticalList}>
         {Object.entries(groupedConfigs).map(([fieldName, configsForField]) => (
-          <li key={fieldName} className={layout.block}>
-            <button
-              type="button"
-              className={`${layout.blockHeader} cursor-pointer flex items-center justify-between`}
-              onClick={() => toggleExpand(fieldName)}
+          <li key={fieldName}>
+            <Accordion
+              id={fieldName}
+              title={<h2>{fieldName}</h2>}
+              isExpanded={expandedFields[fieldName] || false}
+              onToggle={() => toggleExpand(fieldName)}
             >
-              <h2>{fieldName}</h2>
-            </button>
+              {configsForField.length > 0 ? (
+                <table className={table.table}>
+                  <thead>
+                    <tr>
+                      <th className="w-20">Nome</th>
+                      <th className="w-15">Tipo</th>
+                      <th className="w-30">Descrizione</th>
+                      <th className="w-15">Opzioni</th>
+                      <th className="w-20">FieldSet</th>
+                      <th className="w-15"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {configsForField.map((config) => (
+                      <Fragment key={config.id}>
+                        <tr>
+                          <td>
+                            <AliasPopup config={config} />
+                          </td>
+                          <td>{config.fieldType?.displayName || "-"}</td>
+                          <td>{config.description || "-"}</td>
+                          <td>
+                            <OptionsPopup options={config.options || []} />
+                          </td>
 
-            {expandedFields[fieldName] && (
-              <div className={layout.mt4}>
-                {configsForField.length > 0 ? (
-                  <table className={table.table}>
-                    <thead>
-                      <tr>
-                        <th className="w-20">Nome</th>
-                        <th className="w-15">Tipo</th>
-                        <th className="w-30">Descrizione</th>
-                        <th className="w-15">Opzioni</th>
-                        <th className="w-20">FieldSet</th>
-                        <th className="w-15"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {configsForField.map((config) => (
-                        <Fragment key={config.id}>
-                          <tr
-                            onClick={() => handleToggleExpand(config.id)}
-                            className="cursor-pointer"
-                          >
-                            <td>
-                              <AliasPopup config={config} />
-                            </td>
-                            <td>{config.fieldType?.displayName || "-"}</td>
-                            <td>{config.description || "-"}</td>
-                            <td>
-                              <OptionsPopup options={config.options || []} />
-                            </td>
+                          <td>
+                            <UsedInFieldSetsPopup configs={config} />
+                          </td>
 
-                            <td>
-                              <UsedInFieldSetsPopup configs={config} />
-                            </td>
+                          <td>
+                            <div className="flex flex-col gap-1">
+                              <button
+                                className={buttons.button}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(config.id, config.defaultFieldConfiguration);
+                                }}
+                                disabled={config.defaultFieldConfiguration}
+                                title={
+                                  config.defaultFieldConfiguration
+                                    ? "Configurazione di default non modificabile"
+                                    : ""
+                                }
+                              >
+                                ✎ Edit
+                              </button>
 
-                            <td>
-                              <div className="flex flex-col gap-1">
-                                <button
-                                  className={buttons.button}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEdit(config.id, config.defaultFieldConfiguration);
-                                  }}
-                                  disabled={config.defaultFieldConfiguration}
-                                  title={
-                                    config.defaultFieldConfiguration
-                                      ? "Configurazione di default non modificabile"
-                                      : ""
-                                  }
-                                >
-                                  ✎ Edit
-                                </button>
-
-                                <button
-                                  className={`${buttons.button}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(config.id);
-                                  }}
-                                  disabled={
-                                    config.defaultFieldConfiguration ||
-                                    (config.usedInFieldSets && config.usedInFieldSets.length > 0)
-                                  }
-                                  title={
-                                    config.usedInFieldSets && config.usedInFieldSets.length > 0
-                                      ? "Non puoi eliminare: usata in uno o più FieldSet"
-                                      : "Elimina configurazione"
-                                  }
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        </Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className={layout.paragraphMuted}>Nessuna configurazione disponibile.</p>
-                )}
-              </div>
-            )}
+                              <button
+                                className={`${buttons.button}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(config.id);
+                                }}
+                                disabled={
+                                  config.defaultFieldConfiguration ||
+                                  (config.usedInFieldSets && config.usedInFieldSets.length > 0)
+                                }
+                                title={
+                                  config.usedInFieldSets && config.usedInFieldSets.length > 0
+                                    ? "Non puoi eliminare: usata in uno o più FieldSet"
+                                    : "Elimina configurazione"
+                                }
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className={layout.paragraphMuted}>Nessuna configurazione disponibile.</p>
+              )}
+            </Accordion>
           </li>
         ))}
         <div className="mt-6">
