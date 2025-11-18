@@ -4,7 +4,6 @@ import buttons from '../../../styles/common/Buttons.module.css';
 import table from '../../../styles/common/Tables.module.css';
 import utilities from '../../../styles/common/Utilities.module.css';
 
-import type { Permission } from './permissionGrantTypes';
 import type { PermissionScope, Role, Group } from './permissionGrantTypes';
 import type { UserOption } from '../../UserAutocomplete';
 
@@ -19,7 +18,6 @@ type DetailType = 'roles' | 'globalRoles' | 'projectRoles' | 'globalGrant' | 'pr
 
 interface GrantAssignmentsTableProps {
   scope: PermissionScope;
-  permission: Permission | null;
   roles: Role[];
   globalGrant: GrantCollections;
   projectGrant: GrantCollections;
@@ -49,7 +47,6 @@ const countEntities = (grant: GrantCollections) =>
 
 export default function GrantAssignmentsTable({
   scope,
-  permission,
   roles,
   globalGrant,
   projectGrant,

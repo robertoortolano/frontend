@@ -12,7 +12,6 @@ import { ItemTypeSetDto } from "../../types/itemtypeset.types";
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
 import alert from "../../styles/common/Alerts.module.css";
-import utilities from "../../styles/common/Utilities.module.css";
 import table from "../../styles/common/Tables.module.css";
 
 export default function ItemTypeSets() {

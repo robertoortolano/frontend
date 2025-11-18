@@ -332,7 +332,6 @@ export default function PermissionGrantManager({
 
       <GrantAssignmentsTable
         scope={scope}
-        permission={permission}
         roles={selectedRoles}
         globalGrant={grant}
         projectGrant={projectGrant}

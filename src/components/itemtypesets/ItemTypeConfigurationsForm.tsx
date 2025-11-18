@@ -4,7 +4,6 @@ import { WorkflowSimpleDto } from "../../types/workflow.types";
 import { ItemTypeConfigurationDto } from "../../types/itemtypeset.types";
 import form from "../../styles/common/Forms.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
-import utilities from "../../styles/common/Utilities.module.css";
 
 interface ItemTypeConfigurationsFormProps {
   scope: "tenant" | "project";
