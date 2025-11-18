@@ -5,6 +5,7 @@ import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { FieldSetViewDto } from "../../types/field.types";
 import Accordion from "../../components/shared/Accordion";
+import FieldSetConfigurationsPopup from "../../components/shared/FieldSetConfigurationsPopup";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -163,7 +164,9 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
                   <tr>
                     <td>{set.name}</td>
                     <td>{set.description || "-"}</td>
-                    <td>{set.fieldSetEntries?.length || 0} configurazioni</td>
+                    <td>
+                      <FieldSetConfigurationsPopup fieldSet={set} />
+                    </td>
                     <td>
                       {set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0 ? (
                         <span className="text-blue-600">

@@ -6,64 +6,60 @@ interface FieldSetsPopupProps {
 }
 
 export default function FieldSetsPopup({ field }: FieldSetsPopupProps) {
-
-  const getScopeLabel = (fieldSet: FieldSetViewDto) => {
-    if (fieldSet.scope === "TENANT") {
-      return "Tenant";
-    }
-    // Se è PROJECT, usa il nome del progetto se disponibile, altrimenti "Progetto"
-    return fieldSet.projectName || "Progetto";
-  };
-
-  const getScopeBadgeColor = (scope: string) => {
-    return scope === "TENANT" ? "#1e3a8a" : "#059669";
-  };
-
-  const renderFieldSet = (fieldSet: FieldSetViewDto & CardListModalItem) => (
-    <div
-      key={fieldSet.id}
-      style={{
-        padding: "0.75rem",
-        borderBottom: "1px solid #e5e7eb",
-        backgroundColor: "#f9fafb",
-        borderRadius: "0.375rem",
-        marginBottom: "0.5rem",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-        <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
-          {fieldSet.name}
-        </strong>
-        {fieldSet.defaultFieldSet && (
-          <span
-            style={{
-              fontSize: "0.625rem",
-              padding: "0.125rem 0.375rem",
-              backgroundColor: "#dbeafe",
-              color: "#1e40af",
-              borderRadius: "0.25rem",
-              fontWeight: "500",
-            }}
-          >
-            Default
-          </span>
-        )}
-        <span
-          style={{
-            fontSize: "0.625rem",
-            padding: "0.125rem 0.375rem",
-            backgroundColor: getScopeBadgeColor(fieldSet.scope),
-            color: "white",
-            borderRadius: "0.25rem",
-            fontWeight: "500",
-            marginLeft: "auto",
-          }}
-        >
-          {getScopeLabel(fieldSet)}
-        </span>
-      </div>
+  const renderFieldSet = (fieldSet: FieldSetViewDto & CardListModalItem) => {
+    const projects = fieldSet.projects || [];
+    
+    return (
+      <div
+        key={fieldSet.id}
+        style={{
+          padding: "0.75rem",
+          borderBottom: "1px solid #e5e7eb",
+          backgroundColor: "#f9fafb",
+          borderRadius: "0.375rem",
+          marginBottom: "0.5rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
+          <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
+            {fieldSet.name}
+          </strong>
+          {fieldSet.defaultFieldSet && (
+            <span
+              style={{
+                fontSize: "0.625rem",
+                padding: "0.125rem 0.375rem",
+                backgroundColor: "#dbeafe",
+                color: "#1e40af",
+                borderRadius: "0.25rem",
+                fontWeight: "500",
+              }}
+            >
+              Default
+            </span>
+          )}
+          {projects.length > 0 && (
+            <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginLeft: "auto" }}>
+              {projects.map((project) => (
+                <span
+                  key={project.id}
+                  style={{
+                    fontSize: "0.625rem",
+                    padding: "0.125rem 0.375rem",
+                    backgroundColor: "#059669",
+                    color: "white",
+                    borderRadius: "0.25rem",
+                    fontWeight: "500",
+                  }}
+                >
+                  {project.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       
-      {fieldSet.description && (
+        {fieldSet.description && (
         <p
           style={{
             fontSize: "0.75rem",
@@ -113,8 +109,9 @@ export default function FieldSetsPopup({ field }: FieldSetsPopupProps) {
           </div>
         )}
       </div>
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <CardListModal<FieldSetViewDto & CardListModalItem>

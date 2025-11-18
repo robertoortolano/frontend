@@ -159,6 +159,7 @@ export interface WorkflowSimpleDto {
   defaultWorkflow: boolean;
   scope: ScopeType;
   projectName?: string; // Nome del progetto quando scope è PROJECT
+  projects?: Array<{ id: number; projectKey: string; name: string; description?: string }>; // Progetti a cui è applicato tramite ITS
 }
 
 /**

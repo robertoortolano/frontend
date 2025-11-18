@@ -49,17 +49,6 @@ export default function OptionsPopup({ options }: OptionsPopupProps) {
           Valore: <span style={{ color: "#374151" }}>{option.value}</span>
         </div>
       )}
-      {option.orderIndex !== undefined && (
-        <div
-          style={{
-            fontSize: "0.7rem",
-            color: "#9ca3af",
-            marginTop: "0.25rem",
-          }}
-        >
-          Ordine: {option.orderIndex + 1}
-        </div>
-      )}
     </div>
   );
 

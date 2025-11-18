@@ -67,6 +67,7 @@ export interface SimpleFieldSetDto {
   name: string;
   scope: ScopeType;
   projectName?: string; // Nome del progetto quando scope è PROJECT
+  projects?: Array<{ id: number; projectKey: string; name: string; description?: string }>; // Progetti a cui è applicato tramite ITS
 }
 
 /**
@@ -90,6 +91,7 @@ export interface FieldSetViewDto {
   fieldSetEntries: FieldSetEntryViewDto[];
   usedInItemTypeSets?: SimpleItemTypeSetDto[]; // Opzionale: backend potrebbe non fornire questa informazione
   projectName?: string; // Nome del progetto quando scope è PROJECT
+  projects?: Array<{ id: number; projectKey: string; name: string; description?: string }>; // Progetti a cui è applicato tramite ITS
 }
 
 /**
@@ -105,6 +107,7 @@ export interface FieldTypeDescriptor {
 
 /**
  * Field configuration DTO (simple)
+ * Maps to: FieldConfigurationDto.java
  */
 export interface FieldConfigurationDto {
   id: number;
@@ -112,6 +115,8 @@ export interface FieldConfigurationDto {
   fieldId: number;
   fieldName: string;
   alias?: string;
+  fieldType?: FieldTypeDescriptor;
+  options?: FieldOptionViewDto[]; // Set from backend, converted to array
 }
 
 /**

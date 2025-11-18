@@ -6,63 +6,61 @@ interface WorkflowsPopupProps {
 }
 
 export default function WorkflowsPopup({ workflows = [] }: WorkflowsPopupProps) {
-  const getScopeLabel = (workflow: WorkflowSimpleDto) => {
-    if (workflow.scope === "TENANT") {
-      return "Tenant";
-    }
-    // Se è PROJECT, usa il nome del progetto se disponibile, altrimenti "Progetto"
-    return workflow.projectName || "Progetto";
-  };
-
-  const getScopeBadgeColor = (scope: string) => {
-    return scope === "TENANT" ? "#1e3a8a" : "#059669";
-  };
-
-  const renderWorkflow = (workflow: WorkflowSimpleDto & CardListModalItem) => (
-    <div
-      key={workflow.id}
-      style={{
-        padding: "0.75rem",
-        borderBottom: "1px solid #e5e7eb",
-        backgroundColor: "#f9fafb",
-        borderRadius: "0.375rem",
-        marginBottom: "0.5rem",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-        <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
-          {workflow.name}
-        </strong>
-        {workflow.defaultWorkflow && (
-          <span
-            style={{
-              fontSize: "0.625rem",
-              padding: "0.125rem 0.375rem",
-              backgroundColor: "#dbeafe",
-              color: "#1e40af",
-              borderRadius: "0.25rem",
-              fontWeight: "500",
-            }}
-          >
-            Default
-          </span>
-        )}
-        <span
-          style={{
-            fontSize: "0.625rem",
-            padding: "0.125rem 0.375rem",
-            backgroundColor: getScopeBadgeColor(workflow.scope),
-            color: "white",
-            borderRadius: "0.25rem",
-            fontWeight: "500",
-            marginLeft: "auto",
-          }}
-        >
-          {getScopeLabel(workflow)}
-        </span>
+  const renderWorkflow = (workflow: WorkflowSimpleDto & CardListModalItem) => {
+    const projects = workflow.projects || [];
+    
+    return (
+      <div
+        key={workflow.id}
+        style={{
+          padding: "0.75rem",
+          borderBottom: "1px solid #e5e7eb",
+          backgroundColor: "#f9fafb",
+          borderRadius: "0.375rem",
+          marginBottom: "0.5rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
+          <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
+            {workflow.name}
+          </strong>
+          {workflow.defaultWorkflow && (
+            <span
+              style={{
+                fontSize: "0.625rem",
+                padding: "0.125rem 0.375rem",
+                backgroundColor: "#dbeafe",
+                color: "#1e40af",
+                borderRadius: "0.25rem",
+                fontWeight: "500",
+              }}
+            >
+              Default
+            </span>
+          )}
+          {projects.length > 0 && (
+            <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginLeft: "auto" }}>
+              {projects.map((project) => (
+                <span
+                  key={project.id}
+                  style={{
+                    fontSize: "0.625rem",
+                    padding: "0.125rem 0.375rem",
+                    backgroundColor: "#059669",
+                    color: "white",
+                    borderRadius: "0.25rem",
+                    fontWeight: "500",
+                  }}
+                >
+                  {project.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <CardListModal<WorkflowSimpleDto & CardListModalItem>
