@@ -3,7 +3,7 @@
  * Mapped from Java DTOs in backend/src/main/java/com/example/demo/dto
  */
 
-import { StatusCategory } from './common.types';
+import { StatusCategory, ScopeType } from './common.types';
 
 /**
  * Base Status DTO (re-exported for convenience)
@@ -157,6 +157,8 @@ export interface WorkflowSimpleDto {
   id: number;
   name: string;
   defaultWorkflow: boolean;
+  scope: ScopeType;
+  projectName?: string; // Nome del progetto quando scope è PROJECT
 }
 
 /**

@@ -1,7 +1,6 @@
 import { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
-import FieldConfigurationsPopup from "../../components/shared/FieldConfigurationsPopup";
 import FieldSetsPopup from "../../components/shared/FieldSetsPopup";
 import { useAuth } from "../../context/AuthContext";
 import { FieldDetailDto } from "../../types/field.types";
@@ -133,7 +132,6 @@ export default function Fields() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th># Config</th>
                 <th>FieldSet</th>
                 <th>Azioni</th>
               </tr>
@@ -147,9 +145,6 @@ export default function Fields() {
                 return (
                   <tr key={field.id}>
                     <td>{field.name}</td>
-                    <td>
-                      <FieldConfigurationsPopup field={field} />
-                    </td>
                     <td>
                       <FieldSetsPopup field={field} />
                     </td>

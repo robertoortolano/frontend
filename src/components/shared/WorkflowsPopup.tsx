@@ -1,18 +1,85 @@
-import GenericPopupList from "./PopupList";
 import { WorkflowSimpleDto } from "../../types/workflow.types";
+import CardListModal, { CardListModalItem } from "./CardListModal";
 
 interface WorkflowsPopupProps {
   workflows?: WorkflowSimpleDto[];
 }
 
 export default function WorkflowsPopup({ workflows = [] }: WorkflowsPopupProps) {
+  const getScopeLabel = (workflow: WorkflowSimpleDto) => {
+    if (workflow.scope === "TENANT") {
+      return "Tenant";
+    }
+    // Se è PROJECT, usa il nome del progetto se disponibile, altrimenti "Progetto"
+    return workflow.projectName || "Progetto";
+  };
+
+  const getScopeBadgeColor = (scope: string) => {
+    return scope === "TENANT" ? "#1e3a8a" : "#059669";
+  };
+
+  const renderWorkflow = (workflow: WorkflowSimpleDto & CardListModalItem) => (
+    <div
+      key={workflow.id}
+      style={{
+        padding: "0.75rem",
+        borderBottom: "1px solid #e5e7eb",
+        backgroundColor: "#f9fafb",
+        borderRadius: "0.375rem",
+        marginBottom: "0.5rem",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+        <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
+          {workflow.name}
+        </strong>
+        {workflow.defaultWorkflow && (
+          <span
+            style={{
+              fontSize: "0.625rem",
+              padding: "0.125rem 0.375rem",
+              backgroundColor: "#dbeafe",
+              color: "#1e40af",
+              borderRadius: "0.25rem",
+              fontWeight: "500",
+            }}
+          >
+            Default
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: "0.625rem",
+            padding: "0.125rem 0.375rem",
+            backgroundColor: getScopeBadgeColor(workflow.scope),
+            color: "white",
+            borderRadius: "0.25rem",
+            fontWeight: "500",
+            marginLeft: "auto",
+          }}
+        >
+          {getScopeLabel(workflow)}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
-    <GenericPopupList
-      triggerLabel={`${workflows.length} workflow${workflows.length > 1 ? 's' : ''}`}
-      items={workflows}
-      title="Usato in questi workflow:"
-      renderItem={(wf) => <span>{wf.name}</span>}
+    <CardListModal<WorkflowSimpleDto & CardListModalItem>
+      triggerLabel={`${workflows.length} workflow${workflows.length !== 1 ? 's' : ''}`}
+      triggerDisabled={workflows.length === 0}
+      triggerTitle={
+        workflows.length === 0
+          ? "Nessun workflow"
+          : "Visualizza dettagli workflow"
+      }
+      title="Workflow associati"
+      items={workflows as (WorkflowSimpleDto & CardListModalItem)[]}
+      summary={{
+        label: "Totale workflow",
+        value: workflows.length,
+      }}
+      renderCard={renderWorkflow}
     />
   );
 }
-

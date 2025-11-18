@@ -88,6 +88,7 @@ export interface FieldSetViewDto {
   defaultFieldSet: boolean;
   fieldSetEntries: FieldSetEntryViewDto[];
   usedInItemTypeSets?: SimpleItemTypeSetDto[]; // Opzionale: backend potrebbe non fornire questa informazione
+  projectName?: string; // Nome del progetto quando scope è PROJECT
 }
 
 /**
