@@ -6,6 +6,41 @@
   flex-direction: column;
 }
 
+/* Badge del progetto */
+.project-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #1e3a8a;
+  border-radius: 12px;
+  color: white;
+  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(30, 58, 138, 0.4);
+}
+
+.project-badge-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.project-badge-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
 .user-email {
   margin-bottom: 1rem;
   font-weight: 600;

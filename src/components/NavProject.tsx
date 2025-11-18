@@ -1,5 +1,9 @@
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { Folder } from "lucide-react";
+import api from "../api/api";
+import { ProjectDto } from "../types/project.types";
 import "./Nav.css";
 
 export default function NavProject() {
@@ -9,6 +13,9 @@ export default function NavProject() {
   const logout = auth?.logout;
   const username = localStorage.getItem("username");
   const { projectId } = useParams<{ projectId?: string }>();
+
+  const [project, setProject] = useState<ProjectDto | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const pathname = location.pathname;
   const roles = auth?.roles || [];
@@ -39,6 +46,24 @@ export default function NavProject() {
   // Settings: Tenant Admin OR Project Admin of the current project
   const canAccessSettings = isTenantAdmin || isProjectAdmin;
 
+  // Recupera il progetto reale
+  useEffect(() => {
+    if (projectId) {
+      const fetchProject = async () => {
+        try {
+          const response = await api.get(`/projects/${projectId}`);
+          setProject(response.data);
+        } catch (err) {
+          console.error("Errore nel recupero del progetto:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchProject();
+    } else {
+      setLoading(false);
+    }
+  }, [projectId]);
 
   const handleLogout = () => {
     logout();
@@ -52,6 +77,14 @@ export default function NavProject() {
 
   return (
     <nav className="nav-bar">
+      {/* Badge del progetto con icona e nome */}
+      <div className="project-badge">
+        <Folder className="project-badge-icon" size={18} />
+        <span className="project-badge-name">
+          {loading ? "Caricamento..." : (project?.name || "Progetto")}
+        </span>
+      </div>
+      
       <div className="user-email">{username}</div>
       <ul className="nav-list">
         {/* Home */}

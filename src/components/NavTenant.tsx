@@ -1,6 +1,16 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { Building2 } from "lucide-react";
+import { tenantApi } from "../api/api";
 import "./Nav.css";
+
+interface TenantDTO {
+  id: number;
+  name: string;
+  subdomain: string;
+  createdAt?: string;
+}
 
 export default function NavTenant() {
   const navigate = useNavigate();
@@ -8,6 +18,10 @@ export default function NavTenant() {
   const logout = auth?.logout;
   const username = localStorage.getItem("username") || "";
   const roles = auth?.roles || [];
+  const tenantId = auth?.tenantId;
+
+  const [tenant, setTenant] = useState<TenantDTO | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Check if user is ADMIN (TENANT scope)
   const isAdmin = roles.some((role: any) => 
@@ -22,6 +36,30 @@ export default function NavTenant() {
   // Fields, Status, Item types: Tenant Admin OR any Project Admin
   const canAccessBasicFeatures = isAdmin || hasProjectAdmin;
 
+  // Recupera il tenant reale
+  useEffect(() => {
+    if (tenantId) {
+      const fetchTenant = async () => {
+        try {
+          const response = await tenantApi.getTenants();
+          const tenants: TenantDTO[] = response.data;
+          // Trova il tenant corrente filtrando per tenantId
+          const currentTenant = tenants.find(t => t.id === Number(tenantId));
+          if (currentTenant) {
+            setTenant(currentTenant);
+          }
+        } catch (err) {
+          console.error("Errore nel recupero del tenant:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchTenant();
+    } else {
+      setLoading(false);
+    }
+  }, [tenantId]);
+
   const handleLogout = () => {
     logout();
     localStorage.clear();
@@ -30,6 +68,14 @@ export default function NavTenant() {
 
   return (
     <nav className="nav-bar">
+      {/* Badge del tenant con icona e nome */}
+      <div className="project-badge">
+        <Building2 className="project-badge-icon" size={18} />
+        <span className="project-badge-name">
+          {loading ? "Caricamento..." : (tenant?.name || "Tenant")}
+        </span>
+      </div>
+      
       <div className="user-email">{username}</div>
       <ul className="nav-list">
         {/* Home */}
