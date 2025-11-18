@@ -66,6 +66,7 @@ export interface SimpleFieldSetDto {
   id: number;
   name: string;
   scope: ScopeType;
+  projectName?: string; // Nome del progetto quando scope è PROJECT
 }
 
 /**
@@ -127,7 +128,7 @@ export interface FieldConfigurationViewDto {
   defaultFieldConfiguration: boolean;
   fieldType: FieldTypeDescriptor;
   scope: ScopeType;
-  options?: FieldOptionViewDto[];
+  options?: FieldOptionViewDto[]; // List ordinata per orderIndex dal backend
   usedInFieldSets?: SimpleFieldSetDto[];
 }
 

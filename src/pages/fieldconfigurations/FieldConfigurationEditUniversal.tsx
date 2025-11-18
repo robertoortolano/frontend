@@ -204,6 +204,7 @@ export default function FieldConfigurationEditUniversal({
         
         // Convert FieldOptionViewDto to FieldOptionDto
         // Keep numeric IDs for existing options, use UUID for new ones
+        // Le opzioni sono già ordinate dal backend per orderIndex
         const convertedOptions = (config.options || []).map((opt: any) => ({
           id: opt.id?.toString() || uuidv4(),
           label: opt.label,
