@@ -1,49 +1,31 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
-import { WorkflowDetailDto } from "../../types/workflow.types";
 import { ItemTypeSetDto, ProjectSummaryDto } from "../../types/itemtypeset.types";
 import CardListModal, { CardListModalItem } from "./CardListModal";
 import ProjectBadges from "./ProjectBadges";
 
-interface UsedInItemTypeSetsPopupProps {
-  workflow: WorkflowDetailDto;
+interface ItemTypeSetsPopupProps {
+  itemTypeId: number;
 }
 
 interface ItemTypeSetWithProjects extends ItemTypeSetDto, CardListModalItem {
   projects?: ProjectSummaryDto[];
 }
 
-export default function UsedInItemTypeSetsPopup({ workflow }: UsedInItemTypeSetsPopupProps) {
+export default function ItemTypeSetsPopup({ itemTypeId }: ItemTypeSetsPopupProps) {
   const auth = useAuth() as any;
   const token = auth?.token;
   const [itemTypeSets, setItemTypeSets] = useState<ItemTypeSetWithProjects[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token || !workflow.usedInItemTypeConfigurations || workflow.usedInItemTypeConfigurations.length === 0) {
-      setItemTypeSets([]);
-      setLoading(false);
-      return;
-    }
+    if (!token || !itemTypeId) return;
 
     const fetchItemTypeSets = async () => {
       try {
         setLoading(true);
-        // Estrai gli ID degli ItemTypeSet dalle configurazioni
-        // Nota: nel backend, l'ID dell'ItemTypeSet viene mappato come ID dell'ItemType
-        const itemTypeSetIds = new Set(
-          workflow.usedInItemTypeConfigurations
-            .map((config) => config.itemType?.id)
-            .filter((id): id is number => id !== undefined && id !== null)
-        );
-
-        if (itemTypeSetIds.size === 0) {
-          setItemTypeSets([]);
-          return;
-        }
-
-        // Recupera tutti gli ItemTypeSet (globali e di progetto)
+        // Ottieni tutti gli ItemTypeSet (globali e di progetto)
         const [globalResponse, projectResponse] = await Promise.all([
           api.get("/item-type-sets/global", {
             headers: { Authorization: `Bearer ${token}` },
@@ -58,9 +40,13 @@ export default function UsedInItemTypeSetsPopup({ workflow }: UsedInItemTypeSets
           ...(projectResponse.data || []),
         ];
 
-        // Filtra gli ItemTypeSet che sono nella lista degli ID
+        // Filtra gli ItemTypeSet che contengono questo ItemType nelle loro configurazioni
         const filteredSets = allItemTypeSets
-          .filter((its) => itemTypeSetIds.has(its.id))
+          .filter((its) =>
+            its.itemTypeConfigurations?.some(
+              (config) => config.itemType?.id === itemTypeId
+            )
+          )
           .map((its) => ({
             ...its,
             projects: its.projectsAssociation || [],
@@ -76,7 +62,7 @@ export default function UsedInItemTypeSetsPopup({ workflow }: UsedInItemTypeSets
     };
 
     fetchItemTypeSets();
-  }, [token, workflow.usedInItemTypeConfigurations]);
+  }, [token, itemTypeId]);
 
   const renderItemTypeSet = (its: ItemTypeSetWithProjects) => {
     // Prepara i progetti con itemTypeSetName per ProjectBadges
@@ -84,7 +70,7 @@ export default function UsedInItemTypeSetsPopup({ workflow }: UsedInItemTypeSets
       ...project,
       itemTypeSetName: its.name,
     }));
-
+    
     return (
       <div
         key={its.id}
@@ -126,14 +112,14 @@ export default function UsedInItemTypeSetsPopup({ workflow }: UsedInItemTypeSets
 
   return (
     <CardListModal<ItemTypeSetWithProjects>
-      triggerLabel={`${itemTypeSets.length} ItemTypeSet${itemTypeSets.length !== 1 ? "s" : ""}`}
+      triggerLabel={`${itemTypeSets.length} ITS${itemTypeSets.length !== 1 ? '' : ''}`}
       triggerDisabled={itemTypeSets.length === 0}
       triggerTitle={
         itemTypeSets.length === 0
           ? "Nessun ItemTypeSet"
           : "Visualizza dettagli ItemTypeSet"
       }
-      title="ItemTypeSet che utilizzano questo workflow"
+      title="ItemTypeSet associati"
       items={itemTypeSets}
       summary={{
         label: "Totale ItemTypeSet",
@@ -143,3 +129,4 @@ export default function UsedInItemTypeSetsPopup({ workflow }: UsedInItemTypeSets
     />
   );
 }
+

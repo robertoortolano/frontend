@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { ItemTypeDto, ItemTypeDetailDto } from "../../types/itemtype.types";
+import ItemTypeSetsPopup from "../../components/shared/ItemTypeSetsPopup";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -129,8 +130,8 @@ export default function ItemTypes() {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Edit</th>
-            <th></th>
+            <th>ItemTypeSet</th>
+            <th>Azioni</th>
           </tr>
         </thead>
         <tbody>
@@ -138,31 +139,35 @@ export default function ItemTypes() {
             <tr key={item.id}>
               <td>{item.name}</td>
               <td>
-                <button
-                  className={buttons.button}
-                  onClick={() => handleEdit(item.id)}
-                  disabled={item.defaultItemType}
-                  title={item.defaultItemType ? "ItemType di default non modificabile" : ""}
-                >
-                  ✎ Edit
-                </button>
+                <ItemTypeSetsPopup itemTypeId={item.id} />
               </td>
               <td>
-                {!item.defaultItemType && (
+                <div className="flex gap-2">
+                  {!item.defaultItemType && (
+                    <button
+                      className={buttons.button}
+                      onClick={() => handleDelete(item.id)}
+                      disabled={item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0}
+                      title={
+                        item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0
+                          ? "Item Type utilizzato in ItemTypeSet: non eliminabile"
+                          : "Rimuovi Item Type"
+                      }
+                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                    >
+                      Delete
+                    </button>
+                  )}
                   <button
                     className={buttons.button}
-                    onClick={() => handleDelete(item.id)}
-                    disabled={item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0}
-                    title={
-                      item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0
-                        ? "Item Type utilizzato in ItemTypeSet: non eliminabile"
-                        : "Rimuovi Item Type"
-                    }
+                    onClick={() => handleEdit(item.id)}
+                    disabled={item.defaultItemType}
+                    title={item.defaultItemType ? "ItemType di default non modificabile" : ""}
                     style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                   >
-                    Delete
+                    ✎ Edit
                   </button>
-                )}
+                </div>
               </td>
             </tr>
           ))}
