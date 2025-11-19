@@ -1,0 +1,50 @@
+/**
+ * CSS Module per CardItemWrapper component
+ * Standardizza gli stili delle card nei popup, eliminando la duplicazione di stili inline
+ */
+
+.cardItem {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-radius: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cardHeaderWithSpacing {
+  margin-bottom: 0.5rem;
+}
+
+.cardTitle {
+  color: #1e3a8a;
+  font-size: 0.875rem;
+}
+
+.badgesContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.additionalContent {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.additionalContentWithSpacing {
+  margin-bottom: 0.5rem;
+}
+
+.children {
+  /* Contenuto principale della card (es. lista opzioni annidate) */
+}
+
