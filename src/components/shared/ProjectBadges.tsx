@@ -53,8 +53,7 @@ export default function ProjectBadges({ projects = [], usedInItemTypeSets = [], 
       style={{ 
         display: "flex", 
         flexDirection: "column", 
-        gap: "0.25rem", 
-        marginLeft: "auto" 
+        gap: "0.25rem"
       }}
       className={className}
     >

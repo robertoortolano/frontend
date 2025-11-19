@@ -14,6 +14,7 @@
 .cardHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
@@ -22,9 +23,31 @@
   margin-bottom: 0.5rem;
 }
 
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
 .cardTitle {
   color: #1e3a8a;
   font-size: 0.875rem;
+}
+
+.leftBadgesContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rightBadgesContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .badgesContainer {
