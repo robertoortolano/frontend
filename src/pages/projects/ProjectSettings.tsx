@@ -5,8 +5,7 @@ import { ProjectDto } from "../../types/project.types";
 import { CheckCircle, Loader2, AlertCircle, Home, Settings, Users } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import ProjectMembersPanel from "../../components/ProjectMembersPanel";
-import PermissionGrantManager from "../../components/PermissionGrantManager";
-import { createPortal } from "react-dom";
+import PermissionGrantModal from "../../components/shared/PermissionGrantModal";
 import { PageContainer, PageHeader, Panel, Tabs } from "../../components/shared/layout";
 import { ProjectSettingsNotificationsPanel } from "./components/ProjectSettingsNotificationsPanel";
 import { ItemTypeSetInfo } from "./components/ItemTypeSetInfo";
@@ -190,54 +189,18 @@ function ItemTypeSetDetails({
         </div>
       )}
 
-      {selectedPermissionForProjectGrant &&
-        createPortal(
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setSelectedPermissionForProjectGrant(null);
-              }
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "0.5rem",
-                padding: "2rem",
-                maxWidth: "90vw",
-                maxHeight: "90vh",
-                overflowY: "auto",
-                width: "900px",
-              }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <PermissionGrantManager
-                permission={selectedPermissionForProjectGrant}
-                onClose={() => setSelectedPermissionForProjectGrant(null)}
-                onSave={() => {
-                  setSelectedPermissionForProjectGrant(null);
-                  setRefreshTrigger((prev) => prev + 1);
-                }}
-                itemTypeSetId={itemTypeSet.id}
-                scope="project"
-                projectId={projectId}
-              />
-            </div>
-          </div>,
-          document.body
-        )}
+      <PermissionGrantModal
+        permission={selectedPermissionForProjectGrant}
+        isOpen={Boolean(selectedPermissionForProjectGrant)}
+        onClose={() => setSelectedPermissionForProjectGrant(null)}
+        onSave={() => {
+          setSelectedPermissionForProjectGrant(null);
+          setRefreshTrigger((prev) => prev + 1);
+        }}
+        itemTypeSetId={itemTypeSet.id}
+        scope="project"
+        projectId={projectId}
+      />
     </div>
   );
 }

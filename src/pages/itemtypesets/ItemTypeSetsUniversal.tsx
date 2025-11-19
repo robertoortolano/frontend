@@ -1,18 +1,17 @@
-import { useEffect, useState, MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createPortal } from "react-dom";
 import { Shield } from "lucide-react";
 import api from "../../api/api";
 
 import { useAuth } from "../../context/AuthContext";
 import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
-import PermissionGrantManager from "../../components/PermissionGrantManager";
+import PermissionGrantModal from "../../components/shared/PermissionGrantModal";
 import Accordion from "../../components/shared/Accordion";
+import UniversalPageTemplate from "../../components/shared/UniversalPageTemplate";
 import { ItemTypeSetDto } from "../../types/itemtypeset.types";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
-import alert from "../../styles/common/Alerts.module.css";
 import table from "../../styles/common/Tables.module.css";
 
 interface ItemTypeSetsUniversalProps {
@@ -40,51 +39,6 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
   const [selectedSetForRoles, setSelectedSetForRoles] = useState<ItemTypeSetDto | null>(null);
   const [selectedPermissionForGrants, setSelectedPermissionForGrants] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  const handleMouseDown = (e: MouseEvent) => {
-    if ((e.target as HTMLElement).closest(".modal-header")) {
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX - modalPosition.x,
-        y: e.clientY - modalPosition.y,
-      });
-    }
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: any) => {
-      if (isDragging) {
-        setModalPosition({
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y,
-        });
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      return () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-    return undefined;
-  }, [isDragging, dragStart]);
-
-  // Reset modal position when opening
-  useEffect(() => {
-    if (selectedPermissionForGrants) {
-      setModalPosition({ x: 0, y: 0 });
-    }
-  }, [selectedPermissionForGrants]);
 
   useEffect(() => {
     if (!token) return;
@@ -365,12 +319,12 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
   }
 
   return (
-    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header Section */}
-      <div className={layout.headerSection}>
-        {getTitle() && <h1 className={layout.title}>{getTitle()}</h1>}
-        {getDescription() && <p className={layout.paragraphMuted}>{getDescription()}</p>}
-        <div className={layout.buttonRow}>
+    <>
+      <UniversalPageTemplate
+        title={getTitle()}
+        description={getDescription()}
+        error={error}
+        headerActions={
           <button
             className={buttons.button}
             onClick={handleCreate}
@@ -379,151 +333,25 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
           >
             Aggiungi Item Type Set
           </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className={alert.errorContainer}>
-          <p className={alert.error}>{error}</p>
-        </div>
-      )}
-
-      {/* Content Section */}
-      <div className={layout.section}>
+        }
+      >
         {content}
-      </div>
+      </UniversalPageTemplate>
 
       {/* Modal per gestione grants e ruoli */}
-      {selectedPermissionForGrants &&
-        createPortal(
-          <div
-            id="permission-grant-modal"
-            role="presentation"
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: "100vw",
-              height: "100vh",
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
-              padding: "1rem",
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget && (e.target as HTMLElement).id !== "modal-scrollable-content") {
-                setSelectedPermissionForGrants(null);
-              }
-            }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={handleMouseDown}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="modal-title"
-              style={{
-                backgroundColor: "white",
-                borderRadius: "0.5rem",
-                maxWidth: "56rem",
-                width: "100%",
-                maxHeight: "90vh",
-                minHeight: "400px",
-                display: "flex",
-                flexDirection: "column",
-                position: "relative",
-                overflow: "hidden",
-                border: "1px solid rgba(30, 58, 138, 0.3)",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)`,
-                cursor: isDragging ? "move" : "default",
-              }}
-            >
-              {/* Header del modal */}
-              <div
-                className="modal-header"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "1rem",
-                  borderBottom: "1px solid #e5e7eb",
-                  cursor: "move",
-                  backgroundColor: "#f3f4f6",
-                  userSelect: "none",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <svg
-                    style={{ width: "1.25rem", height: "1.25rem", color: "#4b5563" }}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                  </svg>
-                  <span style={{ fontSize: "0.875rem", fontWeight: "500", color: "#374151" }}>
-                    Gestione Permessi - Trascina per spostare
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedPermissionForGrants(null)}
-                  style={{
-                    color: "#9ca3af",
-                    cursor: "pointer",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    padding: "0.25rem",
-                  }}
-                  onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#4b5563")}
-                  onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "#9ca3af")}
-                >
-                  <svg style={{ width: "1.5rem", height: "1.5rem" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Contenuto del modal con scroll */}
-              <div
-                id="modal-scrollable-content"
-                role="region"
-                aria-label="Permission grants and roles management content"
-                style={{
-                  flex: 1,
-                  padding: "1.5rem",
-                  minHeight: "400px",
-                  maxHeight: "calc(90vh - 120px)",
-                  height: "calc(90vh - 120px)",
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                  backgroundColor: "white",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={{ minHeight: "100%" }}>
-                  <PermissionGrantManager
-                    permission={selectedPermissionForGrants}
-                    onClose={() => setSelectedPermissionForGrants(null)}
-                    onSave={() => {
-                      setSelectedPermissionForGrants(null);
-                      setRefreshTrigger((prev) => prev + 1);
-                    }}
-                    itemTypeSetId={selectedSetForRoles?.id}
-                    scope={scope}
-                    projectId={projectId}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-    </div>
+      <PermissionGrantModal
+        permission={selectedPermissionForGrants}
+        isOpen={Boolean(selectedPermissionForGrants)}
+        onClose={() => setSelectedPermissionForGrants(null)}
+        onSave={() => {
+          setSelectedPermissionForGrants(null);
+          setRefreshTrigger((prev) => prev + 1);
+        }}
+        itemTypeSetId={selectedSetForRoles?.id}
+        scope={scope}
+        projectId={projectId}
+      />
+    </>
   );
 }
 

@@ -9,7 +9,7 @@ interface ItemTypeSetsPopupProps {
   itemTypeId: number;
 }
 
-interface ItemTypeSetWithProjects extends ItemTypeSetDto, CardListModalItem {
+interface ItemTypeSetWithProjects extends Omit<CardListModalItem, 'id'>, ItemTypeSetDto {
   projects?: ProjectSummaryDto[];
 }
 

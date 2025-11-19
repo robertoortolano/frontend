@@ -6,10 +6,10 @@ import { useAuth } from "../../context/AuthContext";
 import { FieldSetViewDto } from "../../types/field.types";
 import Accordion from "../../components/shared/Accordion";
 import FieldSetConfigurationsPopup from "../../components/shared/FieldSetConfigurationsPopup";
+import UniversalPageTemplate from "../../components/shared/UniversalPageTemplate";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
-import alert from "../../styles/common/Alerts.module.css";
 import table from "../../styles/common/Tables.module.css";
 
 interface FieldSetsUniversalProps {
@@ -156,7 +156,6 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
                     <th className="w-20">Nome</th>
                     <th className="w-30">Descrizione</th>
                     <th className="w-20">Configurazioni</th>
-                    <th className="w-20">ItemTypeSet</th>
                     <th className="w-15"></th>
                   </tr>
                 </thead>
@@ -166,15 +165,6 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
                     <td>{set.description || "-"}</td>
                     <td>
                       <FieldSetConfigurationsPopup fieldSet={set} />
-                    </td>
-                    <td>
-                      {set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0 ? (
-                        <span className="text-blue-600">
-                          {set.usedInItemTypeSets.length} ItemTypeSet
-                        </span>
-                      ) : (
-                        "-"
-                      )}
                     </td>
                     <td>
                       <div className="flex flex-col gap-1">
@@ -239,34 +229,23 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
   }
 
   return (
-    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header Section */}
-      <div className={layout.headerSection}>
-        {getTitle() && <h1 className={layout.title}>{getTitle()}</h1>}
-        {getDescription() && <p className={layout.paragraphMuted}>{getDescription()}</p>}
-        <div className={layout.buttonRow}>
-          <button
-            className={buttons.button}
-            onClick={handleCreate}
-            disabled={!hasFieldConfigurations || loadingConfigurations}
-            title={!hasFieldConfigurations ? "Devi creare almeno una Field Configuration prima di poter creare un Field Set" : ""}
-          >
-            Aggiungi Field Set
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className={alert.errorContainer}>
-          <p className={alert.error}>{error}</p>
-        </div>
-      )}
-
-      {/* Content Section */}
-      <div className={layout.section}>
-        {content}
-      </div>
-    </div>
+    <UniversalPageTemplate
+      title={getTitle()}
+      description={getDescription()}
+      error={error}
+      headerActions={
+        <button
+          className={buttons.button}
+          onClick={handleCreate}
+          disabled={!hasFieldConfigurations || loadingConfigurations}
+          title={!hasFieldConfigurations ? "Devi creare almeno una Field Configuration prima di poter creare un Field Set" : ""}
+        >
+          Aggiungi Field Set
+        </button>
+      }
+    >
+      {content}
+    </UniversalPageTemplate>
   );
 }
 

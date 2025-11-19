@@ -6,13 +6,13 @@ import OptionsPopup from "../../components/shared/FieldOptionsPopup";
 import UsedInFieldSetsPopup from "../../components/shared/UsedInFieldSetsPopup";
 import AliasPopup from "../../components/shared/FieldConfigurationAliasPopup";
 import Accordion from "../../components/shared/Accordion";
+import UniversalPageTemplate from "../../components/shared/UniversalPageTemplate";
 
 import { useAuth } from "../../context/AuthContext";
 import { FieldConfigurationViewDto } from "../../types/field.types";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
-import alert from "../../styles/common/Alerts.module.css";
 import table from "../../styles/common/Tables.module.css";
 
 interface FieldConfigurationsUniversalProps {
@@ -231,32 +231,21 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
   }
 
   return (
-    <div className={layout.container} style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header Section */}
-      <div className={layout.headerSection}>
-        {getTitle() && <h1 className={layout.title}>{getTitle()}</h1>}
-        {getDescription() && <p className={layout.paragraphMuted}>{getDescription()}</p>}
-        <div className={layout.buttonRow}>
-          <button
-            className={buttons.button}
-            onClick={handleCreate}
-          >
-            Aggiungi Configurazione
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className={alert.errorContainer}>
-          <p className={alert.error}>{error}</p>
-        </div>
-      )}
-
-      {/* Content Section */}
-      <div className={layout.section}>
-        {content}
-      </div>
-    </div>
+    <UniversalPageTemplate
+      title={getTitle()}
+      description={getDescription()}
+      error={error}
+      headerActions={
+        <button
+          className={buttons.button}
+          onClick={handleCreate}
+        >
+          Aggiungi Configurazione
+        </button>
+      }
+    >
+      {content}
+    </UniversalPageTemplate>
   );
 }
 
