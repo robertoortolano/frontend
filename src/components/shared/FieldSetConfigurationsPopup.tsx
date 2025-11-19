@@ -1,5 +1,6 @@
 import CardListModal, { CardListModalItem } from "./CardListModal";
 import { FieldSetViewDto, FieldSetEntryViewDto } from "../../types/field.types";
+import ProjectBadges from "./ProjectBadges";
 
 interface FieldSetConfigurationsPopupProps {
   fieldSet: FieldSetViewDto;
@@ -12,6 +13,7 @@ export default function FieldSetConfigurationsPopup({ fieldSet }: FieldSetConfig
   const sortedEntries = [...entries].sort((a, b) => a.orderIndex - b.orderIndex);
 
   const projects = fieldSet.projects || [];
+  const usedInItemTypeSets = fieldSet.usedInItemTypeSets || [];
 
   // Ordina le opzioni per orderIndex se presente
   const getSortedOptions = (options?: any[]) => {
@@ -42,25 +44,7 @@ export default function FieldSetConfigurationsPopup({ fieldSet }: FieldSetConfig
           <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
             {config.name || "Senza nome"}
           </strong>
-          {projects.length > 0 && (
-            <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginLeft: "auto" }}>
-              {projects.map((project) => (
-                <span
-                  key={project.id}
-                  style={{
-                    fontSize: "0.625rem",
-                    padding: "0.125rem 0.375rem",
-                    backgroundColor: "#059669",
-                    color: "white",
-                    borderRadius: "0.25rem",
-                    fontWeight: "500",
-                  }}
-                >
-                  {project.name}
-                </span>
-              ))}
-            </div>
-          )}
+          <ProjectBadges projects={projects} usedInItemTypeSets={usedInItemTypeSets} />
         </div>
 
         <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.5rem" }}>

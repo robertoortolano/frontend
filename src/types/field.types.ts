@@ -67,7 +67,7 @@ export interface SimpleFieldSetDto {
   name: string;
   scope: ScopeType;
   projectName?: string; // Nome del progetto quando scope è PROJECT
-  projects?: Array<{ id: number; projectKey: string; name: string; description?: string }>; // Progetti a cui è applicato tramite ITS
+  projects?: Array<{ id: number; projectKey: string; name: string; description?: string; itemTypeSetName?: string }>; // Progetti a cui è applicato tramite ITS
 }
 
 /**
@@ -91,7 +91,7 @@ export interface FieldSetViewDto {
   fieldSetEntries: FieldSetEntryViewDto[];
   usedInItemTypeSets?: SimpleItemTypeSetDto[]; // Opzionale: backend potrebbe non fornire questa informazione
   projectName?: string; // Nome del progetto quando scope è PROJECT
-  projects?: Array<{ id: number; projectKey: string; name: string; description?: string }>; // Progetti a cui è applicato tramite ITS
+  projects?: Array<{ id: number; projectKey: string; name: string; description?: string; itemTypeSetName?: string }>; // Progetti a cui è applicato tramite ITS
 }
 
 /**

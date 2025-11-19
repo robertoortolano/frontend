@@ -22,6 +22,8 @@ export interface ProjectSummaryDto {
   id: number;
   name: string;
   projectKey: string;
+  description?: string;
+  itemTypeSetName?: string; // Nome dell'ItemTypeSet associato al progetto
 }
 
 export interface ItemTypeSetDto {

@@ -1,5 +1,6 @@
 import { WorkflowSimpleDto } from "../../types/workflow.types";
 import CardListModal, { CardListModalItem } from "./CardListModal";
+import ProjectBadges from "./ProjectBadges";
 
 interface WorkflowsPopupProps {
   workflows?: WorkflowSimpleDto[];
@@ -38,25 +39,7 @@ export default function WorkflowsPopup({ workflows = [] }: WorkflowsPopupProps) 
               Default
             </span>
           )}
-          {projects.length > 0 && (
-            <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginLeft: "auto" }}>
-              {projects.map((project) => (
-                <span
-                  key={project.id}
-                  style={{
-                    fontSize: "0.625rem",
-                    padding: "0.125rem 0.375rem",
-                    backgroundColor: "#059669",
-                    color: "white",
-                    borderRadius: "0.25rem",
-                    fontWeight: "500",
-                  }}
-                >
-                  {project.name}
-                </span>
-              ))}
-            </div>
-          )}
+          <ProjectBadges projects={projects} />
         </div>
       </div>
     );
