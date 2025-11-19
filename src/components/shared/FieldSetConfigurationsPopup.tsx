@@ -3,6 +3,7 @@ import { FieldSetViewDto, FieldSetEntryViewDto } from "../../types/field.types";
 import ProjectBadges from "./ProjectBadges";
 import CardItemWrapper from "./CardItemWrapper";
 import DisabledBadge from "./DisabledBadge";
+import { formatCountLabel } from "../../utils/formatUtils";
 
 interface FieldSetConfigurationsPopupProps {
   fieldSet: FieldSetViewDto;
@@ -95,7 +96,7 @@ export default function FieldSetConfigurationsPopup({ fieldSet }: FieldSetConfig
 
   return (
     <CardListModal<FieldSetEntryViewDto & CardListModalItem>
-      triggerLabel={`${entries.length} configurazione${entries.length !== 1 ? "i" : ""}`}
+      triggerLabel={formatCountLabel(entries.length, 'configurazione', 'configurazioni')}
       triggerDisabled={entries.length === 0}
       triggerTitle={
         entries.length === 0

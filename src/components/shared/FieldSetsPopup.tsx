@@ -3,6 +3,7 @@ import CardListModal, { CardListModalItem } from "./CardListModal";
 import ProjectBadges from "./ProjectBadges";
 import CardItemWrapper from "./CardItemWrapper";
 import DefaultBadge from "./DefaultBadge";
+import { formatCountLabel } from "../../utils/formatUtils";
 
 interface FieldSetsPopupProps {
   field: FieldDetailDto;
@@ -84,7 +85,7 @@ export default function FieldSetsPopup({ field }: FieldSetsPopupProps) {
 
   return (
     <CardListModal<FieldSetViewDto & CardListModalItem>
-      triggerLabel={`${field.fieldSets.length} FieldSet${field.fieldSets.length !== 1 ? "s" : ""}`}
+      triggerLabel={formatCountLabel(field.fieldSets.length, 'FieldSet')}
       triggerDisabled={field.fieldSets.length === 0}
       triggerTitle={
         field.fieldSets.length === 0

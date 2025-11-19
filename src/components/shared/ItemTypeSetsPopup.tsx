@@ -3,6 +3,7 @@ import ProjectBadges from "./ProjectBadges";
 import CardItemWrapper from "./CardItemWrapper";
 import DefaultBadge from "./DefaultBadge";
 import { useItemTypeSets, ItemTypeSetWithProjects } from "../../hooks/useItemTypeSets";
+import { formatCountLabel } from "../../utils/formatUtils";
 
 interface ItemTypeSetsPopupProps {
   itemTypeId: number;
@@ -41,7 +42,7 @@ export default function ItemTypeSetsPopup({ itemTypeId }: ItemTypeSetsPopupProps
 
   return (
     <CardListModal<ItemTypeSetWithProjects>
-      triggerLabel={`${itemTypeSets.length} ITS${itemTypeSets.length !== 1 ? '' : ''}`}
+      triggerLabel={formatCountLabel(itemTypeSets.length, 'ITS', 'ITS')}
       triggerDisabled={itemTypeSets.length === 0}
       triggerTitle={
         itemTypeSets.length === 0

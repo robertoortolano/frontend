@@ -3,6 +3,7 @@ import CardListModal, { CardListModalItem } from "./CardListModal";
 import ProjectBadges from "./ProjectBadges";
 import CardItemWrapper from "./CardItemWrapper";
 import DefaultBadge from "./DefaultBadge";
+import { formatCountLabel } from "../../utils/formatUtils";
 
 interface WorkflowsPopupProps {
   workflows?: WorkflowSimpleDto[];
@@ -29,7 +30,7 @@ export default function WorkflowsPopup({ workflows = [] }: WorkflowsPopupProps) 
 
   return (
     <CardListModal<WorkflowSimpleDto & CardListModalItem>
-      triggerLabel={`${workflows.length} workflow${workflows.length !== 1 ? 's' : ''}`}
+      triggerLabel={formatCountLabel(workflows.length, 'workflow')}
       triggerDisabled={workflows.length === 0}
       triggerTitle={
         workflows.length === 0

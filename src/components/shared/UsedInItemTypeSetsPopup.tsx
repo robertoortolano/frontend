@@ -4,6 +4,7 @@ import ProjectBadges from "./ProjectBadges";
 import CardItemWrapper from "./CardItemWrapper";
 import DefaultBadge from "./DefaultBadge";
 import { useItemTypeSets, ItemTypeSetWithProjects } from "../../hooks/useItemTypeSets";
+import { formatCountLabel } from "../../utils/formatUtils";
 
 interface UsedInItemTypeSetsPopupProps {
   workflow: WorkflowDetailDto;
@@ -42,7 +43,7 @@ export default function UsedInItemTypeSetsPopup({ workflow }: UsedInItemTypeSets
 
   return (
     <CardListModal<ItemTypeSetWithProjects>
-      triggerLabel={`${itemTypeSets.length} ItemTypeSet${itemTypeSets.length !== 1 ? "s" : ""}`}
+      triggerLabel={formatCountLabel(itemTypeSets.length, 'ItemTypeSet')}
       triggerDisabled={itemTypeSets.length === 0}
       triggerTitle={
         itemTypeSets.length === 0

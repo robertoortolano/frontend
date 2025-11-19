@@ -2,6 +2,7 @@ import CardListModal, { CardListModalItem } from "./CardListModal";
 import { FieldOptionViewDto } from "../../types/field.types";
 import CardItemWrapper from "./CardItemWrapper";
 import DisabledBadge from "./DisabledBadge";
+import { formatCountLabel } from "../../utils/formatUtils";
 
 interface OptionsPopupProps {
   options: FieldOptionViewDto[];
@@ -39,7 +40,7 @@ export default function OptionsPopup({ options }: OptionsPopupProps) {
 
   return (
     <CardListModal<FieldOptionViewDto & CardListModalItem>
-      triggerLabel={`${options.length} option${options.length !== 1 ? "s" : ""}`}
+      triggerLabel={formatCountLabel(options.length, 'option')}
       triggerDisabled={options.length === 0}
       triggerTitle={
         options.length === 0

@@ -2,6 +2,7 @@ import CardListModal, { CardListModalItem } from "./CardListModal";
 import { FieldConfigurationViewDto, SimpleFieldSetDto } from "../../types/field.types";
 import ProjectBadges from "./ProjectBadges";
 import CardItemWrapper from "./CardItemWrapper";
+import { formatCountLabel } from "../../utils/formatUtils";
 
 interface UsedInFieldSetsPopupProps {
   configs: FieldConfigurationViewDto;
@@ -24,7 +25,7 @@ export default function UsedInFieldSetsPopup({ configs }: UsedInFieldSetsPopupPr
 
   return (
     <CardListModal<SimpleFieldSetDto & CardListModalItem>
-      triggerLabel={`${fieldSets.length} FieldSet${fieldSets.length !== 1 ? "s" : ""}`}
+      triggerLabel={formatCountLabel(fieldSets.length, 'FieldSet')}
       triggerDisabled={fieldSets.length === 0}
       triggerTitle={
         fieldSets.length === 0
