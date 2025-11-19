@@ -1,6 +1,8 @@
 import CardListModal, { CardListModalItem } from "./CardListModal";
 import { FieldSetViewDto, FieldSetEntryViewDto } from "../../types/field.types";
 import ProjectBadges from "./ProjectBadges";
+import CardItemWrapper from "./CardItemWrapper";
+import DisabledBadge from "./DisabledBadge";
 
 interface FieldSetConfigurationsPopupProps {
   fieldSet: FieldSetViewDto;
@@ -29,84 +31,65 @@ export default function FieldSetConfigurationsPopup({ fieldSet }: FieldSetConfig
     const config = entry.fieldConfiguration;
     const sortedOptions = getSortedOptions(config.options);
 
-    return (
+    const badges = [<ProjectBadges key="projects" projects={projects} usedInItemTypeSets={usedInItemTypeSets} />];
+
+    const additionalContent = (
+      <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+        <span style={{ fontWeight: "500" }}>Tipo di campo: </span>
+        <span>{config.fieldType?.displayName || "-"}</span>
+      </div>
+    );
+
+    const children = sortedOptions.length > 0 ? (
       <div
-        key={entry.id || config.id}
         style={{
-          padding: "0.75rem",
-          borderBottom: "1px solid #e5e7eb",
-          backgroundColor: "#f9fafb",
-          borderRadius: "0.375rem",
-          marginBottom: "0.5rem",
+          marginTop: "0.5rem",
+          paddingLeft: "0.75rem",
+          borderLeft: "2px solid #e5e7eb",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
-          <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
-            {config.name || "Senza nome"}
-          </strong>
-          <ProjectBadges projects={projects} usedInItemTypeSets={usedInItemTypeSets} />
+        <div style={{ fontSize: "0.75rem", fontWeight: "500", color: "#374151", marginBottom: "0.25rem" }}>
+          Opzioni:
         </div>
-
-        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.5rem" }}>
-          <span style={{ fontWeight: "500" }}>Tipo di campo: </span>
-          <span>{config.fieldType?.displayName || "-"}</span>
-        </div>
-
-        {sortedOptions.length > 0 && (
+        {sortedOptions.map((option, idx) => (
           <div
+            key={option.id || idx}
             style={{
-              marginTop: "0.5rem",
-              paddingLeft: "0.75rem",
-              borderLeft: "2px solid #e5e7eb",
+              fontSize: "0.7rem",
+              color: "#6b7280",
+              marginBottom: "0.25rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
             }}
           >
-            <div style={{ fontSize: "0.75rem", fontWeight: "500", color: "#374151", marginBottom: "0.25rem" }}>
-              Opzioni:
-            </div>
-            {sortedOptions.map((option, idx) => (
-              <div
-                key={option.id || idx}
+            <span>•</span>
+            <span>{option.label || option.value || "N/A"}</span>
+            {option.enabled === false && <DisabledBadge />}
+            {option.value && option.value !== option.label && (
+              <span
                 style={{
-                  fontSize: "0.7rem",
-                  color: "#6b7280",
-                  marginBottom: "0.25rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
+                  fontSize: "0.65rem",
+                  color: "#9ca3af",
+                  fontFamily: "monospace",
                 }}
               >
-                <span>•</span>
-                <span>{option.label || option.value || "N/A"}</span>
-                {option.enabled === false && (
-                  <span
-                    style={{
-                      fontSize: "0.625rem",
-                      padding: "0.125rem 0.375rem",
-                      backgroundColor: "#fee2e2",
-                      color: "#991b1b",
-                      borderRadius: "0.25rem",
-                      fontWeight: "500",
-                    }}
-                  >
-                    Disabilitato
-                  </span>
-                )}
-                {option.value && option.value !== option.label && (
-                  <span
-                    style={{
-                      fontSize: "0.65rem",
-                      color: "#9ca3af",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    ({option.value})
-                  </span>
-                )}
-              </div>
-            ))}
+                ({option.value})
+              </span>
+            )}
           </div>
-        )}
+        ))}
       </div>
+    ) : undefined;
+
+    return (
+      <CardItemWrapper
+        key={entry.id || config.id}
+        title={config.name || "Senza nome"}
+        badges={badges}
+        additionalContent={additionalContent}
+        children={children}
+      />
     );
   };
 

@@ -1,6 +1,7 @@
 import CardListModal, { CardListModalItem } from "./CardListModal";
 import { FieldConfigurationViewDto, SimpleFieldSetDto } from "../../types/field.types";
 import ProjectBadges from "./ProjectBadges";
+import CardItemWrapper from "./CardItemWrapper";
 
 interface UsedInFieldSetsPopupProps {
   configs: FieldConfigurationViewDto;
@@ -13,23 +14,11 @@ export default function UsedInFieldSetsPopup({ configs }: UsedInFieldSetsPopupPr
     const projects = fieldSet.projects || [];
     
     return (
-      <div
+      <CardItemWrapper
         key={fieldSet.id}
-        style={{
-          padding: "0.75rem",
-          borderBottom: "1px solid #e5e7eb",
-          backgroundColor: "#f9fafb",
-          borderRadius: "0.375rem",
-          marginBottom: "0.5rem",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-          <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
-            {fieldSet.name}
-          </strong>
-          <ProjectBadges projects={projects} />
-        </div>
-      </div>
+        title={fieldSet.name}
+        badges={[<ProjectBadges key="projects" projects={projects} />]}
+      />
     );
   };
 

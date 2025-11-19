@@ -1,6 +1,8 @@
 import { FieldDetailDto, FieldSetViewDto } from "../../types/field.types";
 import CardListModal, { CardListModalItem } from "./CardListModal";
 import ProjectBadges from "./ProjectBadges";
+import CardItemWrapper from "./CardItemWrapper";
+import DefaultBadge from "./DefaultBadge";
 
 interface FieldSetsPopupProps {
   field: FieldDetailDto;
@@ -11,89 +13,72 @@ export default function FieldSetsPopup({ field }: FieldSetsPopupProps) {
     const projects = fieldSet.projects || [];
     const usedInItemTypeSets = fieldSet.usedInItemTypeSets || [];
     
-    return (
-      <div
-        key={fieldSet.id}
-        style={{
-          padding: "0.75rem",
-          borderBottom: "1px solid #e5e7eb",
-          backgroundColor: "#f9fafb",
-          borderRadius: "0.375rem",
-          marginBottom: "0.5rem",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
-          <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
-            {fieldSet.name}
-          </strong>
-          {fieldSet.defaultFieldSet && (
-            <span
-              style={{
-                fontSize: "0.625rem",
-                padding: "0.125rem 0.375rem",
-                backgroundColor: "#dbeafe",
-                color: "#1e40af",
-                borderRadius: "0.25rem",
-                fontWeight: "500",
-              }}
-            >
-              Default
-            </span>
-          )}
-          <ProjectBadges projects={projects} usedInItemTypeSets={usedInItemTypeSets} />
-        </div>
-      
-        {fieldSet.description && (
-        <p
-          style={{
-            fontSize: "0.75rem",
-            color: "#6b7280",
-            marginBottom: "0.5rem",
-            fontStyle: "italic",
-          }}
-        >
-          {fieldSet.description}
-        </p>
-      )}
+    const badges = [];
+    if (fieldSet.defaultFieldSet) {
+      badges.push(<DefaultBadge key="default" />);
+    }
+    badges.push(<ProjectBadges key="projects" projects={projects} usedInItemTypeSets={usedInItemTypeSets} />);
 
-      <div style={{ fontSize: "0.75rem", color: "#374151" }}>
-        <span style={{ fontWeight: "500" }}>Configurazioni: </span>
-        <span>{fieldSet.fieldSetEntries?.length || 0}</span>
-        {fieldSet.fieldSetEntries && fieldSet.fieldSetEntries.length > 0 && (
-          <div
+    const additionalContent = (
+      <>
+        {fieldSet.description && (
+          <p
             style={{
-              marginTop: "0.5rem",
-              paddingLeft: "0.75rem",
-              borderLeft: "2px solid #e5e7eb",
+              fontSize: "0.75rem",
+              color: "#6b7280",
+              fontStyle: "italic",
             }}
           >
-            {fieldSet.fieldSetEntries.slice(0, 5).map((entry, idx) => (
-              <div
-                key={entry.id || idx}
-                style={{
-                  fontSize: "0.7rem",
-                  color: "#6b7280",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                • {entry.fieldConfiguration?.name || entry.fieldConfigurationName || "N/A"}
-              </div>
-            ))}
-            {fieldSet.fieldSetEntries.length > 5 && (
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  color: "#9ca3af",
-                  fontStyle: "italic",
-                }}
-              >
-                ... e altre {fieldSet.fieldSetEntries.length - 5} configurazioni
-              </div>
-            )}
-          </div>
+            {fieldSet.description}
+          </p>
         )}
-      </div>
-      </div>
+        <div style={{ fontSize: "0.75rem", color: "#374151" }}>
+          <span style={{ fontWeight: "500" }}>Configurazioni: </span>
+          <span>{fieldSet.fieldSetEntries?.length || 0}</span>
+          {fieldSet.fieldSetEntries && fieldSet.fieldSetEntries.length > 0 && (
+            <div
+              style={{
+                marginTop: "0.5rem",
+                paddingLeft: "0.75rem",
+                borderLeft: "2px solid #e5e7eb",
+              }}
+            >
+              {fieldSet.fieldSetEntries.slice(0, 5).map((entry, idx) => (
+                <div
+                  key={entry.id || idx}
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#6b7280",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  • {entry.fieldConfiguration?.name || entry.fieldConfigurationName || "N/A"}
+                </div>
+              ))}
+              {fieldSet.fieldSetEntries.length > 5 && (
+                <div
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#9ca3af",
+                    fontStyle: "italic",
+                  }}
+                >
+                  ... e altre {fieldSet.fieldSetEntries.length - 5} configurazioni
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </>
+    );
+    
+    return (
+      <CardItemWrapper
+        key={fieldSet.id}
+        title={fieldSet.name}
+        badges={badges}
+        additionalContent={additionalContent}
+      />
     );
   };
 

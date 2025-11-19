@@ -1,6 +1,8 @@
 import { WorkflowSimpleDto } from "../../types/workflow.types";
 import CardListModal, { CardListModalItem } from "./CardListModal";
 import ProjectBadges from "./ProjectBadges";
+import CardItemWrapper from "./CardItemWrapper";
+import DefaultBadge from "./DefaultBadge";
 
 interface WorkflowsPopupProps {
   workflows?: WorkflowSimpleDto[];
@@ -9,39 +11,19 @@ interface WorkflowsPopupProps {
 export default function WorkflowsPopup({ workflows = [] }: WorkflowsPopupProps) {
   const renderWorkflow = (workflow: WorkflowSimpleDto & CardListModalItem) => {
     const projects = workflow.projects || [];
+    const badges = [];
+    
+    if (workflow.defaultWorkflow) {
+      badges.push(<DefaultBadge key="default" />);
+    }
+    badges.push(<ProjectBadges key="projects" projects={projects} />);
     
     return (
-      <div
+      <CardItemWrapper
         key={workflow.id}
-        style={{
-          padding: "0.75rem",
-          borderBottom: "1px solid #e5e7eb",
-          backgroundColor: "#f9fafb",
-          borderRadius: "0.375rem",
-          marginBottom: "0.5rem",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
-          <strong style={{ color: "#1e3a8a", fontSize: "0.875rem" }}>
-            {workflow.name}
-          </strong>
-          {workflow.defaultWorkflow && (
-            <span
-              style={{
-                fontSize: "0.625rem",
-                padding: "0.125rem 0.375rem",
-                backgroundColor: "#dbeafe",
-                color: "#1e40af",
-                borderRadius: "0.25rem",
-                fontWeight: "500",
-              }}
-            >
-              Default
-            </span>
-          )}
-          <ProjectBadges projects={projects} />
-        </div>
-      </div>
+        title={workflow.name}
+        badges={badges}
+      />
     );
   };
 
