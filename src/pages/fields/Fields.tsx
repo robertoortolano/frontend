@@ -12,12 +12,6 @@ import form from "../../styles/common/Forms.module.css";
 import alert from "../../styles/common/Alerts.module.css";
 import table from "../../styles/common/Tables.module.css";
 
-function getDeleteTitle(field: FieldDetailDto, used: boolean): string {
-  if (field.defaultField) return "Campo di default non eliminabile";
-  if (used) return "Campo utilizzato: non eliminabile";
-  return "";
-}
-
 export default function Fields() {
   const navigate = useNavigate();
   const auth = useAuth() as any;

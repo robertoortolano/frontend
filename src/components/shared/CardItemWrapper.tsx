@@ -39,7 +39,8 @@ export default function CardItemWrapper({
         // Se è un React element, controlla se è ProjectBadges
         if (React.isValidElement(badge)) {
           // ProjectBadges ha projects prop, gli altri no
-          return !badge.props?.projects && !badge.props?.usedInItemTypeSets;
+          const props = badge.props as any;
+          return !props?.projects && !props?.usedInItemTypeSets;
         }
         return true;
       });
@@ -49,7 +50,8 @@ export default function CardItemWrapper({
     : badges.filter((badge) => {
         // Se è un React element, controlla se è ProjectBadges
         if (React.isValidElement(badge)) {
-          return badge.props?.projects || badge.props?.usedInItemTypeSets;
+          const props = badge.props as any;
+          return props?.projects || props?.usedInItemTypeSets;
         }
         return false;
       });

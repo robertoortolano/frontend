@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical } from "lucide-react";
 import popup from "../../styles/common/Popup.module.css";
-import buttons from "../../styles/common/Buttons.module.css";
 
 export interface ActionItem {
   label: string;
