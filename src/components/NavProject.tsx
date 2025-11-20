@@ -163,16 +163,6 @@ export default function NavProject() {
         {/* Spazio separatore */}
         <li className="nav-separator"></li>
 
-        {/* Progetti */}
-        <li>
-          <button
-            onClick={() => handleNavigation("/projects")}
-            className="nav-link"
-          >
-            Progetti
-          </button>
-        </li>
-
         {/* Global */}
         <li>
           <button

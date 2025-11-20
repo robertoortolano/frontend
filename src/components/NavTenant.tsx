@@ -1,7 +1,8 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Building2 } from "lucide-react";
+import { useFavorites } from "../context/FavoritesContext";
+import { Building2, ChevronDown, ChevronRight } from "lucide-react";
 import { tenantApi } from "../api/api";
 import "./Nav.css";
 
@@ -14,14 +15,17 @@ interface TenantDTO {
 
 export default function NavTenant() {
   const navigate = useNavigate();
+  const location = useLocation();
   const auth = useAuth() as any;
   const logout = auth?.logout;
   const username = localStorage.getItem("username") || "";
   const roles = auth?.roles || [];
   const tenantId = auth?.tenantId;
+  const { favoriteProjects } = useFavorites();
 
   const [tenant, setTenant] = useState<TenantDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projectsExpanded, setProjectsExpanded] = useState(false);
 
   // Check if user is ADMIN (TENANT scope)
   const isAdmin = roles.some((role: any) => 
@@ -60,10 +64,26 @@ export default function NavTenant() {
     }
   }, [tenantId]);
 
+  // Auto-espandi progetti se si è sulla pagina progetti
+  useEffect(() => {
+    if (location.pathname.startsWith("/tenant/projects")) {
+      setProjectsExpanded(true);
+    }
+  }, [location.pathname]);
+
   const handleLogout = () => {
     logout();
     localStorage.clear();
     navigate("/");
+  };
+
+  const handleProjectsToggle = () => {
+    setProjectsExpanded(!projectsExpanded);
+  };
+
+  const handleNavigateToProjects = () => {
+    navigate("/tenant/projects");
+    setProjectsExpanded(true);
   };
 
   return (
@@ -153,11 +173,65 @@ export default function NavTenant() {
         {/* Separatore */}
         <li className="nav-separator"></li>
 
-        {/* Progetti */}
+        {/* Progetti - con accordion per preferiti */}
         <li>
-          <NavLink to="/projects" className="nav-link" end>
-            Progetti
-          </NavLink>
+          <div className="nav-accordion-container">
+            <button
+              onClick={handleNavigateToProjects}
+              className={`nav-link nav-accordion-header ${location.pathname === "/tenant/projects" ? "active" : ""}`}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}
+            >
+              <span>Progetti</span>
+              {favoriteProjects.length > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleProjectsToggle();
+                  }}
+                  className="nav-accordion-toggle"
+                  aria-label={projectsExpanded ? "Collassa progetti preferiti" : "Espandi progetti preferiti"}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0.25rem",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {projectsExpanded ? (
+                    <ChevronDown size={16} style={{ color: "inherit" }} />
+                  ) : (
+                    <ChevronRight size={16} style={{ color: "inherit" }} />
+                  )}
+                </button>
+              )}
+            </button>
+            {favoriteProjects.length > 0 && (
+              <div
+                className="nav-accordion-content"
+                style={{
+                  maxHeight: projectsExpanded ? `${favoriteProjects.length * 40}px` : "0px",
+                  overflow: "hidden",
+                  transition: "max-height 0.3s ease-out",
+                }}
+              >
+                <ul style={{ listStyle: "none", padding: "0", margin: "0.25rem 0 0 0", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  {favoriteProjects.map((favProject) => (
+                    <li key={favProject.id}>
+                      <NavLink
+                        to={`/projects/${favProject.id}`}
+                        className="nav-link nav-accordion-item"
+                        end
+                      >
+                        {favProject.name}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </li>
 
         {/* Logout */}

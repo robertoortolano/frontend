@@ -15,7 +15,7 @@ export default function ProjectFieldConfigurationsLanding() {
   };
 
   const handleGoToProjects = () => {
-    navigate("/projects");
+    navigate("/tenant/projects");
   };
 
   return (

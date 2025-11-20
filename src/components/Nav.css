@@ -13,27 +13,26 @@
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  background: #1e3a8a;
+  background: transparent;
   border-radius: 6px;
-  color: white;
-  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: #1e3a8a;
+  border: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
 }
 
 .project-badge:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(30, 58, 138, 0.4);
+  background-color: #f9fafb;
 }
 
 .project-badge-icon {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   flex-shrink: 0;
 }
 
 .project-badge-name {
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: white;
+  color: #1e3a8a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -79,6 +78,58 @@
 
 .nav-link-favorite {
   font-weight: 700 !important;
+}
+
+.nav-accordion-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.nav-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.nav-accordion-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  color: inherit;
+  transition: transform 0.2s ease;
+}
+
+.nav-accordion-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.nav-accordion-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.nav-link-indented {
+  padding-left: 2rem;
+}
+
+.nav-accordion-item {
+  padding-left: 2rem !important;
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 0.95em;
+  opacity: 0.9;
+}
+
+.nav-accordion-content ul {
+  gap: 0.25rem;
 }
 
 .nav-link {

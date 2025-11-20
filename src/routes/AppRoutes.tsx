@@ -262,18 +262,10 @@ export default function AppRoutes() {
             <TenantUserManagement />
           </RoleProtectedRoute>
         } />
-        
-      </Route>
 
-      <Route
-        path="/projects"
-        element={
-          <PrivateRoute>
-            <MainLayout />
-          </PrivateRoute>
-        }
-      >
-        <Route index element={<HomeProjects />} />
+        {/* Lista progetti - ora sotto tenant per mantenere la navbar tenant */}
+        <Route path="projects" element={<HomeProjects />} />
+        
       </Route>
 
       {/* Route separate per i progetti specifici con la loro navbar */}
