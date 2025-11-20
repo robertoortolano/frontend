@@ -8,6 +8,7 @@ import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
 import PermissionGrantModal from "../../components/shared/PermissionGrantModal";
 import Accordion from "../../components/shared/Accordion";
 import UniversalPageTemplate from "../../components/shared/UniversalPageTemplate";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 import { ItemTypeSetDto } from "../../types/itemtypeset.types";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -167,100 +168,51 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
           <li key={set.id}>
             <Accordion
               id={set.id}
-              title={<h2 className={layout.blockTitleBlue}>{set.name}</h2>}
+              title={<h2 className={layout.blockTitleBlue} style={{ margin: 0 }}>{set.name}</h2>}
               isExpanded={expandedItemTypeSets[set.id] || false}
               onToggle={() => setExpandedItemTypeSets((prev) => ({
                 ...prev,
                 [set.id]: !prev[set.id],
               }))}
               headerActions={
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem', flexShrink: 0, flexWrap: 'nowrap' }}>
-                  <button
-                    className={buttons.button}
-                    style={{ 
-                      padding: "0.5rem 0.75rem", 
-                      fontSize: "0.875rem",
-                      backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0",
-                      height: "36px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      whiteSpace: "nowrap"
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (showRoles && selectedSetForRoles?.id === set.id) {
-                        setShowRoles(false);
-                        setSelectedSetForRoles(null);
-                      } else {
-                        setShowRoles(true);
-                        setSelectedSetForRoles(set);
-                        // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
-                        setExpandedItemTypeSets(prev => ({
-                          ...prev,
-                          [set.id]: true
-                        }));
-                      }
-                    }}
-                    title={
-                      showRoles && selectedSetForRoles?.id === set.id
-                        ? "Nascondi Permissions"
-                        : "Gestisci Permissions"
-                    }
-                    type="button"
-                  >
-                    <Shield size={16} className="mr-1" />
-                    {showRoles && selectedSetForRoles?.id === set.id ? "Nascondi" : "Mostra"} Permissions
-                  </button>
-                  {!set.defaultItemTypeSet && (
-                    <button
-                      className={buttons.button}
-                      style={{ 
-                        padding: "0.5rem 0.75rem", 
-                        fontSize: "0.875rem",
-                        height: "36px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        whiteSpace: "nowrap"
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(set.id, set.defaultItemTypeSet);
-                      }}
-                      title="Modifica Item Type Set"
-                      type="button"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    className={buttons.button}
-                    style={{ 
-                      padding: "0.5rem 0.75rem", 
-                      fontSize: "0.875rem",
-                      height: "36px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      whiteSpace: "nowrap"
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(set.id);
-                    }}
-                    disabled={set.defaultItemTypeSet || (set.projectsAssociation && set.projectsAssociation.length > 0)}
-                    title={
-                      set.defaultItemTypeSet
-                        ? "Item Type Set di default non eliminabile"
-                        : set.projectsAssociation && set.projectsAssociation.length > 0
-                        ? `Non puoi eliminare: usato in ${set.projectsAssociation.length} progetto/i`
-                        : "Elimina Item Type Set"
-                    }
-                    type="button"
-                  >
-                    Delete
-                  </button>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ActionsMenu
+                    actions={[
+                      {
+                        label: showRoles && selectedSetForRoles?.id === set.id ? "Nascondi Permissions" : "Mostra Permissions",
+                        onClick: () => {
+                          if (showRoles && selectedSetForRoles?.id === set.id) {
+                            setShowRoles(false);
+                            setSelectedSetForRoles(null);
+                          } else {
+                            setShowRoles(true);
+                            setSelectedSetForRoles(set);
+                            // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
+                            setExpandedItemTypeSets(prev => ({
+                              ...prev,
+                              [set.id]: true
+                            }));
+                          }
+                        },
+                        icon: <Shield size={16} />,
+                      },
+                      ...(!set.defaultItemTypeSet
+                        ? [
+                            {
+                              label: "Edit",
+                              onClick: () => handleEdit(set.id, set.defaultItemTypeSet),
+                            },
+                          ]
+                        : []),
+                      {
+                        label: "Delete",
+                        onClick: () => handleDelete(set.id),
+                        disabled:
+                          set.defaultItemTypeSet ||
+                          (set.projectsAssociation && set.projectsAssociation.length > 0),
+                      },
+                    ]}
+                  />
                 </div>
               }
             >
@@ -278,9 +230,9 @@ export default function ItemTypeSetsUniversal({ scope, projectId: projectIdProp 
                     {set.itemTypeConfigurations.map((conf) => (
                       <tr key={conf.id}>
                         <td>{conf.itemType?.name}</td>
-                        <td>{conf.category}</td>
-                        <td>{conf.workflow?.name || "-"}</td>
-                        <td>{conf.fieldSet?.name || "-"}</td>
+                        <td><span className="text-sm text-gray-600">{conf.category}</span></td>
+                        <td><span className="text-sm text-gray-600">{conf.workflow?.name || "-"}</span></td>
+                        <td><span className="text-sm text-gray-600">{conf.fieldSet?.name || "-"}</span></td>
                       </tr>
                     ))}
                   </tbody>

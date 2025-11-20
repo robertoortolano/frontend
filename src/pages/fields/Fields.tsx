@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import FieldSetsPopup from "../../components/shared/FieldSetsPopup";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 import { useAuth } from "../../context/AuthContext";
 import { FieldDetailDto } from "../../types/field.types";
 
@@ -133,7 +134,7 @@ export default function Fields() {
               <tr>
                 <th>Nome</th>
                 <th>FieldSet</th>
-                <th>Azioni</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -148,31 +149,21 @@ export default function Fields() {
                     <td>
                       <FieldSetsPopup field={field} />
                     </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          className={buttons.button}
-                          onClick={() => handleEdit(field.id)}
-                          disabled={field.defaultField}
-                          title={
-                            field.defaultField
-                              ? "Campo di default non modificabile"
-                              : ""
-                          }
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          ✎ Modifica
-                        </button>
-                        <button
-                          className={buttons.button}
-                          onClick={() => handleDelete(field.id)}
-                          disabled={field.defaultField || used}
-                          title={getDeleteTitle(field, used)}
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          Elimina
-                        </button>
-                      </div>
+                    <td style={{ textAlign: 'right' }}>
+                      <ActionsMenu
+                        actions={[
+                          {
+                            label: "✎ Modifica",
+                            onClick: () => handleEdit(field.id),
+                            disabled: field.defaultField,
+                          },
+                          {
+                            label: "Elimina",
+                            onClick: () => handleDelete(field.id),
+                            disabled: field.defaultField || used,
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 );

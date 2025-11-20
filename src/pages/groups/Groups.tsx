@@ -3,6 +3,7 @@ import { Users, Plus, Edit, Trash2, X, Save } from "lucide-react";
 import groupService from "../../services/groupService";
 import { GroupDto, GroupCreateDto } from "../../types/group.types";
 import UserAutocomplete, { UserOption } from "../../components/UserAutocomplete";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -249,58 +250,58 @@ export default function Groups() {
               <p>Nessun gruppo creato. Clicca su &quot;Nuovo Gruppo&quot; per iniziare.</p>
             </div>
           ) : (
-            <table className={table.table}>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Descrizione</th>
-                  <th>Utenti</th>
-                  <th>Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((group) => (
-                  <tr key={group.id}>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <Users size={16} className="text-blue-600" />
-                        <span className="font-medium">{group.name}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-sm text-gray-600">{group.description || "-"}</span>
-                    </td>
-                    <td>
-                      <span className="text-sm text-gray-600">
-                        {group.users && group.users.length > 0
-                          ? `${group.users.length} utente${group.users.length !== 1 ? "i" : ""}`
-                          : "Nessun utente"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEdit(group)}
-                          className={buttons.button}
-                          title="Modifica gruppo"
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(group.id)}
-                          className={buttons.button}
-                          title="Elimina gruppo"
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className={layout.block}>
+              <div className="overflow-x-auto">
+                <table className={table.table}>
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>Descrizione</th>
+                      <th>Utenti</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map((group) => (
+                      <tr key={group.id}>
+                        <td>
+                          <div className="flex items-center">
+                            <Users size={16} className="text-blue-600" />
+                            <span className="font-medium" style={{ marginLeft: '20px' }}>{group.name}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="text-sm text-gray-600">{group.description || "-"}</span>
+                        </td>
+                        <td>
+                          <span className="text-sm text-gray-600">
+                            {group.users && group.users.length > 0
+                              ? `${group.users.length} utente${group.users.length !== 1 ? "i" : ""}`
+                              : "Nessun utente"}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <ActionsMenu
+                            actions={[
+                              {
+                                label: "Modifica",
+                                onClick: () => handleEdit(group),
+                                icon: <Edit size={14} />,
+                              },
+                              {
+                                label: "Elimina",
+                                onClick: () => handleDelete(group.id),
+                                icon: <Trash2 size={14} />,
+                              },
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       )}

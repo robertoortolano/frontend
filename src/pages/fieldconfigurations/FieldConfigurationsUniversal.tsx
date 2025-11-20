@@ -7,6 +7,7 @@ import UsedInFieldSetsPopup from "../../components/shared/UsedInFieldSetsPopup";
 import AliasPopup from "../../components/shared/FieldConfigurationAliasPopup";
 import Accordion from "../../components/shared/Accordion";
 import UniversalPageTemplate from "../../components/shared/UniversalPageTemplate";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import { useAuth } from "../../context/AuthContext";
 import { FieldConfigurationViewDto } from "../../types/field.types";
@@ -145,7 +146,7 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
                       <th className="w-30">Descrizione</th>
                       <th className="w-15">Opzioni</th>
                       <th className="w-20">FieldSet</th>
-                      <th className="w-15"></th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -155,8 +156,8 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
                           <td>
                             <AliasPopup config={config} />
                           </td>
-                          <td>{config.fieldType?.displayName || "-"}</td>
-                          <td>{config.description || "-"}</td>
+                          <td><span className="text-sm text-gray-600">{config.fieldType?.displayName || "-"}</span></td>
+                          <td><span className="text-sm text-gray-600">{config.description || "-"}</span></td>
                           <td>
                             <OptionsPopup options={config.options || []} />
                           </td>
@@ -165,43 +166,23 @@ export default function FieldConfigurationsUniversal({ scope, projectId }: Field
                             <UsedInFieldSetsPopup configs={config} />
                           </td>
 
-                          <td>
-                            <div className="flex flex-col gap-1">
-                              <button
-                                className={buttons.button}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEdit(config.id, config.defaultFieldConfiguration);
-                                }}
-                                disabled={config.defaultFieldConfiguration}
-                                title={
-                                  config.defaultFieldConfiguration
-                                    ? "Configurazione di default non modificabile"
-                                    : ""
-                                }
-                              >
-                                ✎ Edit
-                              </button>
-
-                              <button
-                                className={`${buttons.button}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(config.id);
-                                }}
-                                disabled={
-                                  config.defaultFieldConfiguration ||
-                                  (config.usedInFieldSets && config.usedInFieldSets.length > 0)
-                                }
-                                title={
-                                  config.usedInFieldSets && config.usedInFieldSets.length > 0
-                                    ? "Non puoi eliminare: usata in uno o più FieldSet"
-                                    : "Elimina configurazione"
-                                }
-                              >
-                                Delete
-                              </button>
-                            </div>
+                          <td style={{ textAlign: 'right' }}>
+                            <ActionsMenu
+                              actions={[
+                                {
+                                  label: "✎ Edit",
+                                  onClick: () => handleEdit(config.id, config.defaultFieldConfiguration),
+                                  disabled: config.defaultFieldConfiguration,
+                                },
+                                {
+                                  label: "Delete",
+                                  onClick: () => handleDelete(config.id),
+                                  disabled:
+                                    config.defaultFieldConfiguration ||
+                                    (config.usedInFieldSets && config.usedInFieldSets.length > 0),
+                                },
+                              ]}
+                            />
                           </td>
                         </tr>
                       </Fragment>

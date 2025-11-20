@@ -3,6 +3,7 @@ import { Search, UserPlus, UserMinus, AlertCircle, Users, Edit } from "lucide-re
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import EditUserRolesModal from "../../components/EditUserRolesModal";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -306,50 +307,46 @@ export default function TenantUserManagement() {
             <p>Nessun utente con accesso alla tenant (oltre a te).</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className={table.table}>
-              <thead>
-                <tr>
-                  <th>Email</th>
-                  <th>Nome Completo</th>
-                  <th>Ruoli</th>
-                  <th>Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersWithAccess.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.username}</td>
-                    <td>{user.fullName || <span className="text-gray-400 italic">-</span>}</td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">{getRoleBadges(user)}</div>
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditRoles(user)}
-                          className={buttons.button}
-                          title="Modifica Ruoli"
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          <Edit size={16} className="mr-1" />
-                          Modifica Ruoli
-                        </button>
-                        <button
-                          onClick={() => handleRevokeAccess(user.id, user.username)}
-                          className={buttons.button}
-                          title="Revoca Accesso"
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          <UserMinus size={16} className="mr-1" />
-                          Revoca
-                        </button>
-                      </div>
-                    </td>
+          <div className={layout.block}>
+            <div className="overflow-x-auto">
+              <table className={table.table}>
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Nome Completo</th>
+                    <th>Ruoli</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {usersWithAccess.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.username}</td>
+                      <td><span className="text-sm text-gray-600">{user.fullName || "-"}</span></td>
+                      <td>
+                        <div className="flex flex-wrap gap-1">{getRoleBadges(user)}</div>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <ActionsMenu
+                          actions={[
+                            {
+                              label: "Modifica Ruoli",
+                              onClick: () => handleEditRoles(user),
+                              icon: <Edit size={16} />,
+                            },
+                            {
+                              label: "Revoca",
+                              onClick: () => handleRevokeAccess(user.id, user.username),
+                              icon: <UserMinus size={16} />,
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

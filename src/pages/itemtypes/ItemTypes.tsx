@@ -4,6 +4,7 @@ import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { ItemTypeDto, ItemTypeDetailDto } from "../../types/itemtype.types";
 import ItemTypeSetsPopup from "../../components/shared/ItemTypeSetsPopup";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -126,53 +127,51 @@ export default function ItemTypes() {
     content = <p className="list-loading">No item types found.</p>;
   } else {
     content = (
-      <table className={table.table}>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>ItemTypeSet</th>
-            <th>Azioni</th>
-          </tr>
-        </thead>
-        <tbody>
-          {itemTypes.map((item) => (
-            <tr key={item.id}>
-              <td>{item.name}</td>
-              <td>
-                <ItemTypeSetsPopup itemTypeId={item.id} />
-              </td>
-              <td>
-                <div className="flex gap-2">
-                  {!item.defaultItemType && (
-                    <button
-                      className={buttons.button}
-                      onClick={() => handleDelete(item.id)}
-                      disabled={item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0}
-                      title={
-                        item.itemTypeConfigurations && item.itemTypeConfigurations.length > 0
-                          ? "Item Type utilizzato in ItemTypeSet: non eliminabile"
-                          : "Rimuovi Item Type"
-                      }
-                      style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                  <button
-                    className={buttons.button}
-                    onClick={() => handleEdit(item.id)}
-                    disabled={item.defaultItemType}
-                    title={item.defaultItemType ? "ItemType di default non modificabile" : ""}
-                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                  >
-                    ✎ Edit
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className={layout.block}>
+        <div className="overflow-x-auto">
+          <table className={table.table}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>ItemTypeSet</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {itemTypes.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>
+                    <ItemTypeSetsPopup itemTypeId={item.id} />
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <ActionsMenu
+                      actions={[
+                        {
+                          label: "✎ Edit",
+                          onClick: () => handleEdit(item.id),
+                          disabled: item.defaultItemType,
+                        },
+                        ...(!item.defaultItemType
+                          ? [
+                              {
+                                label: "Delete",
+                                onClick: () => handleDelete(item.id),
+                                disabled:
+                                  item.itemTypeConfigurations &&
+                                  item.itemTypeConfigurations.length > 0,
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     );
   }
 

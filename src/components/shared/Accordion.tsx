@@ -85,18 +85,19 @@ export default function Accordion({
 
   return (
     <div className={`${layout.block} ${className}`} id={accordionId}>
-      <div className={`flex items-center justify-between ${headerActions ? 'gap-2' : ''}`}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'nowrap', width: '100%' }}>
         <button
           type="button"
           id={headerId}
-          className={`${layout.blockHeader} cursor-pointer flex items-center justify-between flex-grow ${headerClassName}`}
+          className={`${layout.blockHeader} cursor-pointer flex items-center justify-between ${headerClassName}`}
           onClick={onToggle}
           onKeyDown={handleKeyDown}
           aria-expanded={isExpanded}
           aria-controls={panelId}
           aria-label={typeof title === "string" ? `${title}, ${isExpanded ? "espanso" : "collassato"}` : undefined}
+          style={{ flex: '1 1 0%', minWidth: 0, overflow: 'hidden' }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexGrow: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexGrow: 1, minWidth: 0, width: '100%' }}>
             {showIcon && (
               <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} aria-hidden="true">
                 {isExpanded ? (
@@ -106,13 +107,13 @@ export default function Accordion({
                 )}
               </span>
             )}
-            <span style={{ display: 'flex', alignItems: 'center', flexGrow: 1, margin: 0, padding: 0 }}>
+            <span style={{ display: 'flex', alignItems: 'center', flex: '1 1 0%', margin: 0, padding: 0, minWidth: 0, overflow: 'hidden' }}>
               {title}
             </span>
           </div>
         </button>
         {headerActions && (
-          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
             {headerActions}
           </div>
         )}

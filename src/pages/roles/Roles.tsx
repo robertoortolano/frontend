@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { RoleDto } from "../../types/role.types";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -126,46 +127,36 @@ export default function Roles() {
                 <tr>
                   <th>Nome</th>
                   <th>Descrizione</th>
-                  <th>Azioni</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {rolesList.map((role) => (
                   <tr key={role.id}>
                     <td>
-                      <div className="flex items-center gap-3">
-                        <Shield size={20} className="text-blue-600" />
-                        <div>
-                          <p className="font-medium">{role.name}</p>
-                          <p className="text-sm text-gray-600">ID: {role.id}</p>
-                        </div>
+                      <div className="flex items-center">
+                        <Shield size={16} className="text-blue-600" />
+                        <span className="font-medium" style={{ marginLeft: '20px' }}>{role.name}</span>
                       </div>
                     </td>
                     <td>
-                      <div className="max-w-xs">
-                        <p className="text-sm text-gray-700 truncate" title={role.description}>
-                          {role.description || <span className="text-gray-400 italic">Nessuna descrizione</span>}
-                        </p>
-                      </div>
+                      <span className="text-sm text-gray-600">{role.description || "-"}</span>
                     </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          className={buttons.button}
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                          onClick={() => navigate(`/tenant/roles/edit/${role.id}`)}
-                          title="Modifica Ruolo"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
-                          onClick={() => handleDelete(role.id)}
-                          title="Elimina Ruolo"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                    <td style={{ textAlign: 'right' }}>
+                      <ActionsMenu
+                        actions={[
+                          {
+                            label: "Modifica",
+                            onClick: () => navigate(`/tenant/roles/edit/${role.id}`),
+                            icon: <Edit size={16} />,
+                          },
+                          {
+                            label: "Elimina",
+                            onClick: () => handleDelete(role.id),
+                            icon: <Trash2 size={16} />,
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

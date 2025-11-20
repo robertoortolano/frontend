@@ -7,6 +7,7 @@ import { FieldSetViewDto } from "../../types/field.types";
 import Accordion from "../../components/shared/Accordion";
 import FieldSetConfigurationsPopup from "../../components/shared/FieldSetConfigurationsPopup";
 import UniversalPageTemplate from "../../components/shared/UniversalPageTemplate";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -156,55 +157,33 @@ export default function FieldSetsUniversal({ scope, projectId }: FieldSetsUniver
                     <th className="w-20">Nome</th>
                     <th className="w-30">Descrizione</th>
                     <th className="w-20">Configurazioni</th>
-                    <th className="w-15"></th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
                     <td>{set.name}</td>
-                    <td>{set.description || "-"}</td>
+                    <td><span className="text-sm text-gray-600">{set.description || "-"}</span></td>
                     <td>
                       <FieldSetConfigurationsPopup fieldSet={set} />
                     </td>
-                    <td>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          className={buttons.button}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(set.id, set.defaultFieldSet);
-                          }}
-                          disabled={set.defaultFieldSet}
-                          title={
-                            set.defaultFieldSet
-                              ? "Field Set di default non modificabile"
-                              : "Modifica Field Set"
-                          }
-                        >
-                          ✎ Edit
-                        </button>
-
-                        <button
-                          className={`${buttons.button}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(set.id);
-                          }}
-                          disabled={
-                            set.defaultFieldSet ||
-                            (set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0)
-                          }
-                          title={
-                            set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0
-                              ? "Non puoi eliminare: usato in uno o più ItemTypeSet"
-                              : set.defaultFieldSet
-                                ? "FieldSet di default non eliminabile"
-                                : "Elimina Field Set"
-                          }
-                        >
-                          Delete
-                        </button>
-                      </div>
+                    <td style={{ textAlign: 'right' }}>
+                      <ActionsMenu
+                        actions={[
+                          {
+                            label: "✎ Edit",
+                            onClick: () => handleEdit(set.id, set.defaultFieldSet),
+                            disabled: set.defaultFieldSet,
+                          },
+                          {
+                            label: "Delete",
+                            onClick: () => handleDelete(set.id),
+                            disabled:
+                              set.defaultFieldSet ||
+                              (set.usedInItemTypeSets && set.usedInItemTypeSets.length > 0),
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 </tbody>

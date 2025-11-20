@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { WorkflowSimpleDto, WorkflowDetailDto } from "../../types/workflow.types";
 import UsedInItemTypeSetsPopup from "../../components/shared/UsedInItemTypeSetsPopup";
 import WorkflowViewModal from "../../components/shared/WorkflowViewModal";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -117,7 +118,7 @@ export default function Workflows() {
               <tr>
                 <th>Nome</th>
                 <th>ItemTypeSet</th>
-                <th>Azioni</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -127,40 +128,28 @@ export default function Workflows() {
                   <td>
                     <UsedInItemTypeSetsPopup workflow={wf} />
                   </td>
-                  <td>
-                    <div className="flex gap-2">
-                      <button
-                        className={buttons.button}
-                        onClick={() => handleView(wf.id)}
-                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                      >
-                        👁 Visualizza
-                      </button>
-                      <button
-                        className={buttons.button}
-                        onClick={() => handleEdit(wf.id)}
-                        disabled={wf.defaultWorkflow}
-                        title={wf.defaultWorkflow ? "Modifica disabilitata: workflow di default" : ""}
-                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                      >
-                        ✎ Modifica
-                      </button>
-                      <button
-                        className={buttons.button}
-                        onClick={() => handleDelete(wf.id)}
-                        disabled={wf.defaultWorkflow || (wf.usedInItemTypeConfigurations && wf.usedInItemTypeConfigurations.length > 0)}
-                        title={
-                          wf.usedInItemTypeConfigurations && wf.usedInItemTypeConfigurations.length > 0
-                            ? "Workflow utilizzato in ItemTypeSet: non eliminabile"
-                            : wf.defaultWorkflow
-                              ? "Eliminazione disabilitata: workflow di default"
-                              : ""
-                        }
-                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                      >
-                        Elimina
-                      </button>
-                    </div>
+                  <td style={{ textAlign: 'right' }}>
+                    <ActionsMenu
+                      actions={[
+                        {
+                          label: "👁 Visualizza",
+                          onClick: () => handleView(wf.id),
+                        },
+                        {
+                          label: "✎ Modifica",
+                          onClick: () => handleEdit(wf.id),
+                          disabled: wf.defaultWorkflow,
+                        },
+                        {
+                          label: "Elimina",
+                          onClick: () => handleDelete(wf.id),
+                          disabled:
+                            wf.defaultWorkflow ||
+                            (wf.usedInItemTypeConfigurations &&
+                              wf.usedInItemTypeConfigurations.length > 0),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

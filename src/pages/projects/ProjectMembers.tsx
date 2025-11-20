@@ -3,6 +3,7 @@ import { UserPlus, Trash2, Search, ArrowLeft } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 
 import layout from "../../styles/common/Layout.module.css";
 import buttons from "../../styles/common/Buttons.module.css";
@@ -338,7 +339,7 @@ export default function ProjectMembers() {
                   <th>Email</th>
                   <th>Nome Completo</th>
                   <th>Ruolo Progetto</th>
-                  <th>Azioni</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -382,17 +383,19 @@ export default function ProjectMembers() {
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td style={{ textAlign: 'right' }}>
                       {member.isTenantAdmin ? (
                         <span className="text-xs text-gray-500 italic">Non rimovibile</span>
                       ) : (
-                        <button
-                          onClick={() => handleRemoveMember(member.userId, member.username)}
-                          className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
-                          title="Rimuovi dal progetto"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <ActionsMenu
+                          actions={[
+                            {
+                              label: "Rimuovi",
+                              onClick: () => handleRemoveMember(member.userId, member.username),
+                              icon: <Trash2 size={16} />,
+                            },
+                          ]}
+                        />
                       )}
                     </td>
                   </tr>

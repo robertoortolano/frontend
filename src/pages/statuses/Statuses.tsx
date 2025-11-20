@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import WorkflowsPopup from "../../components/shared/WorkflowsPopup";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 import { useAuth } from "../../context/AuthContext";
 import { StatusDetailDto } from "../../types/status.types";
 
@@ -118,7 +119,7 @@ export default function Statuses() {
               <tr>
                 <th>Nome</th>
                 <th>Workflow</th>
-                <th>Azioni</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -131,35 +132,21 @@ export default function Statuses() {
                     <td>
                       <WorkflowsPopup workflows={status.workflows} />
                     </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          className={buttons.button}
-                          onClick={() => handleEdit(status.id)}
-                          disabled={usedInDefaultWorkflow || status.defaultStatus}
-                          title={
-                            usedInDefaultWorkflow || status.defaultStatus
-                              ? "Modifica disabilitata: usato in un workflow di default"
-                              : ""
-                          }
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          ✎ Modifica
-                        </button>
-                        <button
-                          className={buttons.button}
-                          onClick={() => handleDelete(status.id)}
-                          disabled={usedInDefaultWorkflow || status.defaultStatus}
-                          title={
-                            usedInDefaultWorkflow || status.defaultStatus
-                              ? "Cancellazione disabilitata: usato in un workflow di default"
-                              : ""
-                          }
-                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                        >
-                          Elimina
-                        </button>
-                      </div>
+                    <td style={{ textAlign: 'right' }}>
+                      <ActionsMenu
+                        actions={[
+                          {
+                            label: "✎ Modifica",
+                            onClick: () => handleEdit(status.id),
+                            disabled: usedInDefaultWorkflow || status.defaultStatus,
+                          },
+                          {
+                            label: "Elimina",
+                            onClick: () => handleDelete(status.id),
+                            disabled: usedInDefaultWorkflow || status.defaultStatus,
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 );

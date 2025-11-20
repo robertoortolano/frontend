@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import ItemTypeSetRoleManager from "../../components/ItemTypeSetRoleManager";
 import PermissionGrantModal from "../../components/shared/PermissionGrantModal";
 import Accordion from "../../components/shared/Accordion";
+import ActionsMenu from "../../components/shared/ActionsMenu";
 import { ItemTypeSetDto } from "../../types/itemtypeset.types";
 
 import layout from "../../styles/common/Layout.module.css";
@@ -92,52 +93,41 @@ export default function ItemTypeSets() {
           <li key={set.id}>
             <Accordion
               id={set.id}
-              title={<h2 className={layout.blockTitleBlue}>{set.name}</h2>}
+              title={<h2 className={layout.blockTitleBlue} style={{ margin: 0 }}>{set.name}</h2>}
               isExpanded={expandedSets[set.id] || false}
               onToggle={() => toggleExpand(set.id)}
               headerActions={
-                <div className="flex gap-2">
-                  <button
-                    className={buttons.button}
-                    style={{ 
-                      padding: "0.25rem 0.5rem", 
-                      fontSize: "0.75rem",
-                      backgroundColor: showRoles && selectedSetForRoles?.id === set.id ? "#00ddd4" : "#f0f0f0"
-                    }}
-                    onClick={() => {
-                      if (showRoles && selectedSetForRoles?.id === set.id) {
-                        setShowRoles(false);
-                        setSelectedSetForRoles(null);
-                      } else {
-                        setShowRoles(true);
-                        setSelectedSetForRoles(set);
-                        // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
-                        setExpandedSets(prev => ({
-                          ...prev,
-                          [set.id]: true
-                        }));
-                      }
-                    }}
-                    title={
-                      showRoles && selectedSetForRoles?.id === set.id
-                        ? "Nascondi Permissions"
-                        : "Gestisci Permissions"
-                    }
-                    type="button"
-                  >
-                    <Shield size={16} className="mr-1" />
-                    {showRoles && selectedSetForRoles?.id === set.id ? "Nascondi" : "Mostra"} Permissions
-                  </button>
-                  {!set.defaultItemTypeSet && (
-                    <button
-                      className={`${buttons.button} ${buttons.buttonSmall}`}
-                      onClick={() => navigate(`/tenant/item-type-sets/edit/${set.id}`)}
-                      title="Modifica Item Type Set"
-                      type="button"
-                    >
-                      Edit
-                    </button>
-                  )}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ActionsMenu
+                    actions={[
+                      {
+                        label: showRoles && selectedSetForRoles?.id === set.id ? "Nascondi Permissions" : "Mostra Permissions",
+                        onClick: () => {
+                          if (showRoles && selectedSetForRoles?.id === set.id) {
+                            setShowRoles(false);
+                            setSelectedSetForRoles(null);
+                          } else {
+                            setShowRoles(true);
+                            setSelectedSetForRoles(set);
+                            // Espandi automaticamente l'ItemTypeSet quando si mostrano le permission
+                            setExpandedSets(prev => ({
+                              ...prev,
+                              [set.id]: true
+                            }));
+                          }
+                        },
+                        icon: <Shield size={16} />,
+                      },
+                      ...(!set.defaultItemTypeSet
+                        ? [
+                            {
+                              label: "Edit",
+                              onClick: () => navigate(`/tenant/item-type-sets/edit/${set.id}`),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
                 </div>
               }
             >
