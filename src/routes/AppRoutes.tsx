@@ -39,12 +39,12 @@ import Fields from "../pages/fields/Fields";
 import FieldEdit from "../pages/fields/FieldEdit";
 
 // Field Configurations
-import FieldConfigurations from "../pages/fieldconfigurations/FieldConfigurations";
+import FieldConfigurationsUniversal from "../pages/fieldconfigurations/FieldConfigurationsUniversal";
 import FieldConfigurationEditUniversal from "../pages/fieldconfigurations/FieldConfigurationEditUniversal";
 import FieldConfigurationCreate from "../pages/fieldconfigurations/FieldConfigurationCreate";
 
 // Field Sets
-import FieldSets from "../pages/fieldsets/FieldSets";
+import FieldSetsUniversal from "../pages/fieldsets/FieldSetsUniversal";
 import FieldSetCreate from "../pages/fieldsets/FieldSetCreate";
 import EditFieldSets from "../pages/fieldsets/EditFieldSet";
 
@@ -163,7 +163,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <FieldSets />
+            <FieldSetsUniversal scope="tenant" />
           </RoleProtectedRoute>
         } />
         <Route path="field-sets/:id" element={
@@ -185,7 +185,7 @@ export default function AppRoutes() {
           <RoleProtectedRoute requiredRoles={[
             { name: "ADMIN", scope: "TENANT" }
           ]}>
-            <FieldConfigurations />
+            <FieldConfigurationsUniversal scope="tenant" />
           </RoleProtectedRoute>
         } />
         <Route path="field-configurations/:id" element={
