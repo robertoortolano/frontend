@@ -170,8 +170,10 @@ export default function NavTenant() {
           </>
         )}
 
-        {/* Separatore */}
-        <li className="nav-separator"></li>
+        {/* Separatore - solo se ci sono voci di configurazione sopra */}
+        {(canAccessBasicFeatures || isAdmin) && (
+          <li className="nav-separator"></li>
+        )}
 
         {/* Progetti - con accordion per preferiti */}
         <li>
