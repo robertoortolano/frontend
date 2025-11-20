@@ -15,12 +15,18 @@ import buttons from "../styles/common/Buttons.module.css";
 export default function HomeProjects() {
   const auth = useAuth() as any;
   const token = auth?.token;
+  const roles = auth?.roles || [];
   const { favoriteIds, toggleFavorite, refreshFavorites } = useFavorites();
 
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Check if user is ADMIN (TENANT scope) - only tenant admin can create projects
+  const isTenantAdmin = roles.some((role: any) => 
+    role.name === "ADMIN" && role.scope === "TENANT"
+  );
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -143,14 +149,16 @@ export default function HomeProjects() {
         <p className={layout.paragraphMuted}>
           Gestisci i tuoi progetti e accedi alle loro configurazioni.
         </p>
-        <div className={layout.buttonRow}>
-          <button 
-            className={buttons.button}
-            onClick={() => setShowCreateModal(true)}
-          >
-            + Crea Nuovo Progetto
-          </button>
-        </div>
+        {isTenantAdmin && (
+          <div className={layout.buttonRow}>
+            <button 
+              className={buttons.button}
+              onClick={() => setShowCreateModal(true)}
+            >
+              + Crea Nuovo Progetto
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Error Message */}
