@@ -20,12 +20,18 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const auth = useAuth() as any;
   const token = auth?.token;
+  const tenantId = auth?.tenantId;
   
   const [favoriteProjects, setFavoriteProjects] = useState<FavoriteProject[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
 
   const refreshFavorites = async () => {
-    if (!token) return;
+    // Non fare la chiamata se non c'è il token o il tenantId non è ancora stato selezionato
+    if (!token || !tenantId) {
+      setFavoriteProjects([]);
+      setFavoriteIds(new Set());
+      return;
+    }
     
     try {
       const response = await api.get("/projects/favorites", {
@@ -75,7 +81,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshFavorites();
-  }, [token]);
+  }, [token, tenantId]);
 
   return (
     <FavoritesContext.Provider value={{ favoriteProjects, favoriteIds, refreshFavorites, toggleFavorite }}>

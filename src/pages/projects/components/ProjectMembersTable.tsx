@@ -38,9 +38,6 @@ export function ProjectMembersTable({ members }: ProjectMembersTableProps) {
             <tr key={member.userId} className={member.isTenantAdmin ? "bg-gray-50" : ""}>
               <td>
                 {member.username}
-                {member.isTenantAdmin && (
-                  <span className="ml-2 text-xs text-gray-500">(Tenant Admin)</span>
-                )}
               </td>
               <td>
                 {member.fullName || <span className="italic text-gray-400">-</span>}
@@ -54,7 +51,6 @@ export function ProjectMembersTable({ members }: ProjectMembersTableProps) {
                   }`}
                 >
                   {member.roleName === "ADMIN" ? "Admin" : "User"}
-                  {member.isTenantAdmin && " (fisso)"}
                 </span>
               </td>
             </tr>
@@ -67,6 +63,7 @@ export function ProjectMembersTable({ members }: ProjectMembersTableProps) {
     </>
   );
 }
+
 
 
 

@@ -6,12 +6,14 @@ import { Role } from "../types/common.types";
 interface DecodedJWT {
   roles?: Role[];
   tenantId?: number;
+  userId?: number;
   [key: string]: any;
 }
 
 export interface AuthContextType {
   token: string;
   tenantId: string;
+  userId: number | null;
   roles: Role[];
   isAuthenticated: boolean;
   setToken: (token: string) => void;
@@ -47,6 +49,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [token, setTokenState] = useState(localStorage.getItem("token") || "");
   const [tenantId, setTenantIdState] = useState(localStorage.getItem("tenantId") || "");
   const [roles, setRoles] = useState<Role[]>([]);
+  const [userId, setUserId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   // Set the auth token in axios defaults and local storage
@@ -55,18 +58,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       localStorage.setItem("token", token);
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-      // Decodifica il token per estrarre i ruoli e tenantId
+      // Decodifica il token per estrarre i ruoli, tenantId e userId
       const decoded = decodeJWT(token);
       if (decoded) {
         setRoles(decoded.roles || []);
         if (decoded.tenantId) {
           setTenantIdState(decoded.tenantId.toString());
         }
+        if (decoded.userId) {
+          setUserId(decoded.userId);
+        }
       }
     } else {
       delete api.defaults.headers.common["Authorization"];
       localStorage.removeItem("token");
       setRoles([]);
+      setUserId(null);
     }
   }, [token]);
 
@@ -91,6 +98,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setTokenState("");
     setTenantIdState("");
     setRoles([]);
+    setUserId(null);
     navigate("/");
   };
 
@@ -99,6 +107,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       value={{
         token,
         tenantId,
+        userId,
         roles,
         isAuthenticated: !!token,
         setToken: login,

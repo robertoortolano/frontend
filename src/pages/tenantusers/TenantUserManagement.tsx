@@ -127,6 +127,15 @@ export default function TenantUserManagement() {
 
   const handleSaveRoles = async (userId: number, selectedRoles: string[]) => {
     try {
+      // Controlla se l'utente sta modificando i propri ruoli
+      const currentUserId = auth?.userId;
+      const isSelfModification = userId === currentUserId;
+      
+      // Controlla se sta rimuovendo il ruolo ADMIN
+      const hadAdmin = editingUser?.roles?.includes("ADMIN");
+      const willHaveAdmin = selectedRoles.includes("ADMIN");
+      const isRemovingAdmin = hadAdmin && !willHaveAdmin;
+      
       await api.put(
         `/tenant/users/${userId}/roles`,
         { userId, roleNames: selectedRoles },
@@ -135,6 +144,13 @@ export default function TenantUserManagement() {
 
       setSuccessMessage(`Ruoli aggiornati con successo`);
       await fetchUsersWithAccess();
+      
+      // Se l'utente si è auto-rimosso il ruolo ADMIN, reindirizza dopo 2 secondi
+      if (isSelfModification && isRemovingAdmin) {
+        setTimeout(() => {
+          window.location.href = "/tenant";
+        }, 2000);
+      }
     } catch (err: any) {
       if (err.response?.data?.message?.includes("last ADMIN")) {
         throw new Error("Impossibile rimuovere il ruolo ADMIN dall'ultimo ADMIN della tenant");
@@ -149,6 +165,10 @@ export default function TenantUserManagement() {
     }
 
     try {
+      // Controlla se l'utente sta revocando il proprio accesso
+      const currentUserId = auth?.userId;
+      const isSelfRevocation = userId === currentUserId;
+      
       await api.delete("/tenant/users/revoke", {
         data: { userId },
         headers: { Authorization: `Bearer ${token}` },
@@ -156,6 +176,13 @@ export default function TenantUserManagement() {
 
       setSuccessMessage(`Accesso revocato per ${username}`);
       await fetchUsersWithAccess();
+      
+      // Se l'utente si è auto-revocato, reindirizza alla pagina di login
+      if (isSelfRevocation) {
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 2000);
+      }
     } catch (err: any) {
       if (err.response?.data?.message?.includes("last ADMIN")) {
         setError("Impossibile rimuovere l'ultimo ADMIN della tenant");

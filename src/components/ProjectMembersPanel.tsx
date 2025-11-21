@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { UserPlus, Trash2, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../api/api";
+import { useAuth } from "../context/AuthContext";
 
 import layout from "../styles/common/Layout.module.css";
 import buttons from "../styles/common/Buttons.module.css";
@@ -39,6 +41,8 @@ export default function ProjectMembersPanel({
   members,
   onMembersUpdate
 }: ProjectMembersPanelProps) {
+  const auth = useAuth() as any;
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -150,12 +154,31 @@ export default function ProjectMembersPanel({
     try {
       setError(null);
       setSuccessMessage(null);
+      
+      // Controlla se l'utente sta modificando i propri ruoli
+      const currentUserId = auth?.userId;
+      const isSelfModification = userId === currentUserId;
+      
+      // Controlla se sta rimuovendo il ruolo ADMIN
+      const currentMember = members.find(m => m.userId === userId);
+      const hadAdmin = currentMember?.roleName === "ADMIN";
+      const willHaveAdmin = newRole === "ADMIN";
+      const isRemovingAdmin = hadAdmin && !willHaveAdmin;
 
       await api.put(
         `/projects/${projectId}/members/${userId}/role`,
         { roleName: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Se l'utente si è auto-rimosso il ruolo PROJECT_ADMIN, reindirizza immediatamente
+      // (il token è stato invalidato, quindi non fare altre chiamate API)
+      if (isSelfModification && isRemovingAdmin) {
+        setTimeout(() => {
+          navigate(`/projects/${projectId}`);
+        }, 100);
+        return; // Non fare fetchMembers perché il token è stato invalidato
+      }
 
       setSuccessMessage("Ruolo aggiornato con successo");
       await fetchMembers();
@@ -172,6 +195,14 @@ export default function ProjectMembersPanel({
     try {
       setError(null);
       setSuccessMessage(null);
+      
+      // Controlla se l'utente sta rimuovendo se stesso
+      const currentUserId = auth?.userId;
+      const isSelfRemoval = userId === currentUserId;
+      
+      // Controlla se era project admin
+      const currentMember = members.find(m => m.userId === userId);
+      const wasProjectAdmin = currentMember?.roleName === "ADMIN";
 
       await api.delete(`/projects/${projectId}/members/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -179,6 +210,13 @@ export default function ProjectMembersPanel({
 
       setSuccessMessage(`${username} rimosso dal progetto`);
       await fetchMembers();
+      
+      // Se l'utente si è auto-rimosso e era project admin, reindirizza dopo 2 secondi
+      if (isSelfRemoval && wasProjectAdmin) {
+        setTimeout(() => {
+          navigate("/projects");
+        }, 2000);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || "Errore nella rimozione del membro");
     }
@@ -340,9 +378,6 @@ export default function ProjectMembersPanel({
                       <tr key={member.userId} className={member.isTenantAdmin ? "bg-gray-50" : ""}>
                         <td>
                           {member.username}
-                          {member.isTenantAdmin && (
-                            <span className="ml-2 text-xs text-gray-500">(Tenant Admin)</span>
-                          )}
                         </td>
                         <td>{member.fullName || <span className="text-gray-400 italic">-</span>}</td>
                         <td>
@@ -350,7 +385,7 @@ export default function ProjectMembersPanel({
                             // TENANT_ADMIN: ruolo fisso, non modificabile
                             <div>
                               <span className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-lg inline-block">
-                                Admin (fisso)
+                                Admin
                               </span>
                               <div className="mt-1">
                                 {getRoleBadge(member.roleName)}
@@ -377,17 +412,15 @@ export default function ProjectMembersPanel({
                           )}
                         </td>
                         <td>
-                          {member.isTenantAdmin ? (
-                            <span className="text-xs text-gray-500 italic">Non rimovibile</span>
-                          ) : (
-                            <button
-                              onClick={() => handleRemoveMember(member.userId, member.username)}
-                              className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
-                              title="Rimuovi dal progetto"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => !member.isTenantAdmin && handleRemoveMember(member.userId, member.username)}
+                            disabled={member.isTenantAdmin}
+                            className={`${buttons.button} ${buttons.buttonSmall} ${buttons.buttonDanger}`}
+                            title={member.isTenantAdmin ? "I tenant admin non possono essere rimossi dal progetto" : "Rimuovi dal progetto"}
+                            style={member.isTenantAdmin ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}

@@ -153,11 +153,30 @@ export default function ProjectMembers() {
       setError(null);
       setSuccessMessage(null);
 
+      // Controlla se l'utente sta modificando i propri ruoli
+      const currentUserId = auth?.userId;
+      const isSelfModification = userId === currentUserId;
+      
+      // Controlla se sta rimuovendo il ruolo ADMIN
+      const currentMember = members.find(m => m.userId === userId);
+      const hadAdmin = currentMember?.roleName === "ADMIN";
+      const willHaveAdmin = newRole === "ADMIN";
+      const isRemovingAdmin = hadAdmin && !willHaveAdmin;
+
       await api.put(
         `/projects/${projectId}/members/${userId}/role`,
         { roleName: newRole },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Se l'utente si è auto-rimosso il ruolo PROJECT_ADMIN, reindirizza immediatamente
+      // (il token è stato invalidato, quindi non fare altre chiamate API)
+      if (isSelfModification && isRemovingAdmin) {
+        setTimeout(() => {
+          navigate("/projects");
+        }, 100);
+        return; // Non fare fetchMembers perché il token è stato invalidato
+      }
 
       setSuccessMessage("Ruolo aggiornato con successo");
       await fetchMembers();
@@ -347,9 +366,6 @@ export default function ProjectMembers() {
                   <tr key={member.userId} className={member.isTenantAdmin ? "bg-gray-50" : ""}>
                     <td>
                       {member.username}
-                      {member.isTenantAdmin && (
-                        <span className="ml-2 text-xs text-gray-500">(Tenant Admin)</span>
-                      )}
                     </td>
                     <td>{member.fullName || <span className="text-gray-400 italic">-</span>}</td>
                     <td>
@@ -357,7 +373,7 @@ export default function ProjectMembers() {
                         // TENANT_ADMIN: ruolo fisso, non modificabile
                         <div>
                           <span className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-lg inline-block">
-                            Admin (fisso)
+                            Admin
                           </span>
                           <div className="mt-1">
                             {getRoleBadge(member.roleName)}
@@ -385,7 +401,17 @@ export default function ProjectMembers() {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       {member.isTenantAdmin ? (
-                        <span className="text-xs text-gray-500 italic">Non rimovibile</span>
+                        <ActionsMenu
+                          actions={[
+                            {
+                              label: "Rimuovi",
+                              onClick: () => {},
+                              icon: <Trash2 size={16} />,
+                              disabled: true,
+                            },
+                          ]}
+                          disabled={true}
+                        />
                       ) : (
                         <ActionsMenu
                           actions={[

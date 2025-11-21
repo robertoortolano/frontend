@@ -23,10 +23,41 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error: Error) => {
-    if ((error as any).response?.status === 401) {
+    const status = (error as any).response?.status;
+    
+    if (status === 401) {
+      // Token non valido o scaduto - logout completo e redirect immediato
+      // Non propagare l'errore per evitare che venga mostrato il messaggio
       localStorage.removeItem("token");
-      window.location.href = "/"; // o "/login" a seconda del tuo routing
+      localStorage.removeItem("tenantId");
+      // Redirect immediato senza mostrare errori
+      window.location.href = "/";
+      // Non reindirizzare l'errore per evitare che venga mostrato
+      return Promise.resolve({ data: null }); // Resolve con un valore vuoto per evitare errori
     }
+    
+    if (status === 403) {
+      // Permessi insufficienti - potrebbe essere cambiamento ruolo
+      // Reindirizza a una pagina sicura accessibile
+      const currentPath = window.location.pathname;
+      
+      // Se sei in una pagina tenant, vai alla home tenant
+      if (currentPath.startsWith("/tenant")) {
+        window.location.href = "/tenant";
+        return Promise.reject(error);
+      }
+      
+      // Se sei in una pagina progetto, vai alla home progetti
+      if (currentPath.startsWith("/projects")) {
+        window.location.href = "/projects";
+        return Promise.reject(error);
+      }
+      
+      // Fallback: vai alla selezione tenant
+      window.location.href = "/tenant";
+      return Promise.reject(error);
+    }
+    
     return Promise.reject(error);
   }
 );
